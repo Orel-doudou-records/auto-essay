@@ -84,22 +84,17 @@ Implemented by PR #29.
 
 ## Verification
 
-Each phase is validated by GitHub Actions with:
+GitHub Actions validates the integrated MVP with:
 
 ```bash
 npm ci
 npm run typecheck
 npm test
-```
-
-The first Phase 5 CI run passed all three steps on PR #29, including both complete demonstration tests.
-
-The demonstration commands are:
-
-```bash
 npm run demo:synthetic
 npm run demo:station-reverse
 ```
+
+All five steps passed on PR #29. The two demonstration commands compile an isolated CommonJS runtime, execute the complete path and publish into ignored local registries.
 
 ## MVP status
 
