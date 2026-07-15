@@ -14,7 +14,9 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "demo:synthetic": "npm run build && node dist/demo/runSyntheticDemo.js",
+    "demo:station-reverse": "npm run build && node dist/demo/runStationReverseDemo.js"
   },
   "dependencies": {
     "zod": "^3.22.4"
