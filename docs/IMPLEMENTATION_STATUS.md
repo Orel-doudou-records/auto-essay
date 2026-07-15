@@ -13,6 +13,7 @@ Implemented on `feat/literacraft-diffractive-style-engine`:
 - optional editorial references on `DraftUnit`
 - public domain exports
 - unit tests for the new contracts and backwards compatibility
+- GitHub Actions CI for typecheck and tests
 
 ## Preserved invariants
 
@@ -26,12 +27,14 @@ Implemented on `feat/literacraft-diffractive-style-engine`:
 
 ## Verification status
 
-The repository changes are pushed and structurally reviewed. The local execution environment could not run `npm ci`, `npm run typecheck` or `npm test` because it has no network access and no cached project dependencies.
+Phase 1 has been validated by GitHub Actions on draft PR #8.
 
-Phase 1 must not be marked complete until these commands pass in a dependency-enabled checkout:
+The CI job completed successfully with:
 
 ```bash
 npm ci
 npm run typecheck
 npm test
 ```
+
+The pull request remains in draft for architectural review before merge.
