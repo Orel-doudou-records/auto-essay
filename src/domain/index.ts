@@ -23,3 +23,18 @@ export * from "./pipelineState";
 
 // Révision et briefs
 export * from "./revision";
+
+// Observations stylistiques relationnelles
+export * from "./styleObservation";
+
+// Relations explicites du contenu
+export * from "./contentRelation";
+
+// Articulations entre contenu et opérations d'écriture
+export * from "./contentStyleArticulation";
+
+// Décisions éditoriales canoniques
+export * from "./editorialDecision";
+
+// Plans éditoriaux situés par unité
+export * from "./editorialPlan";
