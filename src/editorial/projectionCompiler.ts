@@ -66,6 +66,9 @@ export class ProjectionCompiler {
         id: `${decision.id}:criterion:${index}`,
         decisionId: decision.id,
         articulationId: decision.articulationId,
+        directiveIds: directives
+          .filter((directive) => directive.decisionId === decision.id)
+          .map((directive) => directive.id),
         instruction: [
           ...decision.contentCommitments,
           ...decision.formalCommitments,
