@@ -174,12 +174,13 @@ export const SourceSchema = z.object({
 });
 
 export type Source = z.infer<typeof SourceSchema>;
+export type SourceInput = z.input<typeof SourceSchema>;
 
 /**
  * Crée une nouvelle source avec valeurs par défaut.
  */
 export function createSource(
-  partial: Omit<Partial<Source>, "id"> & {
+  partial: Omit<Partial<SourceInput>, "id"> & {
     projectId: string;
     title: string;
     content: string;
