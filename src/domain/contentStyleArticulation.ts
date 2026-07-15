@@ -74,6 +74,22 @@ export type EditorialAlternativeInput = z.input<
 >;
 
 /**
+ * Degré de soutien d'une articulation candidate.
+ * Ce bloc reste optionnel pour préserver la compatibilité avec la Phase 1,
+ * mais les résolveurs de Phase 2 doivent toujours le renseigner.
+ */
+export const ArticulationSupportSchema = z.object({
+  level: z.enum(["weak", "moderate", "strong"]),
+  rationale: z.string().min(1),
+  matchedObservationCount: z.number().int().nonnegative().default(0),
+});
+
+export type ArticulationSupport = z.infer<typeof ArticulationSupportSchema>;
+export type ArticulationSupportInput = z.input<
+  typeof ArticulationSupportSchema
+>;
+
+/**
  * Objet central de Literacraft dans Auto Essay.
  * Il relie une configuration de contenu déjà identifiée à des opérations
  * d'écriture et aux effets qu'elles cherchent à produire.
@@ -85,6 +101,7 @@ export const ContentStyleArticulationSchema = z.object({
   supportingObservationIds: z.array(z.string().min(1)).default([]),
   stylisticOperations: z.array(PlannedStylisticOperationSchema).min(1),
   intendedEffects: ArticulationEffectsSchema,
+  support: ArticulationSupportSchema.optional(),
   risks: z.array(EditorialRiskSchema).default([]),
   alternatives: z.array(EditorialAlternativeSchema).default([]),
   origin: z.enum([
