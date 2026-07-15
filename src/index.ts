@@ -42,6 +42,9 @@ export * from "./state/index.js";
 // Ingestion
 export * from "./ingestion/index.js";
 
+// Analyse et planification éditoriales
+export * from "./editorial/index.js";
+
 // Évaluation
 export * from "./evaluation/index.js";
 
