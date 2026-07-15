@@ -13,8 +13,12 @@
   },
   "scripts": {
     "build": "tsc",
+    "build:demo": "tsc -p tsconfig.demo.json",
+    "prepare:demo-runtime": "node -e \"const fs=require('fs');fs.mkdirSync('.demo-dist',{recursive:true});fs.writeFileSync('.demo-dist/package.json',JSON.stringify({type:'commonjs'}))\"",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "demo:synthetic": "npm run build:demo && npm run prepare:demo-runtime && node .demo-dist/demo/runSyntheticDemo.js",
+    "demo:station-reverse": "npm run build:demo && npm run prepare:demo-runtime && node .demo-dist/demo/runStationReverseDemo.js"
   },
   "dependencies": {
     "zod": "^3.22.4"

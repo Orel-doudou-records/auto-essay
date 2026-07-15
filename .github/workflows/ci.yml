@@ -27,3 +27,9 @@ jobs:
 
       - name: Test
         run: npm test
+
+      - name: Synthetic Literacraft demonstration
+        run: npm run demo:synthetic
+
+      - name: Station Reverse demonstration
+        run: npm run demo:station-reverse
