@@ -1,8 +1,3 @@
-/**
- * Index des exports du domaine
- * @auto-essay/core
- */
-
 // Sources et preuves
 export * from "./source";
 
@@ -17,6 +12,9 @@ export * from "./essayProject";
 
 // Évaluation et scoring
 export * from "./evaluation";
+
+// Évaluation des effets contenu-forme
+export * from "./editorialEffectEvaluation";
 
 // État du pipeline
 export * from "./pipelineState";
