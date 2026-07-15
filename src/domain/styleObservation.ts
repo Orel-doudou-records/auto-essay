@@ -124,6 +124,7 @@ export const TextLocationSchema = z
   });
 
 export type TextLocation = z.infer<typeof TextLocationSchema>;
+export type TextLocationInput = z.input<typeof TextLocationSchema>;
 
 /**
  * Situation de contenu dans laquelle une pratique formelle a été observée.
@@ -157,6 +158,9 @@ export const ObservationContentConfigurationSchema = z
 export type ObservationContentConfiguration = z.infer<
   typeof ObservationContentConfigurationSchema
 >;
+export type ObservationContentConfigurationInput = z.input<
+  typeof ObservationContentConfigurationSchema
+>;
 
 /**
  * Une opération formelle explicite : ce qui la déclenche, ce qu'elle fait et
@@ -185,6 +189,9 @@ export const ObservedStylisticOperationSchema = z.object({
 export type ObservedStylisticOperation = z.infer<
   typeof ObservedStylisticOperationSchema
 >;
+export type ObservedStylisticOperationInput = z.input<
+  typeof ObservedStylisticOperationSchema
+>;
 
 export const ObservedEffectsSchema = z
   .object({
@@ -205,6 +212,7 @@ export const ObservedEffectsSchema = z
   });
 
 export type ObservedEffects = z.infer<typeof ObservedEffectsSchema>;
+export type ObservedEffectsInput = z.input<typeof ObservedEffectsSchema>;
 
 export const ObservationEvidenceSchema = z
   .object({
@@ -221,6 +229,7 @@ export const ObservationEvidenceSchema = z
   });
 
 export type ObservationEvidence = z.infer<typeof ObservationEvidenceSchema>;
+export type ObservationEvidenceInput = z.input<typeof ObservationEvidenceSchema>;
 
 export const StyleObservationSchema = z.object({
   id: z.string(),
@@ -247,17 +256,18 @@ export const StyleObservationSchema = z.object({
 });
 
 export type StyleObservation = z.infer<typeof StyleObservationSchema>;
+export type StyleObservationInput = z.input<typeof StyleObservationSchema>;
 
 export function createStyleObservation(
-  partial: Omit<Partial<StyleObservation>, "id" | "createdAt"> & {
+  partial: Omit<Partial<StyleObservationInput>, "id" | "createdAt"> & {
     authorId: string;
     sourceTextId: string;
-    contentConfiguration: ObservationContentConfiguration;
-    formalOperations: ObservedStylisticOperation[];
-    observedEffects: ObservedEffects;
-    evidence: ObservationEvidence;
-    provenance: StyleObservation["provenance"];
-    confidence: StyleObservation["confidence"];
+    contentConfiguration: ObservationContentConfigurationInput;
+    formalOperations: ObservedStylisticOperationInput[];
+    observedEffects: ObservedEffectsInput;
+    evidence: ObservationEvidenceInput;
+    provenance: StyleObservationInput["provenance"];
+    confidence: StyleObservationInput["confidence"];
   }
 ): StyleObservation {
   return StyleObservationSchema.parse({
