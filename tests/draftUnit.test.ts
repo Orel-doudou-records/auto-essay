@@ -20,6 +20,32 @@ describe("DraftUnit", () => {
     expect(unit.version).toBe(1);
   });
 
+  it("should keep editorial references optional in historical mode", () => {
+    const unit = createDraftUnit({
+      projectId: "proj-1",
+      granularity: "paragraph",
+    });
+
+    expect(unit.editorialPlanId).toBeUndefined();
+    expect(unit.appliedDecisionIds).toEqual([]);
+    expect(unit.appliedArticulationIds).toEqual([]);
+    expect(unit.transformationTraceIds).toEqual([]);
+  });
+
+  it("should reference an editorial plan without embedding it", () => {
+    const unit = createDraftUnit({
+      projectId: "proj-1",
+      granularity: "paragraph",
+      editorialPlanId: "plan-1",
+      appliedDecisionIds: ["decision-1"],
+      appliedArticulationIds: ["articulation-1"],
+      transformationTraceIds: ["trace-1"],
+    });
+
+    expect(unit.editorialPlanId).toBe("plan-1");
+    expect(unit.appliedDecisionIds).toEqual(["decision-1"]);
+  });
+
   it("should create a section unit with default word count", () => {
     const unit = createDraftUnit({
       projectId: "proj-1",
