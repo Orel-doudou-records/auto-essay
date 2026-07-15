@@ -2,12 +2,20 @@ import type { DraftUnit } from "../domain/draftUnit";
 import type { Source } from "../domain/source";
 import type { Claim } from "../domain/claim";
 import type { EssayVoice } from "../domain/essayProject";
+import type { EvaluatorEditorialProjection } from "../domain/editorialProjection";
+import type { TransformationTrace } from "../domain/transformationTrace";
 import {
   type EssayEvaluation,
+  EssayEvaluationSchema,
   createEmptyEvaluation,
   QUALITY_THRESHOLDS,
 } from "../domain/evaluation";
+import {
+  createIntegratedEvaluation,
+  type IntegratedEvaluation,
+} from "../domain/editorialEffectEvaluation";
 import { passesMechanicalChecks } from "./mechanicalChecks";
+import { EditorialEffectEvaluator } from "./editorialEffectEvaluator";
 
 /**
  * Interface pour un client de modèle structuré
@@ -29,12 +37,14 @@ export interface EvaluationContext {
   claims: Claim[];
   voice?: EssayVoice;
   previousEvaluations?: EssayEvaluation[];
+  editorialProjection?: EvaluatorEditorialProjection;
+  transformationTraces?: TransformationTrace[];
 }
 
 /**
  * Évalueur d'essai - READ-ONLY harness
  * Inspiré d'autonovel/evaluate.py
- * 
+ *
  * Principe : L'évaluateur est une boîte noire pour l'agent.
  * L'humain peut modifier les critères, l'agent ne peut pas les contourner.
  */
@@ -48,9 +58,11 @@ export class EssayEvaluator {
   }
 
   /**
-   * Évalue une unité de rédaction
+   * Évalue une unité de rédaction selon les critères argumentatifs historiques.
    */
   async evaluate(context: EvaluationContext): Promise<EssayEvaluation> {
+    validateEditorialContext(context);
+
     // Étape 1: Vérifications mécaniques (sans LLM)
     const mechanicalResult = passesMechanicalChecks(
       context.unit.content,
@@ -65,9 +77,9 @@ export class EssayEvaluator {
 
     if (criticalIssues.length > 0) {
       const emptyEval = createEmptyEvaluation(this.judgeModel);
-      return {
+      return EssayEvaluationSchema.parse({
         ...emptyEval,
-        overallScore: 3.0, // Score bas mais pas 0
+        overallScore: 3.0,
         verdict: "revise",
         weaknesses: criticalIssues.map((i) => ({
           dimension: "citationIntegrity",
@@ -76,7 +88,7 @@ export class EssayEvaluator {
           location: i.location,
           suggestedFix: i.suggestion,
         })),
-      };
+      });
     }
 
     // Étape 2: Évaluation LLM (judge model)
@@ -87,23 +99,60 @@ export class EssayEvaluator {
     const evaluation = this.parseEvaluation(rawOutput as Record<string, unknown>);
 
     // Étape 4: Fusionner avec issues mécaniques
-    return {
+    return EssayEvaluationSchema.parse({
       ...evaluation,
-      weaknesses: [...evaluation.weaknesses, ...mechanicalResult.issues.map((i) => ({
-        dimension: "citationIntegrity" as const,
-        description: i.message,
-        severity: (i.severity === "warning" ? "major" : "minor") as "major" | "minor",
-        location: i.location,
-        suggestedFix: i.suggestion,
-      }))],
-    };
+      weaknesses: [
+        ...evaluation.weaknesses,
+        ...mechanicalResult.issues.map((i) => ({
+          dimension: "citationIntegrity" as const,
+          description: i.message,
+          severity: (i.severity === "warning" ? "major" : "minor") as
+            | "major"
+            | "minor",
+          location: i.location,
+          suggestedFix: i.suggestion,
+        })),
+      ],
+    });
+  }
+
+  /**
+   * Exécute les deux jugements puis applique des portes indépendantes.
+   * Une réussite éditoriale ne peut jamais compenser un échec documentaire.
+   */
+  async evaluateIntegrated(
+    context: EvaluationContext
+  ): Promise<IntegratedEvaluation> {
+    const essay = await this.evaluate(context);
+
+    if (!context.editorialProjection) {
+      return createIntegratedEvaluation(essay);
+    }
+
+    const editorial = await new EditorialEffectEvaluator(
+      this.client,
+      `${this.judgeModel}:editorial`
+    ).evaluate({
+      unit: context.unit,
+      projection: context.editorialProjection,
+      transformationTraces: context.transformationTraces,
+    });
+
+    return createIntegratedEvaluation(essay, editorial);
   }
 
   /**
    * Construit le prompt d'évaluation
    */
   private buildEvaluationPrompt(context: EvaluationContext): string {
-    const { unit, sources, claims, voice } = context;
+    const {
+      unit,
+      sources,
+      claims,
+      voice,
+      editorialProjection,
+      transformationTraces = [],
+    } = context;
 
     const evidencePack = unit.evidencePack;
     const sourceList = sources
@@ -115,6 +164,43 @@ export class EssayEvaluator {
       .filter((c) => unit.claimIds.includes(c.id))
       .map((c) => `- [${c.confidenceLevel}] ${c.statement}`)
       .join("\n");
+
+    const editorialContext = editorialProjection
+      ? `## Contexte éditorial canonique
+Cette projection provient d'un plan validé. Elle sert de contexte critique, mais ses effets sont évalués séparément par le juge éditorial.
+
+\`\`\`json
+${JSON.stringify(
+  {
+    projectionId: editorialProjection.id,
+    planId: editorialProjection.planId,
+    criteria: editorialProjection.criteria,
+    intendedEffects: editorialProjection.intendedEffects,
+  },
+  null,
+  2
+)}
+\`\`\`
+
+## Déclarations du writer
+Ces traces sont des déclarations à vérifier, jamais une preuve de réussite.
+
+\`\`\`json
+${JSON.stringify(
+  transformationTraces.map((trace) => ({
+    id: trace.id,
+    directiveId: trace.directiveId,
+    decisionId: trace.decisionId,
+    articulationId: trace.articulationId,
+    declaration: trace.declaration,
+    excerpt: trace.location.excerpt,
+  })),
+  null,
+  2
+)}
+\`\`\`
+`
+      : "";
 
     return `Tu es un évaluateur critique d'essais académiques. Évalue cette unité de rédaction selon les critères ci-dessous.
 
@@ -135,6 +221,7 @@ ${sourceList || "Aucune source spécifiée"}
 ## Assertions attendues
 ${claimList || "Aucune assertion tracée"}
 
+${editorialContext}
 ## Instructions d'évaluation
 
 1. **claimSupport** (0-10): Les preuves soutiennent-elles les assertions ?
@@ -143,6 +230,8 @@ ${claimList || "Aucune assertion tracée"}
 4. **transitionClarity** (0-10): Les enchaînements sont-ils logiques ?
 5. **scopeControl** (0-10): Y a-t-il des sur-généralisations ?
 6. **voiceConsistency** (0-10): Le ton est-il maintenu ?
+
+Ne relève jamais un score documentaire parce qu'un effet formel semble réussi. Les claims, preuves, citations et limites de portée restent prioritaires.
 
 ## Format de sortie (JSON strict)
 \`\`\`json
@@ -158,7 +247,7 @@ ${claimList || "Aucune assertion tracée"}
   },
   "weaknesses": [
     {
-      "dimension": "string",
+      "dimension": "claimSupport|citationIntegrity|counterargumentQuality|transitionClarity|scopeControl|voiceConsistency",
       "description": "string",
       "severity": "critical|major|minor",
       "location": "string",
@@ -179,7 +268,7 @@ ${claimList || "Aucune assertion tracée"}
   ],
   "top3Revisions": [
     {
-      "priority": 1|2|3,
+      "priority": 1,
       "target": "string",
       "issue": "string",
       "approach": "string"
@@ -219,9 +308,9 @@ ${claimList || "Aucune assertion tracée"}
    * Parse la réponse d'évaluation
    */
   private parseEvaluation(rawOutput: Record<string, unknown>): EssayEvaluation {
-    // Validation basique
     const dimensions = rawOutput.dimensions as Record<string, number>;
-    const evaluation: EssayEvaluation = {
+
+    return EssayEvaluationSchema.parse({
       overallScore: Number(rawOutput.overallScore) || 0,
       dimensions: {
         claimSupport: dimensions?.claimSupport || 0,
@@ -231,21 +320,19 @@ ${claimList || "Aucune assertion tracée"}
         scopeControl: dimensions?.scopeControl || 0,
         voiceConsistency: dimensions?.voiceConsistency || 0,
       },
-      weaknesses: (rawOutput.weaknesses as EssayEvaluation["weaknesses"]) || [],
-      strongClaims: (rawOutput.strongClaims as string[]) || [],
-      weakClaims: (rawOutput.weakClaims as string[]) || [],
-      aiPatternsDetected: (rawOutput.aiPatternsDetected as string[]) || [],
-      overclaimRisks: (rawOutput.overclaimRisks as EssayEvaluation["overclaimRisks"]) || [],
-      top3Revisions: (rawOutput.top3Revisions as EssayEvaluation["top3Revisions"]) || [],
-      newClaimEntries: (rawOutput.newClaimEntries as EssayEvaluation["newClaimEntries"]) || [],
-      evidenceGaps: (rawOutput.evidenceGaps as EssayEvaluation["evidenceGaps"]) || [],
-      citationGaps: (rawOutput.citationGaps as EssayEvaluation["citationGaps"]) || [],
-      verdict: (rawOutput.verdict as EssayEvaluation["verdict"]) || "revise",
+      weaknesses: rawOutput.weaknesses || [],
+      strongClaims: rawOutput.strongClaims || [],
+      weakClaims: rawOutput.weakClaims || [],
+      aiPatternsDetected: rawOutput.aiPatternsDetected || [],
+      overclaimRisks: rawOutput.overclaimRisks || [],
+      top3Revisions: rawOutput.top3Revisions || [],
+      newClaimEntries: rawOutput.newClaimEntries || [],
+      evidenceGaps: rawOutput.evidenceGaps || [],
+      citationGaps: rawOutput.citationGaps || [],
+      verdict: rawOutput.verdict || "revise",
       evaluatedAt: new Date().toISOString(),
       evaluatorModel: this.judgeModel,
-    };
-
-    return evaluation;
+    });
   }
 
   /**
@@ -265,4 +352,29 @@ export function createEssayEvaluator(
   judgeModel?: string
 ): EssayEvaluator {
   return new EssayEvaluator(client, judgeModel);
+}
+
+function validateEditorialContext(context: EvaluationContext): void {
+  if (!context.editorialProjection) {
+    if ((context.transformationTraces ?? []).length > 0) {
+      throw new Error(
+        "Transformation traces require an evaluator editorial projection"
+      );
+    }
+    return;
+  }
+
+  if (
+    context.editorialProjection.unitId !== context.unit.id ||
+    context.editorialProjection.unitVersion !== context.unit.version
+  ) {
+    throw new Error("Evaluator projection does not match the evaluated unit");
+  }
+
+  if (
+    context.unit.editorialPlanId !== undefined &&
+    context.unit.editorialPlanId !== context.editorialProjection.planId
+  ) {
+    throw new Error("Evaluator projection plan does not match the unit plan");
+  }
 }
