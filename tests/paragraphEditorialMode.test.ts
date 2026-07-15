@@ -17,7 +17,6 @@ class MockClient {
 
 function source() {
   return createSource({
-    id: undefined,
     projectId: "project-1",
     title: "Archive",
     content: "Contenu",
