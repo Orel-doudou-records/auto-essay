@@ -1,0 +1,39 @@
+name: gh-fix-ci audit
+
+on:
+  push:
+    branches:
+      - chore/gh-fix-ci-audit
+
+permissions:
+  actions: read
+  checks: read
+  contents: read
+  pull-requests: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify gh authentication
+        run: |
+          gh --version
+          gh auth status
+      - name: Inspect PR checks
+        run: gh pr checks 29 --repo Orel-doudou-records/auto-essay
+      - name: Inspect historical failed run
+        run: |
+          gh run view 29430780094 --repo Orel-doudou-records/auto-essay --json name,workflowName,conclusion,status,url,event,headBranch,headSha
+          gh run view 29430780094 --repo Orel-doudou-records/auto-essay --log-failed
+      - name: Inspect successful replacement run
+        run: gh run view 29431062984 --repo Orel-doudou-records/auto-essay --json name,workflowName,conclusion,status,url,event,headBranch,headSha
+      - name: Re-run relevant verification
+        run: |
+          npm ci
+          npm run typecheck
+          npm test
+          npm run demo:synthetic
+          npm run demo:station-reverse
