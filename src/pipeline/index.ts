@@ -4,3 +4,4 @@
  */
 
 export * from "./paragraphMode";
+export * from "./sectionGenerator";

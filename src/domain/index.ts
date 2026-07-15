@@ -38,3 +38,9 @@ export * from "./editorialDecision";
 
 // Plans éditoriaux situés par unité
 export * from "./editorialPlan";
+
+// Projections spécialisées pour exécution, évaluation et révision
+export * from "./editorialProjection";
+
+// Traces déclaratives des transformations appliquées
+export * from "./transformationTrace";
