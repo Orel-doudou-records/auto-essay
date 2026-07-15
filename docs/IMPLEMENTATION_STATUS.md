@@ -25,7 +25,7 @@ Merged by PR #14 at commit `9848d46`.
 
 ## Phase 3: writer integration ✅
 
-Implemented by PR #19.
+Merged by PR #19 at commit `c4dd596`.
 
 - writer, evaluator and revision projections compiled from one validated plan
 - optional editorial context in historical paragraph mode
@@ -35,6 +35,21 @@ Implemented by PR #19.
 - paragraph `DraftUnit` boundaries preserved
 - assembled section represented as a `DraftUnit`
 - no partial section returned after a paragraph generation failure
+
+## Phase 4: evaluation and revision ✅
+
+Implemented by PR #24.
+
+- independent `EditorialEffectEvaluation` beside `EssayEvaluation`
+- strict editorial-effect judging against canonical criteria and exact excerpts
+- integrated documentary and editorial gates without score compensation
+- evaluator context extended with independent projection and writer declarations
+- relational revision instructions tied to criteria, decisions, articulations and directives
+- explicit preservation of invariants, claims and prohibited shortcuts
+- deterministic projection fingerprints
+- editorial decision versions, projection ids/hashes and trace ids persisted in manifests
+- registry publication rejects provenance inconsistent with the published `DraftUnit`
+- historical evaluator, revision and manifest modes remain compatible
 
 ## Preserved invariants
 
@@ -46,6 +61,8 @@ Implemented by PR #19.
 - Revoked or superseded decisions are not executable.
 - Writer declarations are traces, not evaluations of success.
 - Writer and evaluator remain separate.
+- Editorial success cannot compensate documentary failure.
+- Revision cannot silently alter claims, confidence levels or attribution.
 - Prompts are projections and never the canonical source of a decision.
 - The initial `styleProfile.ts`, `styleEngine.ts` and `prompts.ts` prototype remains isolated pending the Phase 5 migration audit.
 
@@ -59,13 +76,12 @@ npm run typecheck
 npm test
 ```
 
-Phase 3 passed all checks on PR #19 before review.
+Phase 4 passed all checks on PR #24 before review.
 
 ## Next phase
 
-Phase 4 connects the evaluator and revision systems to their projections:
+Phase 5 proves the complete path and resolves the initial prototype:
 
-- evaluate content–form effects
-- extend the evaluator context
-- generate relational revision briefs
-- persist editorial provenance in registry manifests
+- build a reproducible synthetic fixture
+- exercise a real editorial case
+- audit and migrate, deprecate or remove the initial prototype
