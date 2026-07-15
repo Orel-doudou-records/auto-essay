@@ -1,35 +1,57 @@
 # Literacraft integration — implementation status
 
-## Phase 1: domain contracts
+## Phase 1: domain contracts ✅
 
-Implemented on `feat/literacraft-diffractive-style-engine`:
+Merged by PR #8 at commit `f5a36bf`.
 
-- `SourceRegime`, situated source position and epistemic limits
-- `StyleObservation`
-- `ContentRelation` and shared `EditorialScope`
+- documentary source regimes, situated positions and epistemic limits
+- relational `StyleObservation`
+- explicit `ContentRelation` and shared `EditorialScope`
 - `ContentStyleArticulation`
-- `EditorialDecision`
-- `EditorialPlan`
+- versioned `EditorialDecision`
+- situated `EditorialPlan`
 - optional editorial references on `DraftUnit`
-- public domain exports
-- unit tests for the new contracts and backwards compatibility
-- GitHub Actions CI for typecheck and tests
+
+## Phase 2: analysis and planning ✅
+
+Merged by PR #14 at commit `9848d46`.
+
+- grounded `ObservationAnalyzer`
+- deterministic and model-assisted `RelationAnalyzer`
+- non-executable `ArticulationResolver`
+- author-governed `EditorialDecisionService`
+- section and paragraph editorial planning
+- explicit inherited and local decisions
+
+## Phase 3: writer integration ✅
+
+Implemented by PR #19.
+
+- writer, evaluator and revision projections compiled from one validated plan
+- optional editorial context in historical paragraph mode
+- projection guardrails for claims, evidence and source relations
+- grounded transformation declarations and `TransformationTrace`
+- sequential paragraph execution through `SectionGenerator`
+- paragraph `DraftUnit` boundaries preserved
+- assembled section represented as a `DraftUnit`
+- no partial section returned after a paragraph generation failure
 
 ## Preserved invariants
 
 - `DraftUnit` remains the unit of generation, evaluation, revision and versioning.
+- `EvidencePack` remains required before generation.
 - Existing paragraph mode does not require Literacraft data.
 - Candidate articulations are not executable.
-- Only author-validated decisions can enter a plan.
+- Only author-validated decisions can enter an executable plan.
 - Revoked or superseded decisions are not executable.
-- Prompts, writer and evaluator are unchanged in Phase 1.
-- The initial `styleProfile.ts`, `styleEngine.ts` and `prompts.ts` prototype remains isolated pending the migration audit.
+- Writer declarations are traces, not evaluations of success.
+- Writer and evaluator remain separate.
+- Prompts are projections and never the canonical source of a decision.
+- The initial `styleProfile.ts`, `styleEngine.ts` and `prompts.ts` prototype remains isolated pending the Phase 5 migration audit.
 
-## Verification status
+## Verification
 
-Phase 1 has been validated by GitHub Actions on draft PR #8.
-
-The CI job completed successfully with:
+Each merged or active phase is validated by GitHub Actions with:
 
 ```bash
 npm ci
@@ -37,4 +59,13 @@ npm run typecheck
 npm test
 ```
 
-The pull request remains in draft for architectural review before merge.
+Phase 3 passed all checks on PR #19 before review.
+
+## Next phase
+
+Phase 4 connects the evaluator and revision systems to their projections:
+
+- evaluate content–form effects
+- extend the evaluator context
+- generate relational revision briefs
+- persist editorial provenance in registry manifests
