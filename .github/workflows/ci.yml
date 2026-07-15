@@ -6,12 +6,6 @@ on:
       - "feat/literacraft-*"
   pull_request:
 
-permissions:
-  actions: read
-  checks: read
-  contents: read
-  pull-requests: read
-
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -39,29 +33,3 @@ jobs:
 
       - name: Station Reverse demonstration
         run: npm run demo:station-reverse
-
-  gh-fix-ci-audit:
-    runs-on: ubuntu-latest
-    env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Verify GitHub CLI authentication
-        run: |
-          gh --version
-          gh auth status
-
-      - name: Resolve PR metadata and current checks
-        run: |
-          gh pr view 29 --repo Orel-doudou-records/auto-essay --json number,url,state,mergedAt,headRefName,headRefOid,baseRefName
-          gh pr checks 29 --repo Orel-doudou-records/auto-essay
-
-      - name: Inspect historical failed run
-        run: |
-          gh run view 29430780094 --repo Orel-doudou-records/auto-essay --json name,workflowName,conclusion,status,url,event,headBranch,headSha
-          gh run view 29430780094 --repo Orel-doudou-records/auto-essay --log-failed
-
-      - name: Inspect successful replacement run
-        run: gh run view 29431062984 --repo Orel-doudou-records/auto-essay --json name,workflowName,conclusion,status,url,event,headBranch,headSha
