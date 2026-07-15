@@ -1,7 +1,8 @@
 import { z } from "zod";
 
 /**
- * Types de sources supportés par le système essayistique
+ * Types de sources supportés par le système essayistique.
+ * Le type décrit le support ou l'origine technique, pas le régime de savoir.
  */
 export const SourceTypeSchema = z.enum([
   "zotero",
@@ -16,7 +17,69 @@ export const SourceTypeSchema = z.enum([
 export type SourceType = z.infer<typeof SourceTypeSchema>;
 
 /**
- * Statut de vérification d'une source
+ * Manière dont une source produit, situe et autorise du savoir.
+ * Un même SourceType peut appartenir à plusieurs régimes documentaires.
+ */
+export const SourceRegimeSchema = z.enum([
+  "institutional_archive",
+  "testimony",
+  "academic_study",
+  "artwork",
+  "dataset",
+  "criticism",
+  "personal_memory",
+  "promotional_communication",
+  "author_interpretation",
+  "journalistic_report",
+  "legal_document",
+  "other",
+]);
+
+export type SourceRegime = z.infer<typeof SourceRegimeSchema>;
+
+/**
+ * Position située de la source vis-à-vis de son objet.
+ * Ce champ ne constitue pas une hiérarchie automatique de crédibilité.
+ */
+export const SourcePositionSchema = z
+  .object({
+    role: z
+      .enum([
+        "primary_witness",
+        "participant",
+        "institutional_record",
+        "researcher",
+        "critic",
+        "journalist",
+        "artist",
+        "editor",
+        "aggregator",
+        "other",
+      ])
+      .optional(),
+    perspective: z.string().min(1).optional(),
+    institutionalAffiliation: z.string().min(1).optional(),
+    declaredInterests: z.array(z.string().min(1)).default([]),
+  })
+  .superRefine((position, context) => {
+    const hasMeaningfulValue =
+      position.role !== undefined ||
+      position.perspective !== undefined ||
+      position.institutionalAffiliation !== undefined ||
+      position.declaredInterests.length > 0;
+
+    if (!hasMeaningfulValue) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "A source position must contain at least one situated attribute",
+      });
+    }
+  });
+
+export type SourcePosition = z.infer<typeof SourcePositionSchema>;
+
+/**
+ * Statut de vérification d'une source.
  */
 export const VerificationStatusSchema = z.enum([
   "unverified",
@@ -28,7 +91,7 @@ export const VerificationStatusSchema = z.enum([
 export type VerificationStatus = z.infer<typeof VerificationStatusSchema>;
 
 /**
- * Annotation sur une source
+ * Annotation sur une source.
  */
 export const AnnotationSchema = z.object({
   id: z.string(),
@@ -44,15 +107,25 @@ export const AnnotationSchema = z.object({
 export type Annotation = z.infer<typeof AnnotationSchema>;
 
 /**
- * Schéma Zod pour une source
- * Remplace Fragment pour l'essai - unité de preuve/document
+ * Schéma Zod pour une source.
+ * SourceType décrit le support ; regime et position décrivent sa situation
+ * documentaire et épistémique lorsqu'elle est connue.
  */
 export const SourceSchema = z.object({
   /** Identifiant unique */
   id: z.string(),
 
-  /** Type de source */
+  /** Support ou origine technique de la source */
   type: SourceTypeSchema,
+
+  /** Régime documentaire ou épistémique */
+  regime: SourceRegimeSchema.optional(),
+
+  /** Position située de la source vis-à-vis de son objet */
+  position: SourcePositionSchema.optional(),
+
+  /** Ce que cette source ne permet pas d'établir à elle seule */
+  epistemicLimits: z.array(z.string().min(1)).default([]),
 
   /** Titre de l'œuvre/document */
   title: z.string(),
@@ -103,10 +176,14 @@ export const SourceSchema = z.object({
 export type Source = z.infer<typeof SourceSchema>;
 
 /**
- * Crée une nouvelle source avec valeurs par défaut
+ * Crée une nouvelle source avec valeurs par défaut.
  */
 export function createSource(
-  partial: Omit<Partial<Source>, "id"> & { projectId: string; title: string; content: string }
+  partial: Omit<Partial<Source>, "id"> & {
+    projectId: string;
+    title: string;
+    content: string;
+  }
 ): Source {
   const now = new Date().toISOString();
   return SourceSchema.parse({
@@ -115,6 +192,7 @@ export function createSource(
     authors: [],
     annotations: [],
     tags: [],
+    epistemicLimits: [],
     verificationStatus: "unverified",
     createdAt: now,
     updatedAt: now,
