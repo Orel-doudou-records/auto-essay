@@ -18,6 +18,24 @@ export const FocusAreaSchema = z.object({
 
 export type FocusArea = z.infer<typeof FocusAreaSchema>;
 
+export const RelationalRevisionInstructionSchema = z.object({
+  priority: z.number().int().min(1).max(3),
+  criterionId: z.string().min(1),
+  decisionId: z.string().min(1),
+  articulationId: z.string().min(1),
+  directiveIds: z.array(z.string().min(1)).min(1),
+  issue: z.string().min(1),
+  instruction: z.string().min(1),
+  targetExcerpt: z.string().min(1).optional(),
+  preserve: z.array(z.string().min(1)).default([]),
+  avoid: z.array(z.string().min(1)).default([]),
+  protectedClaimIds: z.array(z.string().min(1)).default([]),
+});
+
+export type RelationalRevisionInstruction = z.infer<
+  typeof RelationalRevisionInstructionSchema
+>;
+
 /**
  * Brief de révision - Instructions pour améliorer une unité
  * Auto-généré à partir de l'évaluation
@@ -32,11 +50,31 @@ export const RevisionBriefSchema = z.object({
   /** Évaluation source */
   sourceEvaluationId: z.string(),
 
+  /** Évaluation éditoriale source, si présente */
+  sourceEditorialEvaluationId: z.string().min(1).optional(),
+
+  /** Projection de révision canonique utilisée */
+  editorialProjectionId: z.string().min(1).optional(),
+
   /** Zones de focus prioritaires */
   focusAreas: z.array(FocusAreaSchema).max(3),
 
   /** Instructions spécifiques */
   specificInstructions: z.array(z.string()),
+
+  /** Réparations relationnelles traçables */
+  relationalInstructions: z
+    .array(RelationalRevisionInstructionSchema)
+    .default([]),
+
+  /** Invariants éditoriaux à préserver */
+  preserveInvariants: z.array(z.string().min(1)).default([]),
+
+  /** Changements ou raccourcis interdits */
+  prohibitedChanges: z.array(z.string().min(1)).default([]),
+
+  /** Claims protégés contre une modification silencieuse */
+  protectedClaimIds: z.array(z.string().min(1)).default([]),
 
   /** Preuves à ajouter */
   evidenceToAdd: z.array(z.object({
@@ -98,8 +136,12 @@ export function createRevisionBrief(
     id: crypto.randomUUID(),
     targetUnitId,
     sourceEvaluationId,
-    focusAreas: focusAreas.slice(0, 3), // Max 3
+    focusAreas: focusAreas.slice(0, 3),
     specificInstructions,
+    relationalInstructions: [],
+    preserveInvariants: [],
+    prohibitedChanges: [],
+    protectedClaimIds: [],
     evidenceToAdd: [],
     claimsToStrengthen: [],
     overclaimsToFix: [],
@@ -108,6 +150,35 @@ export function createRevisionBrief(
     createdAt: new Date().toISOString(),
   });
 }
+
+/**
+ * Provenance éditoriale persistée avec une version publiée.
+ */
+export const EditorialManifestProvenanceSchema = z.object({
+  planId: z.string().min(1),
+  decisions: z.array(z.object({
+    decisionId: z.string().min(1),
+    version: z.number().int().positive(),
+  })).min(1),
+  articulationIds: z.array(z.string().min(1)).min(1),
+  projectionIds: z.object({
+    writer: z.string().min(1),
+    evaluator: z.string().min(1),
+    revision: z.string().min(1),
+  }),
+  projectionHashes: z.object({
+    writer: z.string().min(1),
+    evaluator: z.string().min(1),
+    revision: z.string().min(1),
+  }),
+  transformationTraceIds: z.array(z.string().min(1)).default([]),
+  editorialEffectEvaluationId: z.string().min(1).optional(),
+  revisionBriefId: z.string().min(1).optional(),
+});
+
+export type EditorialManifestProvenance = z.infer<
+  typeof EditorialManifestProvenanceSchema
+>;
 
 /**
  * Manifest de livraison - Trace de ce qui est publié
@@ -146,6 +217,9 @@ export const DeliveryManifestSchema = z.object({
 
   /** Hash git (si applicable) */
   gitCommit: z.string().optional(),
+
+  /** Provenance Literacraft, absente des anciennes publications */
+  editorialProvenance: EditorialManifestProvenanceSchema.optional(),
 });
 
 export type DeliveryManifest = z.infer<typeof DeliveryManifestSchema>;

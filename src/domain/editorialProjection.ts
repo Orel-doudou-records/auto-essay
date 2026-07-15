@@ -52,6 +52,7 @@ export const EvaluationCriterionSchema = z.object({
   id: z.string().min(1),
   decisionId: z.string().min(1),
   articulationId: z.string().min(1),
+  directiveIds: z.array(z.string().min(1)).min(1),
   instruction: z.string().min(1),
   expectedContentEffects: z.array(z.string().min(1)).default([]),
   expectedFormEffects: z.array(z.string().min(1)).default([]),
