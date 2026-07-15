@@ -108,3 +108,115 @@ export function createEditorialPlan(
 export function isEditorialPlanExecutable(plan: EditorialPlan): boolean {
   return plan.status === "validated";
 }
+
+/**
+ * Plan local d'un paragraphe. Les décisions héritées et locales sont séparées
+ * pour que la projection future puisse expliquer l'origine de chaque contrainte.
+ */
+export const ParagraphEditorialPlanSchema = z
+  .object({
+    id: z.string(),
+    order: z.number().int().nonnegative(),
+    plan: EditorialPlanSchema,
+    inheritedDecisionIds: z.array(z.string().min(1)).default([]),
+    localDecisionIds: z.array(z.string().min(1)).default([]),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .superRefine((paragraph, context) => {
+    if (paragraph.plan.scope.level !== "paragraph") {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["plan", "scope", "level"],
+        message: "A paragraph editorial plan requires paragraph scope",
+      });
+    }
+
+    const referencedDecisionIds = new Set([
+      ...paragraph.inheritedDecisionIds,
+      ...paragraph.localDecisionIds,
+    ]);
+    const planDecisionIds = new Set(paragraph.plan.decisionIds);
+
+    if (!sameStringSet(referencedDecisionIds, planDecisionIds)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["plan", "decisionIds"],
+        message:
+          "Paragraph plan decisions must equal inherited and local decisions",
+      });
+    }
+  });
+
+export type ParagraphEditorialPlan = z.infer<
+  typeof ParagraphEditorialPlanSchema
+>;
+export type ParagraphEditorialPlanInput = z.input<
+  typeof ParagraphEditorialPlanSchema
+>;
+
+/**
+ * Agrégat de planification d'une section et de ses paragraphes.
+ */
+export const SectionEditorialPlanSchema = z
+  .object({
+    id: z.string(),
+    plan: EditorialPlanSchema,
+    paragraphs: z.array(ParagraphEditorialPlanSchema).min(1),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .superRefine((section, context) => {
+    if (section.plan.scope.level !== "section") {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["plan", "scope", "level"],
+        message: "A section editorial plan requires section scope",
+      });
+    }
+
+    const sectionId = section.plan.scope.sectionId;
+    const projectId = section.plan.scope.projectId;
+    const orders = new Set<number>();
+
+    for (const [index, paragraph] of section.paragraphs.entries()) {
+      if (orders.has(paragraph.order)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["paragraphs", index, "order"],
+          message: "Paragraph orders must be unique",
+        });
+      }
+      orders.add(paragraph.order);
+
+      if (
+        paragraph.plan.scope.projectId !== projectId ||
+        paragraph.plan.scope.sectionId !== sectionId
+      ) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["paragraphs", index, "plan", "scope"],
+          message: "Paragraph scope must belong to the parent section",
+        });
+      }
+    }
+  });
+
+export type SectionEditorialPlan = z.infer<typeof SectionEditorialPlanSchema>;
+export type SectionEditorialPlanInput = z.input<
+  typeof SectionEditorialPlanSchema
+>;
+
+function sameStringSet(left: Set<string>, right: Set<string>): boolean {
+  if (left.size !== right.size) {
+    return false;
+  }
+
+  for (const value of left) {
+    if (!right.has(value)) {
+      return false;
+    }
+  }
+
+  return true;
+}
