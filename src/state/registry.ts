@@ -1,5 +1,8 @@
 import type { DraftUnit } from "../domain/draftUnit";
-import type { DeliveryManifest } from "../domain/revision";
+import {
+  DeliveryManifestSchema,
+  type DeliveryManifest,
+} from "../domain/revision";
 
 /**
  * Entrée de version dans le registry
@@ -15,7 +18,7 @@ export interface VersionEntry {
 /**
  * Registry déterministe - Gestion des versions canoniques
  * Inspiré d'OpenClaw : déterministe, pas agentique
- * 
+ *
  * Invariant : Une fois publiée, une version est immuable
  */
 export interface Registry {
@@ -87,7 +90,6 @@ export class FileRegistry implements Registry {
   }
 
   private computeHash(content: string): string {
-    // Simple hash pour MVP - en production, utiliser crypto.subtle
     let hash = 0;
     for (let i = 0; i < content.length; i++) {
       const char = content.charCodeAt(i);
@@ -102,14 +104,19 @@ export class FileRegistry implements Registry {
     unit: DraftUnit,
     manifest: DeliveryManifest
   ): Promise<VersionEntry> {
+    if (unit.projectId !== projectId) {
+      throw new Error("Published unit does not belong to the requested project");
+    }
+
+    const validatedManifest = DeliveryManifestSchema.parse(manifest);
+    validateManifestForUnit(unit, validatedManifest);
+
     const fs = await import("fs/promises");
 
-    // Sauvegarder le contenu de l'unité
     const unitPath = this.getUnitPath(projectId, unit.id, unit.version);
     await fs.mkdir(unitPath.split("/").slice(0, -1).join("/"), { recursive: true });
     await fs.writeFile(unitPath, JSON.stringify(unit, null, 2));
 
-    // Mettre à jour le registry
     const registry = await this.loadRegistry(projectId);
     if (!registry[unit.id]) {
       registry[unit.id] = [];
@@ -119,7 +126,7 @@ export class FileRegistry implements Registry {
       version: unit.version,
       unitId: unit.id,
       publishedAt: new Date().toISOString(),
-      manifest,
+      manifest: validatedManifest,
       contentHash: this.computeHash(unit.content),
     };
 
@@ -146,7 +153,6 @@ export class FileRegistry implements Registry {
     const target = await this.getVersion(projectId, unitId, version);
     if (!target) return null;
 
-    // Créer une nouvelle version basée sur le rollback
     const rolledBack: DraftUnit = {
       ...target,
       version: target.version + 1,
@@ -178,9 +184,67 @@ export class FileRegistry implements Registry {
   }
 }
 
-/**
- * Factory pour créer un registry
- */
 export function createRegistry(basePath?: string): Registry {
   return new FileRegistry(basePath);
+}
+
+function validateManifestForUnit(
+  unit: DraftUnit,
+  manifest: DeliveryManifest
+): void {
+  const unitEntry = manifest.units.find(
+    (entry) => entry.unitId === unit.id && entry.version === unit.version
+  );
+  if (!unitEntry) {
+    throw new Error(
+      `Delivery manifest does not include unit ${unit.id} version ${unit.version}`
+    );
+  }
+
+  const provenance = manifest.editorialProvenance;
+  if (!provenance) {
+    return;
+  }
+
+  if (!unit.editorialPlanId || provenance.planId !== unit.editorialPlanId) {
+    throw new Error("Editorial manifest plan does not match the published unit");
+  }
+
+  const manifestDecisionIds = provenance.decisions.map(
+    (decision) => decision.decisionId
+  );
+  if (!sameStringSet(manifestDecisionIds, unit.appliedDecisionIds)) {
+    throw new Error(
+      "Editorial manifest decisions do not match the published unit"
+    );
+  }
+
+  if (!sameStringSet(provenance.articulationIds, unit.appliedArticulationIds)) {
+    throw new Error(
+      "Editorial manifest articulations do not match the published unit"
+    );
+  }
+
+  if (
+    !sameStringSet(
+      provenance.transformationTraceIds,
+      unit.transformationTraceIds
+    )
+  ) {
+    throw new Error(
+      "Editorial manifest transformation traces do not match the published unit"
+    );
+  }
+}
+
+function sameStringSet(left: string[], right: string[]): boolean {
+  const leftSet = new Set(left);
+  const rightSet = new Set(right);
+
+  return (
+    leftSet.size === left.length &&
+    rightSet.size === right.length &&
+    leftSet.size === rightSet.size &&
+    [...leftSet].every((value) => rightSet.has(value))
+  );
 }
