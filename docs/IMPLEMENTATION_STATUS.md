@@ -38,7 +38,7 @@ Merged by PR #19 at commit `c4dd596`.
 
 ## Phase 4: evaluation and revision ✅
 
-Implemented by PR #24.
+Merged by PR #24 at commit `52d8b4e`.
 
 - independent `EditorialEffectEvaluation` beside `EssayEvaluation`
 - strict editorial-effect judging against canonical criteria and exact excerpts
@@ -50,6 +50,21 @@ Implemented by PR #24.
 - editorial decision versions, projection ids/hashes and trace ids persisted in manifests
 - registry publication rejects provenance inconsistent with the published `DraftUnit`
 - historical evaluator, revision and manifest modes remain compatible
+
+## Phase 5: demonstrators and prototype migration ✅
+
+Implemented by PR #29.
+
+- deterministic full-pipeline demonstrator with no network or provider dependency
+- synthetic contradictory-archive scenario
+- Station Reverse scenario based on curated Nexus Diaspora charter and Erykah Badu SPR excerpts
+- explicit author-validation barrier demonstrated before execution
+- paragraph and section generation, integrated evaluation, relational revision and registry publication exercised end to end
+- executable `demo:synthetic` and `demo:station-reverse` commands
+- derived, non-executable `AuthorStyleConstellation`
+- initial profile-first domain, autonomous engine and prompt compiler retired as migration tombstones
+- prototype concepts mapped to canonical integrated objects
+- architecture, provenance roles, source limits and MVP boundaries documented
 
 ## Preserved invariants
 
@@ -64,11 +79,12 @@ Implemented by PR #24.
 - Editorial success cannot compensate documentary failure.
 - Revision cannot silently alter claims, confidence levels or attribution.
 - Prompts are projections and never the canonical source of a decision.
-- The initial `styleProfile.ts`, `styleEngine.ts` and `prompts.ts` prototype remains isolated pending the Phase 5 migration audit.
+- `AuthorStyleConstellation` is a derived consultation view and never connects directly to the writer.
+- Real editorial materials retain explicit epistemic limits and do not become factual authority outside their scope.
 
 ## Verification
 
-Each merged or active phase is validated by GitHub Actions with:
+Each phase is validated by GitHub Actions with:
 
 ```bash
 npm ci
@@ -76,12 +92,31 @@ npm run typecheck
 npm test
 ```
 
-Phase 4 passed all checks on PR #24 before review.
+The first Phase 5 CI run passed all three steps on PR #29, including both complete demonstration tests.
 
-## Next phase
+The demonstration commands are:
 
-Phase 5 proves the complete path and resolves the initial prototype:
+```bash
+npm run demo:synthetic
+npm run demo:station-reverse
+```
 
-- build a reproducible synthetic fixture
-- exercise a real editorial case
-- audit and migrate, deprecate or remove the initial prototype
+## MVP status
+
+The integrated MVP now covers:
+
+```text
+sources and claims
+→ grounded observations and content relations
+→ situated articulation proposals
+→ explicit author decisions
+→ section and paragraph planning
+→ specialized projections
+→ paragraph and section generation
+→ transformation traces
+→ independent documentary and editorial evaluation
+→ relational revision briefs
+→ reproducible delivery manifests and registry versions
+```
+
+Deferred work remains documented in `docs/LITERACRAFT_DEMONSTRATOR.md`. It includes chapter/book orchestration, graphical author validation, multi-author conflict resolution, production provider adapters, specialized judge routing, automatic rule learning and a graph database.
