@@ -115,3 +115,7 @@ sources and claims
 ```
 
 Deferred work remains documented in `docs/LITERACRAFT_DEMONSTRATOR.md`. It includes chapter/book orchestration, graphical author validation, multi-author conflict resolution, production provider adapters, specialized judge routing, automatic rule learning and a graph database.
+
+## Temporary CI audit
+
+Branch `chore/gh-fix-ci-audit` exists only to run the specialized `gh-fix-ci` inspection against PR #29 and its historical failed and successful GitHub Actions runs.
