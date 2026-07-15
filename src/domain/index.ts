@@ -25,6 +25,9 @@ export * from "./revision";
 // Observations stylistiques relationnelles
 export * from "./styleObservation";
 
+// Vue dérivée des pratiques d'auteur, jamais exécutable directement
+export * from "./authorStyleConstellation";
+
 // Relations explicites du contenu
 export * from "./contentRelation";
 
