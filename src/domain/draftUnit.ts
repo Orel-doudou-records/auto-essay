@@ -93,6 +93,18 @@ export const DraftUnitSchema = z.object({
   /** IDs des assertions contenues */
   claimIds: z.array(z.string()).default([]),
 
+  /** Plan éditorial optionnel : absent dans le mode historique */
+  editorialPlanId: z.string().optional(),
+
+  /** Décisions canoniques effectivement appliquées à cette version */
+  appliedDecisionIds: z.array(z.string()).default([]),
+
+  /** Articulations dont dérivent les décisions appliquées */
+  appliedArticulationIds: z.array(z.string()).default([]),
+
+  /** Traces localisées des transformations produites */
+  transformationTraceIds: z.array(z.string()).default([]),
+
   /** Statut actuel */
   status: DraftUnitStatusSchema.default("drafting"),
 
@@ -154,6 +166,9 @@ export function createDraftUnit(
     evidencePack: { sourceIds: [] },
     content: "",
     claimIds: [],
+    appliedDecisionIds: [],
+    appliedArticulationIds: [],
+    transformationTraceIds: [],
     status: "drafting",
     version: 1,
     createdAt: now,
