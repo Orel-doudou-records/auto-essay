@@ -1,5 +1,6 @@
 // Sources et preuves
 export * from "./source";
+export * from "./citation";
 
 // Assertions et claims
 export * from "./claim";
