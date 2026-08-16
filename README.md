@@ -108,6 +108,13 @@ const result = await generator.generateParagraph(unit.evidencePack, [source]);
   - [Le juge et l'écrivain](docs/explanation/juge-ecrivain.md)
   - [Système dual d'évaluation](docs/explanation/systeme-evaluation.md)
   - [Granularités de rédaction](docs/explanation/granularites.md)
+- **Décisions architecturales**
+  - [ADR-001 — Séparation juge/écrivain](docs/adr/adr-001-separation-juge-ecrivain.md)
+  - [ADR-002 — Choix de Zod et ESM](docs/adr/adr-002-choix-zod-esm.md)
+  - [ADR-003 — Migration Literacraft](docs/adr/adr-003-migration-literacraft.md)
+  - [ADR-004 — Workspace beta frontend](docs/adr/adr-004-workspace-beta-frontend.md)
+- **Planification**
+  - [Plan de la beta frontend](docs/superpowers/plans/beta-frontend-tasks.md)
 
 ## Scripts disponibles
 

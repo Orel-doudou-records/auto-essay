@@ -29,8 +29,14 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Test
-        run: npm test
+      - name: Test core
+        run: npm run test
+
+      - name: Test API
+        run: npm run test:api
+
+      - name: Test web
+        run: npm run test:web
 
       - name: Build
         run: npm run build
