@@ -8,6 +8,7 @@ import {
   type TransformationDeclarationInput,
 } from "../domain/transformationTrace";
 import type { StructuredModelClient } from "../evaluation/evaluateEssay";
+import { unique } from "../utils/array";
 
 const GeneratedClaimSchema = z.object({
   statement: z.string().min(1),
@@ -196,15 +197,22 @@ Le champ applied_directives reste vide en mode historique. En mode éditorial, i
       );
     }
 
-    const traces = context?.editorialProjection
-      ? createTraces(
-          parsed.paragraph,
-          context.unitId!,
-          context.unitVersion!,
-          context.editorialProjection,
-          parsed.applied_directives
-        )
-      : [];
+    const projection = context?.editorialProjection;
+    let traces: TransformationTrace[] = [];
+    if (projection) {
+      if (context?.unitId === undefined || context?.unitVersion === undefined) {
+        throw new Error(
+          "Editorial paragraph generation requires unitId and unitVersion"
+        );
+      }
+      traces = createTraces(
+        parsed.paragraph,
+        context.unitId,
+        context.unitVersion,
+        projection,
+        parsed.applied_directives
+      );
+    }
 
     return {
       content: parsed.paragraph,
@@ -356,6 +364,3 @@ function locateExcerpt(
   return { start, end: start + declaration.excerpt.length };
 }
 
-function unique(values: string[]): string[] {
-  return [...new Set(values)];
-}

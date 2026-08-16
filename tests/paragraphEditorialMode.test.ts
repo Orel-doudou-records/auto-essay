@@ -177,6 +177,27 @@ describe("ParagraphGenerator editorial mode", () => {
     ).rejects.toThrow("unknown directive invented-directive");
   });
 
+  it("rejects editorial generation without unitId and unitVersion", async () => {
+    const inputSource = source();
+    const client = new MockClient({
+      plan_3_sentences: ["Maintenir les versions distinctes"],
+      paragraph: "Paragraphe.",
+      claims: [],
+      confidence_assessment: "medium",
+      applied_directives: [],
+    });
+
+    await expect(
+      new ParagraphGenerator(client).generateParagraph(
+        evidencePack(inputSource.id),
+        [inputSource],
+        {
+          editorialProjection: projection(inputSource.id),
+        }
+      )
+    ).rejects.toThrow("Editorial paragraph generation requires unitId and unitVersion");
+  });
+
   it("rejects a source absent from the evidence pack", async () => {
     const inputSource = source();
     const client = new MockClient({

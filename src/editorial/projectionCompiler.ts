@@ -11,6 +11,7 @@ import {
   isEditorialPlanExecutable,
   type EditorialPlan,
 } from "../domain/editorialPlan";
+import { unique } from "../utils/array";
 
 export interface ProjectionCompilationInput {
   plan: EditorialPlan;
@@ -216,6 +217,3 @@ function buildDirectives(
   return directives;
 }
 
-function unique(values: string[]): string[] {
-  return [...new Set(values)];
-}

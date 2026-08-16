@@ -197,13 +197,6 @@ export const QUALITY_THRESHOLDS = {
 };
 
 /**
- * Vérifie si une évaluation passe le seuil de qualité
- */
-export function meetsQualityThreshold(evaluation: EssayEvaluation): boolean {
-  return evaluation.overallScore >= QUALITY_THRESHOLDS.KEEP_THRESHOLD;
-}
-
-/**
  * Détecte si les scores ont atteint un plateau
  */
 export function hasPlateaued(

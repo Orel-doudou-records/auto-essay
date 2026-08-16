@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { runSyntheticDemo } from "./syntheticScenario.js";
 
 async function main(): Promise<void> {

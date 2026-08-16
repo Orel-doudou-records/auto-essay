@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { runStationReverseDemo } from "./stationReverseScenario.js";
 
 async function main(): Promise<void> {
