@@ -96,7 +96,7 @@ export class EssayEvaluator {
     const rawOutput = await this.client.generateJson(prompt);
 
     // Étape 3: Parser et valider
-    const evaluation = this.parseEvaluation(rawOutput as Record<string, unknown>);
+    const evaluation = this.parseEvaluation(rawOutput);
 
     // Étape 4: Fusionner avec issues mécaniques
     return EssayEvaluationSchema.parse({
@@ -306,30 +306,22 @@ Ne relève jamais un score documentaire parce qu'un effet formel semble réussi.
 
   /**
    * Parse la réponse d'évaluation
+   *
+   * Valide strictement la sortie du modèle via Zod. Toute réponse incomplète
+   * ou mal typée lève une erreur explicite au lieu d'être complétée
+   * silencieusement avec des valeurs par défaut.
    */
-  private parseEvaluation(rawOutput: Record<string, unknown>): EssayEvaluation {
-    const dimensions = rawOutput.dimensions as Record<string, number>;
+  private parseEvaluation(rawOutput: unknown): EssayEvaluation {
+    if (
+      typeof rawOutput !== "object" ||
+      rawOutput === null ||
+      Array.isArray(rawOutput)
+    ) {
+      throw new Error("Evaluation output must be a JSON object");
+    }
 
     return EssayEvaluationSchema.parse({
-      overallScore: Number(rawOutput.overallScore) || 0,
-      dimensions: {
-        claimSupport: dimensions?.claimSupport || 0,
-        citationIntegrity: dimensions?.citationIntegrity || 0,
-        counterargumentQuality: dimensions?.counterargumentQuality || 0,
-        transitionClarity: dimensions?.transitionClarity || 0,
-        scopeControl: dimensions?.scopeControl || 0,
-        voiceConsistency: dimensions?.voiceConsistency || 0,
-      },
-      weaknesses: rawOutput.weaknesses || [],
-      strongClaims: rawOutput.strongClaims || [],
-      weakClaims: rawOutput.weakClaims || [],
-      aiPatternsDetected: rawOutput.aiPatternsDetected || [],
-      overclaimRisks: rawOutput.overclaimRisks || [],
-      top3Revisions: rawOutput.top3Revisions || [],
-      newClaimEntries: rawOutput.newClaimEntries || [],
-      evidenceGaps: rawOutput.evidenceGaps || [],
-      citationGaps: rawOutput.citationGaps || [],
-      verdict: rawOutput.verdict || "revise",
+      ...rawOutput,
       evaluatedAt: new Date().toISOString(),
       evaluatorModel: this.judgeModel,
     });
@@ -342,16 +334,6 @@ Ne relève jamais un score documentaire parce qu'un effet formel semble réussi.
     const delta = Math.abs(current.overallScore - previous.overallScore);
     return delta < QUALITY_THRESHOLDS.IMPROVEMENT_DELTA;
   }
-}
-
-/**
- * Factory pour créer un évaluateur
- */
-export function createEssayEvaluator(
-  client: StructuredModelClient,
-  judgeModel?: string
-): EssayEvaluator {
-  return new EssayEvaluator(client, judgeModel);
 }
 
 function validateEditorialContext(context: EvaluationContext): void {

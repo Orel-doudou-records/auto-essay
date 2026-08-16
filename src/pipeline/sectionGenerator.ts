@@ -16,6 +16,7 @@ import {
   ProjectionCompiler,
   type ProjectionCompilationInput,
 } from "../editorial/projectionCompiler";
+import { unique } from "../utils/array";
 import {
   ParagraphGenerator,
   type ParagraphGenerationResult,
@@ -70,7 +71,12 @@ export class SectionGenerator {
     const precedingContents: string[] = [];
 
     for (const paragraphPlan of orderedPlans) {
-      const executionInput = inputByUnitId.get(paragraphPlan.plan.unitId)!;
+      const executionInput = inputByUnitId.get(paragraphPlan.plan.unitId);
+      if (!executionInput) {
+        throw new Error(
+          `Missing execution input for paragraph unit ${paragraphPlan.plan.unitId}`
+        );
+      }
       const projection = this.projectionCompiler.compile(
         projectionInput(paragraphPlan, request)
       ).writer;
@@ -274,6 +280,3 @@ function aggregateEvidencePacks(packs: EvidencePack[]): EvidencePack {
   };
 }
 
-function unique(values: string[]): string[] {
-  return [...new Set(values)];
-}

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { ZodError } from "zod";
 import { createClaim } from "../src/domain/claim";
 import { createDraftUnit } from "../src/domain/draftUnit";
 import { EvaluatorEditorialProjectionSchema } from "../src/domain/editorialProjection";
@@ -130,6 +131,88 @@ function context() {
 
   return { unit, source, claim, editorialProjection };
 }
+
+describe("EssayEvaluator strict parsing", () => {
+  it("accepts a complete and valid evaluation", async () => {
+    const fixture = context();
+    const client = new SequenceClient([essayOutput()]);
+
+    const evaluation = await new EssayEvaluator(client).evaluate({
+      unit: fixture.unit,
+      sources: [fixture.source],
+      claims: [fixture.claim],
+    });
+
+    expect(evaluation.overallScore).toBe(8);
+    expect(evaluation.dimensions.claimSupport).toBe(8);
+    expect(evaluation.verdict).toBe("keep");
+  });
+
+  it("rejects an evaluation with a missing dimension", async () => {
+    const fixture = context();
+    const invalidOutput = {
+      ...essayOutput(),
+      dimensions: {
+        claimSupport: 8,
+        citationIntegrity: 8,
+        counterargumentQuality: 8,
+        transitionClarity: 8,
+        scopeControl: 8,
+        // voiceConsistency is missing
+      },
+    };
+    const client = new SequenceClient([invalidOutput]);
+
+    await expect(
+      new EssayEvaluator(client).evaluate({
+        unit: fixture.unit,
+        sources: [fixture.source],
+        claims: [fixture.claim],
+      })
+    ).rejects.toBeInstanceOf(ZodError);
+  });
+
+  it("rejects an overallScore outside the [0, 10] range", async () => {
+    const fixture = context();
+    const client = new SequenceClient([essayOutput(12)]);
+
+    await expect(
+      new EssayEvaluator(client).evaluate({
+        unit: fixture.unit,
+        sources: [fixture.source],
+        claims: [fixture.claim],
+      })
+    ).rejects.toBeInstanceOf(ZodError);
+  });
+
+  it("rejects an unknown verdict", async () => {
+    const fixture = context();
+    const client = new SequenceClient([
+      { ...essayOutput(), verdict: "maybe" },
+    ]);
+
+    await expect(
+      new EssayEvaluator(client).evaluate({
+        unit: fixture.unit,
+        sources: [fixture.source],
+        claims: [fixture.claim],
+      })
+    ).rejects.toBeInstanceOf(ZodError);
+  });
+
+  it("rejects a non-object response", async () => {
+    const fixture = context();
+    const client = new SequenceClient(["invalid response"]);
+
+    await expect(
+      new EssayEvaluator(client).evaluate({
+        unit: fixture.unit,
+        sources: [fixture.source],
+        claims: [fixture.claim],
+      })
+    ).rejects.toThrow("Evaluation output must be a JSON object");
+  });
+});
 
 describe("EssayEvaluator integrated mode", () => {
   it("keeps the historical evaluator API compatible", async () => {

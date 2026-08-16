@@ -246,4 +246,26 @@ describe("SectionGenerator", () => {
     ).rejects.toThrow("writer failure");
     expect(client.prompts).toHaveLength(2);
   });
+
+  it("rejects execution inputs that do not cover all paragraph plans", async () => {
+    const fixture = createFixture();
+    const client = new SequentialClient([]);
+    const generator = new SectionGenerator(new ParagraphGenerator(client));
+
+    await expect(
+      generator.generate({
+        plan: fixture.plan,
+        decisions: [fixture.decision],
+        articulations: [fixture.articulation],
+        paragraphs: [
+          {
+            unitId: "paragraph-unit-1",
+            evidencePack: fixture.evidencePack,
+            sources: [fixture.source],
+          },
+        ],
+      })
+    ).rejects.toThrow("Missing execution input for paragraph unit paragraph-unit-2");
+    expect(client.prompts).toHaveLength(0);
+  });
 });

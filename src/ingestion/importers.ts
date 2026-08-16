@@ -1,3 +1,6 @@
+import { basename } from "node:path";
+import { z } from "zod";
+import { load } from "js-yaml";
 import { createSource, type Source, type SourceType } from "../domain/source";
 
 /**
@@ -29,8 +32,27 @@ export interface MarkdownFrontmatter {
 }
 
 /**
+ * Schéma Zod de validation du frontmatter Markdown.
+ * Accepte les champs documentés plus d'autres champs arbitraires.
+ */
+export const MarkdownFrontmatterSchema = z
+  .object({
+    title: z.string().optional(),
+    author: z.union([z.string(), z.array(z.string())]).optional(),
+    date: z.string().optional(),
+    tags: z.array(z.string()).optional(),
+    source: z.string().optional(),
+    doi: z.string().optional(),
+    url: z.string().optional(),
+  })
+  .catchall(z.unknown());
+
+/**
  * Parse le frontmatter YAML d'un fichier Markdown
  * Format: ---\nkey: value\n---
+ *
+ * Lève une erreur si le YAML est syntaxiquement invalide ou ne respecte pas
+ * le schéma de frontmatter.
  */
 export function parseFrontmatter(content: string): {
   frontmatter: MarkdownFrontmatter;
@@ -46,41 +68,16 @@ export function parseFrontmatter(content: string): {
   const yamlContent = match[1];
   const body = match[2];
 
-  // Parse YAML simple (key: value)
-  const frontmatter: MarkdownFrontmatter = {};
-  const lines = yamlContent.split("\n");
-
-  for (const line of lines) {
-    const colonIndex = line.indexOf(":");
-    if (colonIndex === -1) continue;
-
-    const key = line.slice(0, colonIndex).trim();
-    let value: unknown = line.slice(colonIndex + 1).trim();
-
-    // Enlever les guillemets si présents
-    if (
-      typeof value === "string" &&
-      ((value.startsWith('"') && value.endsWith('"')) ||
-        (value.startsWith("'") && value.endsWith("'")))
-    ) {
-      value = value.slice(1, -1);
-    }
-
-    // Parser les tableaux simples [a, b, c]
-    if (
-      typeof value === "string" &&
-      value.startsWith("[") &&
-      value.endsWith("]")
-    ) {
-      value = value
-        .slice(1, -1)
-        .split(",")
-        .map((v) => v.trim().replace(/^["']|["']$/g, ""));
-    }
-
-    frontmatter[key] = value;
+  const parsed = load(yamlContent);
+  if (parsed === null || parsed === undefined) {
+    return { frontmatter: {}, body };
   }
 
+  if (typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("Frontmatter YAML must be an object");
+  }
+
+  const frontmatter = MarkdownFrontmatterSchema.parse(parsed);
   return { frontmatter, body };
 }
 
@@ -93,24 +90,30 @@ export function extractCitations(content: string): Array<{
   page?: string;
 }> {
   const citations: Array<{ quote: string; page?: string }> = [];
-
-  // Regex pour citations en bloc (> ...)
-  const blockQuoteRegex = />\s*([^\n]+)(?:\n>\s*([^\n]+))*/g;
   const pageRegex = /\(p\.?\s*(\d+(?:-\d+)?)\)/i;
 
-  let match;
-  while ((match = blockQuoteRegex.exec(content)) !== null) {
-    const quote = match[0]
-      .replace(/^>\s?/gm, "")
-      .replace(/\n/g, " ")
-      .trim();
+  const lines = content.split("\n");
+  const buffer: string[] = [];
 
+  function flush(): void {
+    if (buffer.length === 0) return;
+    const quote = buffer.join(" ").trim();
     const pageMatch = quote.match(pageRegex);
     citations.push({
       quote,
       page: pageMatch?.[1],
     });
+    buffer.length = 0;
   }
+
+  for (const line of lines) {
+    if (line.startsWith(">")) {
+      buffer.push(line.replace(/^>\s?/, ""));
+    } else {
+      flush();
+    }
+  }
+  flush();
 
   return citations;
 }
@@ -153,7 +156,7 @@ export function importMarkdown(
   const source = createSource({
     projectId,
     type,
-    title: frontmatter.title || filePath.split("/").pop() || "Sans titre",
+    title: frontmatter.title || basename(filePath) || "Sans titre",
     authors,
     content: body,
     url: frontmatter.url,
