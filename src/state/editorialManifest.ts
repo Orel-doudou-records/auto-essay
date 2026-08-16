@@ -4,6 +4,7 @@ import {
   EditorialManifestProvenanceSchema,
   type EditorialManifestProvenance,
 } from "../domain/revision";
+import { sameStringSet, unique } from "../utils/array";
 
 export interface CreateEditorialManifestProvenanceInput {
   planId: string;
@@ -115,20 +116,4 @@ function stableStringify(value: unknown): string {
     .map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`);
 
   return `{${entries.join(",")}}`;
-}
-
-function sameStringSet(left: string[], right: string[]): boolean {
-  const leftSet = new Set(left);
-  const rightSet = new Set(right);
-
-  return (
-    leftSet.size === left.length &&
-    rightSet.size === right.length &&
-    leftSet.size === rightSet.size &&
-    [...leftSet].every((value) => rightSet.has(value))
-  );
-}
-
-function unique(values: string[]): string[] {
-  return [...new Set(values)];
 }

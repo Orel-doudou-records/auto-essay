@@ -1,9 +1,9 @@
-import {
-  runFullPipelineDemo,
-  type FullPipelineDemoDefinition,
-  type FullPipelineDemoOptions,
-  type FullPipelineDemoResult,
-} from "./fullPipelineDemo";
+import { runFullPipelineDemo } from "./fullPipelineDemo";
+import type {
+  FullPipelineDemoDefinition,
+  FullPipelineDemoOptions,
+  FullPipelineDemoResult,
+} from "./pipelineDemoTypes";
 
 /**
  * Cas éditorial construit à partir de deux documents réels fournis au projet :

@@ -1,7 +1,4 @@
 import { z } from "zod";
-import type { Source } from "./source";
-import type { Claim } from "./claim";
-import type { DraftUnit } from "./draftUnit";
 
 /**
  * Carte argumentative - Structure du raisonnement
@@ -133,37 +130,3 @@ export function createEssayProject(
   });
 }
 
-/**
- * Snapshot d'un projet pour historique
- */
-export interface ProjectSnapshot {
-  projectId: string;
-  title: string;
-  thesisSeed: string;
-  argumentMap?: ArgumentMap;
-  sourceCount: number;
-  claimCount: number;
-  draftUnitCount: number;
-  timestamp: string;
-}
-
-/**
- * Crée un snapshot du projet
- */
-export function snapshotProject(
-  project: EssayProject,
-  sources: Source[],
-  claims: Claim[],
-  draftUnits: DraftUnit[]
-): ProjectSnapshot {
-  return {
-    projectId: project.id,
-    title: project.title,
-    thesisSeed: project.thesisSeed,
-    argumentMap: project.argumentMap,
-    sourceCount: sources.length,
-    claimCount: claims.length,
-    draftUnitCount: draftUnits.length,
-    timestamp: new Date().toISOString(),
-  };
-}
