@@ -16,6 +16,7 @@ export default tseslint.config(
       },
       parserOptions: {
         project: "./tsconfig.eslint.json",
+        tsconfigRootDir: import.meta.dirname,
       },
     },
     rules: {
@@ -29,6 +30,60 @@ export default tseslint.config(
     },
   },
   {
-    ignores: ["dist/", ".demo-dist/", "node_modules/", "coverage/"],
+    files: ["apps/api/src/**/*.ts"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "module",
+      globals: {
+        ...globals.node,
+        ...globals.es2021,
+      },
+      parserOptions: {
+        project: "./apps/api/tsconfig.eslint.json",
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+    rules: {
+      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      ],
+      "@typescript-eslint/no-floating-promises": "error",
+      "no-console": "warn",
+    },
+  },
+  {
+    files: ["apps/web/src/**/*.{ts,tsx}"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "module",
+      globals: {
+        ...globals.browser,
+        ...globals.es2021,
+      },
+      parserOptions: {
+        project: "./apps/web/tsconfig.eslint.json",
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+    rules: {
+      "@typescript-eslint/no-explicit-any": "warn",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      ],
+      "no-console": "warn",
+    },
+  },
+  {
+    ignores: [
+      "dist/",
+      ".demo-dist/",
+      "node_modules/",
+      "coverage/",
+      "apps/*/dist/",
+      "apps/*/node_modules/",
+    ],
   }
 );
