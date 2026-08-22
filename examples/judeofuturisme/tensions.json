@@ -1,0 +1,24 @@
+[
+  {
+    "id": "tension-technique-memoire",
+    "projectId": "judeofuturisme",
+    "label": "technique contre mémoire",
+    "description": "L'avenir technologique entre en tension avec la mémoire rituelle et liturgique.",
+    "scope": { "level": "project", "projectId": "judeofuturisme" },
+    "poles": ["technique", "mémoire"],
+    "evidenceIds": [],
+    "status": "proposed",
+    "createdAt": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "tension-exil-redemption",
+    "projectId": "judeofuturisme",
+    "label": "exil contre rédemption",
+    "description": "La condition d'exil entre en tension avec l'horizon de rédemption messianique.",
+    "scope": { "level": "project", "projectId": "judeofuturisme" },
+    "poles": ["exil", "rédemption"],
+    "evidenceIds": [],
+    "status": "proposed",
+    "createdAt": "2026-08-22T00:00:00.000Z"
+  }
+]

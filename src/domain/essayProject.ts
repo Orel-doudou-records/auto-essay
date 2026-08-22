@@ -93,6 +93,12 @@ export const EssayProjectSchema = z.object({
   /** IDs des sources */
   sourceIds: z.array(z.string()).default([]),
 
+  /** IDs des concepts du projet */
+  conceptIds: z.array(z.string()).default([]),
+
+  /** IDs des tensions du projet */
+  tensionIds: z.array(z.string()).default([]),
+
   /** IDs des unités de rédaction */
   draftUnitIds: z.array(z.string()).default([]),
 
@@ -123,6 +129,8 @@ export function createEssayProject(
     contextScope: "",
     claims: [],
     sourceIds: [],
+    conceptIds: [],
+    tensionIds: [],
     draftUnitIds: [],
     createdAt: now,
     updatedAt: now,

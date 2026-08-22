@@ -201,8 +201,9 @@ export function importMarkdownFiles(
 }
 
 /**
- * Parse un fichier BibTeX simple
- * Supporte les entrées @article, @book, @inproceedings
+ * Parse un fichier BibTeX en entrées.
+ * Gère les valeurs entre accolades (imbriquées), entre guillemets et nues,
+ * ainsi que plusieurs entrées. Supporte @article, @book, @inproceedings.
  */
 export function parseBibTeX(content: string): Array<{
   type: string;
@@ -214,29 +215,87 @@ export function parseBibTeX(content: string): Array<{
     key: string;
     fields: Record<string, string>;
   }> = [];
+  let pos = 0;
+  const n = content.length;
 
-  // Regex pour matcher une entrée BibTeX
-  const entryRegex = /@(\w+)\s*\{\s*([^,]+),\s*([^}]+)\}/g;
+  const skipWhitespace = (): void => {
+    while (pos < n && /\s/.test(content[pos])) pos++;
+  };
 
-  let match;
-  while ((match = entryRegex.exec(content)) !== null) {
-    const type = match[1].toLowerCase();
-    const key = match[2].trim();
-    const fieldsContent = match[3];
+  while (pos < n) {
+    const at = content.indexOf("@", pos);
+    if (at === -1) break;
+    pos = at + 1;
 
-    // Parser les champs
+    const typeMatch = /^\s*([A-Za-z]+)/.exec(content.slice(pos));
+    if (!typeMatch) break;
+    const type = typeMatch[1].toLowerCase();
+    pos += typeMatch[0].length;
+
+    skipWhitespace();
+    if (content[pos] !== "{") continue;
+    pos++;
+
+    const comma = content.indexOf(",", pos);
+    if (comma === -1) break;
+    const key = content.slice(pos, comma).trim();
+    pos = comma + 1;
+
     const fields: Record<string, string> = {};
-    const fieldRegex = /(\w+)\s*=\s*\{([^}]+)\}/g;
 
-    let fieldMatch;
-    while ((fieldMatch = fieldRegex.exec(fieldsContent)) !== null) {
-      const fieldName = fieldMatch[1].toLowerCase();
-      let fieldValue = fieldMatch[2].trim();
+    while (pos < n) {
+      skipWhitespace();
+      if (pos >= n) break;
+      if (content[pos] === "}") {
+        pos++;
+        break;
+      }
 
-      // Nettoyer les accolades imbriquées
-      fieldValue = fieldValue.replace(/[{}]/g, "");
+      const nameMatch = /^([A-Za-z0-9_-]+)/.exec(content.slice(pos));
+      if (!nameMatch) {
+        pos++;
+        continue;
+      }
+      const name = nameMatch[1].toLowerCase();
+      pos += nameMatch[0].length;
 
-      fields[fieldName] = fieldValue;
+      skipWhitespace();
+      if (content[pos] !== "=") {
+        while (pos < n && content[pos] !== "," && content[pos] !== "}") pos++;
+        if (content[pos] === ",") pos++;
+        continue;
+      }
+      pos++;
+      skipWhitespace();
+
+      let value = "";
+      if (content[pos] === "{") {
+        pos++;
+        let depth = 1;
+        const start = pos;
+        while (pos < n && depth > 0) {
+          if (content[pos] === "{") depth++;
+          else if (content[pos] === "}") depth--;
+          if (depth > 0) pos++;
+        }
+        value = content.slice(start, pos).replace(/[{}]/g, "").trim();
+        pos++;
+      } else if (content[pos] === '"') {
+        pos++;
+        const start = pos;
+        while (pos < n && content[pos] !== '"') pos++;
+        value = content.slice(start, pos).trim();
+        pos++;
+      } else {
+        const start = pos;
+        while (pos < n && content[pos] !== "," && content[pos] !== "}") pos++;
+        value = content.slice(start, pos).trim();
+      }
+
+      fields[name] = value;
+
+      skipWhitespace();
+      if (content[pos] === ",") pos++;
     }
 
     entries.push({ type, key, fields });

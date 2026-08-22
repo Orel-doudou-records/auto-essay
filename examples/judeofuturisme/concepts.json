@@ -1,0 +1,46 @@
+[
+  {
+    "id": "concept-temporalite-messianique",
+    "projectId": "judeofuturisme",
+    "label": "temporalité messianique",
+    "definition": "Rapport au temps où passé et avenir se replient dans une attente active de réparation.",
+    "scope": { "level": "project", "projectId": "judeofuturisme" },
+    "sourceIds": [],
+    "evidenceIds": [],
+    "status": "proposed",
+    "createdAt": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "concept-exil",
+    "projectId": "judeofuturisme",
+    "label": "exil",
+    "definition": "Condition diasporique vécue comme déplacement et comme horizon de retour différé.",
+    "scope": { "level": "project", "projectId": "judeofuturisme" },
+    "sourceIds": [],
+    "evidenceIds": [],
+    "status": "proposed",
+    "createdAt": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "concept-technique",
+    "projectId": "judeofuturisme",
+    "label": "technique",
+    "definition": "Ensemble des médiations techniques par lesquelles une communauté projette son avenir.",
+    "scope": { "level": "project", "projectId": "judeofuturisme" },
+    "sourceIds": [],
+    "evidenceIds": [],
+    "status": "proposed",
+    "createdAt": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "concept-memoire",
+    "projectId": "judeofuturisme",
+    "label": "mémoire",
+    "definition": "Pratique rituelle et narrative qui maintient vivant un passé commun.",
+    "scope": { "level": "project", "projectId": "judeofuturisme" },
+    "sourceIds": [],
+    "evidenceIds": [],
+    "status": "proposed",
+    "createdAt": "2026-08-22T00:00:00.000Z"
+  }
+]
