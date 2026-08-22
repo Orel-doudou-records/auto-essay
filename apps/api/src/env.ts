@@ -1,6 +1,9 @@
 import { z } from "zod";
 
 export const EnvSchema = z.object({
+  OLLAMA_API_KEY: z.string().optional(),
+  OLLAMA_BASE_URL: z.string().url().optional(),
+  OLLAMA_MODEL: z.string().optional(),
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_BASE_URL: z.string().url().optional(),
   OPENAI_MODEL: z.string().optional(),
