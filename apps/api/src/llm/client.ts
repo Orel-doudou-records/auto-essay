@@ -8,6 +8,11 @@ export interface ModelClient {
 }
 
 export async function createModelClient(): Promise<ModelClient> {
+  const ollamaKey = process.env.OLLAMA_API_KEY;
+  if (ollamaKey) {
+    const { OllamaClient } = await import("./ollamaClient.js");
+    return new OllamaClient(ollamaKey, process.env.OLLAMA_BASE_URL, process.env.OLLAMA_MODEL);
+  }
   const key = process.env.OPENAI_API_KEY;
   if (key) {
     const { OpenAiClient } = await import("./openAiClient.js");
