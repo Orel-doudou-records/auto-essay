@@ -1,9 +1,9 @@
-import {
-  runFullPipelineDemo,
-  type FullPipelineDemoDefinition,
-  type FullPipelineDemoOptions,
-  type FullPipelineDemoResult,
-} from "./fullPipelineDemo";
+import { runFullPipelineDemo } from "./fullPipelineDemo";
+import type {
+  FullPipelineDemoDefinition,
+  FullPipelineDemoOptions,
+  FullPipelineDemoResult,
+} from "./pipelineDemoTypes";
 
 export const SYNTHETIC_DEMO_DEFINITION: FullPipelineDemoDefinition = {
   scenarioId: "synthetic-contradictory-archive",

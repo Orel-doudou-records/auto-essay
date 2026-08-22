@@ -6,4 +6,13 @@ dist/
 .env
 .env.local
 .auto-essay-demo/
+.auto-essay/
 Litfract/
+coverage/
+packages/*/coverage/
+data/
+.verdent/
+graphify-out/
+.graphify_python
+.graphifyignore
+

@@ -68,6 +68,24 @@ describe("Mechanical Checks", () => {
     });
   });
 
+  describe("detectMissingCitations", () => {
+    it("does not duplicate issues for facts close to each other", () => {
+      const text =
+        "En 2023, 45% des participants ont répondu positivement et en 2024, 42% l'ont fait.";
+      const issues = detectMissingCitations(text);
+      expect(issues.length).toBeLessThanOrEqual(2);
+    });
+
+    it("reports distinct issues for facts separated by more than 50 characters", () => {
+      const text =
+        "En 2023, un premier événement important a eu lieu. " +
+        "Ensuite, de nombreux développements ont suivi pendant plusieurs années. " +
+        "En 2024, un second événement a marqué la suite.";
+      const issues = detectMissingCitations(text);
+      expect(issues.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
   describe("runMechanicalChecks", () => {
     it("should run all checks and return sorted issues", () => {
       const text = `Il est important de noter que cette etude demontre la verite.

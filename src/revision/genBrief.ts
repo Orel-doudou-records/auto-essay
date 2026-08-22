@@ -8,6 +8,7 @@ import {
   type RelationalRevisionInstruction,
   type RevisionBrief,
 } from "../domain/revision";
+import { unique } from "../utils/array";
 
 export interface RelationalRevisionContext {
   projection: RevisionEditorialProjection;
@@ -309,8 +310,4 @@ function editorialPriority(
     case "effective":
       return 3;
   }
-}
-
-function unique(values: string[]): string[] {
-  return [...new Set(values)];
 }

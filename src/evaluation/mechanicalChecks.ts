@@ -111,6 +111,7 @@ export function detectStrongAssertions(text: string): MechanicalIssue[] {
  */
 export function detectMissingCitations(text: string): MechanicalIssue[] {
   const issues: MechanicalIssue[] = [];
+  const reportedRanges: Array<{ start: number; end: number }> = [];
 
   // Patterns qui indiquent un fait/affirmation
   const factPatterns = [
@@ -125,11 +126,14 @@ export function detectMissingCitations(text: string): MechanicalIssue[] {
   for (const pattern of factPatterns) {
     let match: RegExpExecArray | null;
     while ((match = pattern.exec(text)) !== null) {
+      const matchStart = match.index;
+      const matchEnd = match.index + match[0].length;
+
       // Verifier s'il y a une citation dans les 80 caracteres avant/apres
-      const before = text.slice(Math.max(0, match.index - 80), match.index);
+      const before = text.slice(Math.max(0, matchStart - 80), matchStart);
       const after = text.slice(
-        match.index,
-        Math.min(text.length, match.index + 80)
+        matchEnd,
+        Math.min(text.length, matchEnd + 80)
       );
 
       const context = before + after;
@@ -138,17 +142,17 @@ export function detectMissingCitations(text: string): MechanicalIssue[] {
       );
 
       if (!hasCitation) {
-        // Verifier si c'est pas deja reporte
-        const location = text.slice(
-          Math.max(0, match.index - 30),
-          Math.min(text.length, match.index + 30)
-        );
-
-        const alreadyReported = match && issues.some(
-          (i) => match && Math.abs(i.location.indexOf(match[0]) - match.index) < 50
+        // Verifier si c'est pas deja reporte dans un rayon de 50 caracteres
+        const alreadyReported = reportedRanges.some(
+          (range) => Math.abs(range.start - matchStart) < 50
         );
 
         if (!alreadyReported) {
+          const location = text.slice(
+            Math.max(0, matchStart - 30),
+            Math.min(text.length, matchEnd + 30)
+          );
+
           issues.push({
             type: "missing_citation",
             message: `Fait potentiel sans citation`,
@@ -156,6 +160,7 @@ export function detectMissingCitations(text: string): MechanicalIssue[] {
             severity: "info",
             suggestion: "Verifier si cette information necessite une source",
           });
+          reportedRanges.push({ start: matchStart, end: matchEnd });
         }
       }
     }

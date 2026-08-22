@@ -4,6 +4,7 @@ import {
   StylisticOperationFamilySchema,
   type StyleObservation,
 } from "./styleObservation";
+import { unique } from "../utils/array";
 
 export const AuthorStyleDeclarationSchema = z.object({
   id: z.string(),
@@ -164,6 +165,3 @@ function weakestConfidence(
   return "high";
 }
 
-function unique(values: string[]): string[] {
-  return [...new Set(values)];
-}

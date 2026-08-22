@@ -13,6 +13,7 @@ import {
   isEditorialDecisionExecutable,
   type EditorialDecision,
 } from "./editorialDecision";
+import { sameStringSet } from "../utils/array";
 
 export const EditorialPlanStatusSchema = z.enum([
   "draft",
@@ -207,16 +208,3 @@ export type SectionEditorialPlanInput = z.input<
   typeof SectionEditorialPlanSchema
 >;
 
-function sameStringSet(left: Set<string>, right: Set<string>): boolean {
-  if (left.size !== right.size) {
-    return false;
-  }
-
-  for (const value of left) {
-    if (!right.has(value)) {
-      return false;
-    }
-  }
-
-  return true;
-}

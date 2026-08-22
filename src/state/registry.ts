@@ -3,6 +3,10 @@ import {
   DeliveryManifestSchema,
   type DeliveryManifest,
 } from "../domain/revision";
+import { sameStringSet } from "../utils/array";
+
+import { createHash } from "node:crypto";
+import { dirname, join } from "node:path";
 
 /**
  * Entrée de version dans le registry
@@ -61,11 +65,11 @@ export class FileRegistry implements Registry {
   }
 
   private getRegistryPath(projectId: string): string {
-    return `${this.basePath}/${projectId}/registry.json`;
+    return join(this.basePath, projectId, "registry.json");
   }
 
   private getUnitPath(projectId: string, unitId: string, version: number): string {
-    return `${this.basePath}/${projectId}/units/${unitId}_v${version}.json`;
+    return join(this.basePath, projectId, "units", `${unitId}_v${version}.json`);
   }
 
   private async loadRegistry(projectId: string): Promise<Record<string, VersionEntry[]>> {
@@ -85,18 +89,12 @@ export class FileRegistry implements Registry {
   ): Promise<void> {
     const fs = await import("fs/promises");
     const path = this.getRegistryPath(projectId);
-    await fs.mkdir(path.split("/").slice(0, -1).join("/"), { recursive: true });
+    await fs.mkdir(dirname(path), { recursive: true });
     await fs.writeFile(path, JSON.stringify(registry, null, 2));
   }
 
   private computeHash(content: string): string {
-    let hash = 0;
-    for (let i = 0; i < content.length; i++) {
-      const char = content.charCodeAt(i);
-      hash = (hash << 5) - hash + char;
-      hash = hash & hash;
-    }
-    return Math.abs(hash).toString(16).padStart(8, "0");
+    return createHash("sha256").update(content).digest("hex");
   }
 
   async publishVersion(
@@ -114,7 +112,7 @@ export class FileRegistry implements Registry {
     const fs = await import("fs/promises");
 
     const unitPath = this.getUnitPath(projectId, unit.id, unit.version);
-    await fs.mkdir(unitPath.split("/").slice(0, -1).join("/"), { recursive: true });
+    await fs.mkdir(dirname(unitPath), { recursive: true });
     await fs.writeFile(unitPath, JSON.stringify(unit, null, 2));
 
     const registry = await this.loadRegistry(projectId);
@@ -237,14 +235,3 @@ function validateManifestForUnit(
   }
 }
 
-function sameStringSet(left: string[], right: string[]): boolean {
-  const leftSet = new Set(left);
-  const rightSet = new Set(right);
-
-  return (
-    leftSet.size === left.length &&
-    rightSet.size === right.length &&
-    leftSet.size === rightSet.size &&
-    [...leftSet].every((value) => rightSet.has(value))
-  );
-}

@@ -8,6 +8,7 @@ import {
 } from "../domain/editorialEffectEvaluation";
 import type { EvaluatorEditorialProjection } from "../domain/editorialProjection";
 import type { TransformationTrace } from "../domain/transformationTrace";
+import { sameStringSet } from "../utils/array";
 import type { StructuredModelClient } from "./evaluateEssay";
 
 const RawEditorialEffectEvaluationSchema = z.object({
@@ -290,16 +291,3 @@ function validateAndNormalizeResults(
   return normalized;
 }
 
-function sameStringSet(left: string[], right: string[]): boolean {
-  const leftSet = new Set(left);
-  const rightSet = new Set(right);
-
-  if (leftSet.size !== left.length || rightSet.size !== right.length) {
-    return false;
-  }
-  if (leftSet.size !== rightSet.size) {
-    return false;
-  }
-
-  return [...leftSet].every((value) => rightSet.has(value));
-}

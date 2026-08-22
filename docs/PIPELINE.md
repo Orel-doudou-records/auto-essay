@@ -237,7 +237,9 @@ Sortie : JSON structuré + Markdown
 - [x] Tests unitaires passant
 - [ ] Export Pandoc/PDF/ZIP
 - [ ] Connecteur Zotero
-- [ ] Mode section/chapitre/livre
+- [x] Mode section
+- [ ] Mode chapitre
+- [ ] Mode livre
 - [ ] Git integration
 - [ ] runs.tsv
 

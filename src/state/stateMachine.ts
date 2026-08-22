@@ -1,3 +1,4 @@
+import { join, dirname } from "node:path";
 import type { EssayState, EssayPhase, Debt } from "../domain/pipelineState";
 import { createEssayState, transitionToPhase as transitionPhase, canReport, hasReachedIterationLimit } from "../domain/pipelineState";
 
@@ -33,7 +34,7 @@ export class FileStateManager implements StateManager {
   }
 
   private getStatePath(projectId: string): string {
-    return `${this.basePath}/${projectId}/essay_state.json`;
+    return join(this.basePath, projectId, "essay_state.json");
   }
 
   async loadState(projectId: string): Promise<EssayState | null> {
@@ -50,7 +51,7 @@ export class FileStateManager implements StateManager {
   async saveState(state: EssayState): Promise<void> {
     const fs = await import("fs/promises");
     const path = this.getStatePath(state.projectId);
-    await fs.mkdir(path.split("/").slice(0, -1).join("/"), { recursive: true });
+    await fs.mkdir(dirname(path), { recursive: true });
     await fs.writeFile(path, JSON.stringify(state, null, 2));
   }
 

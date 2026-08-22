@@ -1,8 +1,12 @@
 {
-  "name": "auto-essay",
+  "name": "@auto-essay/core",
   "version": "0.1.0",
   "description": "Moteur essayistique - Agent de rédaction d'essais avec pipeline itératif",
   "type": "module",
+  "workspaces": [
+    ".",
+    "apps/*"
+  ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -12,20 +16,36 @@
     }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run build -w @auto-essay/api && npm run build -w @auto-essay/web",
+    "build:core": "tsc",
     "build:demo": "tsc -p tsconfig.demo.json",
     "prepare:demo-runtime": "node -e \"const fs=require('fs');fs.mkdirSync('.demo-dist',{recursive:true});fs.writeFileSync('.demo-dist/package.json',JSON.stringify({type:'commonjs'}))\"",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "typecheck": "tsc --noEmit && npm run typecheck -w @auto-essay/api && npm run typecheck -w @auto-essay/web",
+    "test": "vitest run && npm run test:api && npm run test:web",
+    "test:api": "npm run test -w @auto-essay/api",
+    "test:web": "npm run test -w @auto-essay/web",
+    "lint": "eslint src tests && npm run lint:api && npm run lint:web",
+    "lint:api": "eslint apps/api/src",
+    "lint:web": "eslint apps/web/src",
+    "dev:api": "npm run dev -w @auto-essay/api",
+    "dev:web": "npm run dev -w @auto-essay/web",
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
     "demo:synthetic": "npm run build:demo && npm run prepare:demo-runtime && node .demo-dist/demo/runSyntheticDemo.js",
     "demo:station-reverse": "npm run build:demo && npm run prepare:demo-runtime && node .demo-dist/demo/runStationReverseDemo.js"
   },
   "dependencies": {
+    "js-yaml": "^5.3.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.10.0",
+    "concurrently": "^8.2.2",
+    "eslint": "^9.17.0",
+    "globals": "^17.11.0",
     "typescript": "^5.3.3",
+    "typescript-eslint": "^8.18.0",
     "vitest": "^1.1.0"
   }
 }
