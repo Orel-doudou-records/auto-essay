@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CitationUseSchema } from "./citation";
 
 /**
  * Granularité d'une unité de rédaction
@@ -93,6 +94,9 @@ export const DraftUnitSchema = z.object({
   /** IDs des assertions contenues */
   claimIds: z.array(z.string()).default([]),
 
+  /** Citations employÃ©es dans cette unitÃ© */
+  citationUses: z.array(CitationUseSchema).default([]),
+
   /** Plan éditorial optionnel : absent dans le mode historique */
   editorialPlanId: z.string().optional(),
 
@@ -133,6 +137,20 @@ export const DraftUnitSchema = z.object({
 
   /** Date de publication */
   publishedAt: z.string().datetime().optional(),
+}).superRefine((unit, context) => {
+  const hasMismatchedCitationUse = unit.citationUses.some(
+    (citationUse) =>
+      citationUse.draftUnitId !== unit.id ||
+      citationUse.draftUnitVersion !== unit.version
+  );
+
+  if (hasMismatchedCitationUse) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["citationUses"],
+      message: "Citation uses must target their containing draft unit and version",
+    });
+  }
 });
 
 export type DraftUnit = z.infer<typeof DraftUnitSchema>;
@@ -157,11 +175,18 @@ export function createDraftUnit(
   }
 ): DraftUnit {
   const now = new Date().toISOString();
+  const id = crypto.randomUUID();
   const granularity = partial.granularity;
   const targetWordCount = partial.targetWordCount ?? DEFAULT_WORD_COUNTS[granularity];
+  const version = partial.version ?? 1;
+  const citationUses = (partial.citationUses ?? []).map((citationUse) => ({
+    ...citationUse,
+    draftUnitId: id,
+    draftUnitVersion: version,
+  }));
 
   return DraftUnitSchema.parse({
-    id: crypto.randomUUID(),
+    id,
     targetWordCount,
     evidencePack: { sourceIds: [] },
     content: "",
@@ -170,10 +195,11 @@ export function createDraftUnit(
     appliedArticulationIds: [],
     transformationTraceIds: [],
     status: "drafting",
-    version: 1,
     createdAt: now,
     updatedAt: now,
     ...partial,
+    version,
+    citationUses,
   });
 }
 

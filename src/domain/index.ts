@@ -1,11 +1,13 @@
 // Sources et preuves
 export * from "./source";
+export * from "./citation";
 
 // Assertions et claims
 export * from "./claim";
 
 // Unités de rédaction
 export * from "./draftUnit";
+export * from "./manuscript";
 
 // Projets essayistiques
 export * from "./essayProject";
