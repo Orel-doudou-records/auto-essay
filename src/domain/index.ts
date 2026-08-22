@@ -33,6 +33,10 @@ export * from "./authorStyleConstellation";
 // Relations explicites du contenu
 export * from "./contentRelation";
 
+// Nœuds conceptuels du corpus (persistés)
+export * from "./concept";
+export * from "./tension";
+
 // Articulations entre contenu et opérations d'écriture
 export * from "./contentStyleArticulation";
 

@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  ConceptSchema,
   ContentRelationSchema,
   ContentStyleArticulationSchema,
   EditorialDecisionSchema,
   EditorialPlanSchema,
   SourceRegimeSchema,
   StyleObservationSchema,
+  TensionSchema,
 } from "../src/domain";
 
 describe("domain public exports", () => {
@@ -16,5 +18,10 @@ describe("domain public exports", () => {
     expect(ContentStyleArticulationSchema).toBeDefined();
     expect(EditorialDecisionSchema).toBeDefined();
     expect(EditorialPlanSchema).toBeDefined();
+  });
+
+  it("should expose persisted conceptual nodes", () => {
+    expect(ConceptSchema).toBeDefined();
+    expect(TensionSchema).toBeDefined();
   });
 });
