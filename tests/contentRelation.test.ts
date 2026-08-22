@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ContentRelationSchema,
   EditorialScopeSchema,
+  assignRelationRoles,
   createContentRelation,
 } from "../src/domain/contentRelation";
 
@@ -97,5 +98,80 @@ describe("ContentRelation", () => {
         sectionId: "section-1",
       })
     ).toThrow();
+  });
+});
+
+describe("ContentRelation atomicity", () => {
+  it("rejects a typed relation with three participants", () => {
+    expect(() =>
+      ContentRelationSchema.parse({
+        id: "relation-1",
+        scope: { level: "project", projectId: "project-1" },
+        type: "supports",
+        participants: [
+          { kind: "claim", id: "claim-1" },
+          { kind: "claim", id: "claim-2" },
+          { kind: "source", id: "source-1" },
+        ],
+        description: "Three participants are not atomic",
+        origin: "system_detected",
+        createdAt: new Date().toISOString(),
+      })
+    ).toThrow();
+  });
+
+  it("rejects a silence relation with two participants", () => {
+    expect(() =>
+      ContentRelationSchema.parse({
+        id: "relation-1",
+        scope: { level: "project", projectId: "project-1" },
+        type: "silences",
+        participants: [
+          { kind: "source", id: "source-1" },
+          { kind: "source", id: "source-2" },
+        ],
+        description: "A silence is unary",
+        origin: "author_declared",
+        createdAt: new Date().toISOString(),
+      })
+    ).toThrow();
+  });
+
+  it("assigns canonical roles by type when roles are missing", () => {
+    const roles = assignRelationRoles("supports", [
+      { kind: "claim", id: "claim-1" },
+      { kind: "claim", id: "claim-2" },
+    ]);
+
+    expect(roles.map((participant) => participant.role)).toEqual([
+      "supporting",
+      "supported",
+    ]);
+  });
+
+  it("preserves an explicit role while filling the other", () => {
+    const roles = assignRelationRoles("contradicts", [
+      { kind: "claim", id: "claim-1", role: "archive view" },
+      { kind: "claim", id: "claim-2" },
+    ]);
+
+    expect(roles[0].role).toBe("archive view");
+    expect(roles[1].role).toBe("challenged");
+  });
+
+  it("accepts a groupId for reified n-ary relations", () => {
+    const relation = createContentRelation({
+      scope: { level: "project", projectId: "project-1" },
+      type: "contradicts",
+      participants: [
+        { kind: "claim", id: "claim-1" },
+        { kind: "claim", id: "claim-2" },
+      ],
+      description: "Part of a joint contradiction",
+      origin: "system_detected",
+      groupId: "argument-1",
+    });
+
+    expect(relation.groupId).toBe("argument-1");
   });
 });

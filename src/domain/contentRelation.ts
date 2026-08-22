@@ -67,6 +67,35 @@ export const ContentRelationTypeSchema = z.enum([
 
 export type ContentRelationType = z.infer<typeof ContentRelationTypeSchema>;
 
+/**
+ * Rôles canoniques des participants d'une relation atomique.
+ * Le type de relation détermine la lecture de chaque position :
+ * la relation est un atome binaire (sauf « silences », unaire), pas un
+ * graphe n-aire ambigu. L'ordre des participants est signifiant.
+ */
+export const ContentRelationRoleMap: Record<
+  ContentRelationType,
+  readonly [string, string] | readonly [string]
+> = {
+  supports: ["supporting", "supported"],
+  contradicts: ["challenging", "challenged"],
+  qualifies: ["qualifying", "qualified"],
+  reframes: ["reframing", "reframed"],
+  silences: ["silenced"],
+  translates: ["translating", "translated"],
+  appropriates: ["appropriating", "appropriated"],
+  changes_scale: ["scaling_from", "scaling_to"],
+  changes_temporality: ["temporalizing_from", "temporalizing_to"],
+  changes_source_regime: ["regime_from", "regime_to"],
+  differs_in_scope: ["scope_a", "scope_b"],
+};
+
+export function relationRoleLabels(
+  type: ContentRelationType
+): readonly string[] {
+  return ContentRelationRoleMap[type];
+}
+
 export const ContentRelationParticipantSchema = z.object({
   kind: z.enum(["source", "claim", "concept", "tension", "unit"]),
   id: z.string().min(1),
@@ -110,14 +139,20 @@ export const ContentRelationSchema = z
         "resolved",
       ])
       .default("detected"),
+    groupId: z.string().min(1).optional(),
     createdAt: z.string().datetime(),
   })
   .superRefine((relation, context) => {
-    if (relation.type !== "silences" && relation.participants.length < 2) {
+    const expectedParticipants = relation.type === "silences" ? 1 : 2;
+
+    if (relation.participants.length !== expectedParticipants) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["participants"],
-        message: "This content relation requires at least two participants",
+        message:
+          relation.type === "silences"
+            ? "A silence relation must describe exactly one focal participant"
+            : `A ${relation.type} relation must have exactly two participants`,
       });
     }
   });
@@ -142,4 +177,16 @@ export function createContentRelation(
     createdAt: new Date().toISOString(),
     ...partial,
   });
+}
+
+export function assignRelationRoles<T extends { role?: string }>(
+  type: ContentRelationType,
+  participants: T[]
+): Array<T & { role: string }> {
+  const labels = relationRoleLabels(type);
+
+  return participants.map((participant, index) => ({
+    ...participant,
+    role: participant.role ?? labels[index] ?? `participant_${index + 1}`,
+  }));
 }

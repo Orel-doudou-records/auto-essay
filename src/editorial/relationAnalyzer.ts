@@ -1,7 +1,9 @@
 import { z } from "zod";
 import type { StructuredModelClient } from "../evaluation/evaluateEssay";
 import type { Claim } from "../domain/claim";
+import type { Concept } from "../domain/concept";
 import type { Source } from "../domain/source";
+import type { Tension } from "../domain/tension";
 import {
   ContentRelationParticipantSchema,
   ContentRelationTypeSchema,
@@ -24,11 +26,6 @@ const RelationAnalysisOutputSchema = z.object({
   relations: z.array(RawContentRelationSchema).default([]),
 });
 
-export interface RelationCatalogItem {
-  id: string;
-  label: string;
-}
-
 export interface RelationAnalysisRequest {
   scope: EditorialScopeInput;
   sources: Source[];
@@ -38,8 +35,8 @@ export interface RelationAnalysisRequest {
     statement: string;
     sourceId?: string;
   }>;
-  concepts?: RelationCatalogItem[];
-  tensions?: RelationCatalogItem[];
+  concepts?: Concept[];
+  tensions?: Tension[];
   unitIds?: string[];
 }
 
@@ -114,8 +111,16 @@ export function buildRelationAnalysisPrompt(
       status: claim.status,
     })),
     objections: request.objections ?? [],
-    concepts: request.concepts ?? [],
-    tensions: request.tensions ?? [],
+    concepts: (request.concepts ?? []).map((concept) => ({
+      id: concept.id,
+      label: concept.label,
+      definition: concept.definition,
+    })),
+    tensions: (request.tensions ?? []).map((tension) => ({
+      id: tension.id,
+      label: tension.label,
+      description: tension.description,
+    })),
     unitIds: request.unitIds ?? [],
   };
 
