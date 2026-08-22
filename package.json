@@ -20,7 +20,7 @@
     "build:core": "tsc",
     "build:demo": "tsc -p tsconfig.demo.json",
     "prepare:demo-runtime": "node -e \"const fs=require('fs');fs.mkdirSync('.demo-dist',{recursive:true});fs.writeFileSync('.demo-dist/package.json',JSON.stringify({type:'commonjs'}))\"",
-    "typecheck": "tsc --noEmit && npm run typecheck -w @auto-essay/api && npm run typecheck -w @auto-essay/web",
+    "typecheck": "npm run build:core && npm run typecheck -w @auto-essay/api && npm run typecheck -w @auto-essay/web",
     "test": "vitest run && npm run test:api && npm run test:web",
     "test:api": "npm run test -w @auto-essay/api",
     "test:web": "npm run test -w @auto-essay/web",
