@@ -1,0 +1,35 @@
+{
+  "id": "judeofuturisme",
+  "title": "Judéofuturisme : mémoire, technique et rédemption",
+  "thesisSeed": "Le judéofuturisme reformule l'attente messianique à travers les techniques contemporaines sans dissoudre la mémoire diasporique.",
+  "contextScope": "Pensée juive contemporaine, science-fiction et études des techniques.",
+  "argumentMap": {
+    "centralQuestion": "Comment la tradition messianique juive éclaire-t-elle un avenir technologique sans renoncer à la mémoire de l'exil ?",
+    "thesis": "La technique peut porter la promesse messianique à condition de rester indexée à la mémoire diasporique.",
+    "sections": [],
+    "transitions": [],
+    "evidenceDebts": []
+  },
+  "claims": [],
+  "sourceIds": [],
+  "draftUnitIds": [],
+  "conceptIds": [
+    "concept-temporalite-messianique",
+    "concept-exil",
+    "concept-technique",
+    "concept-memoire"
+  ],
+  "tensionIds": [
+    "tension-technique-memoire",
+    "tension-exil-redemption"
+  ],
+  "voiceConfig": {
+    "tone": "academic",
+    "density": "dense",
+    "person": "first",
+    "passiveVoice": "avoid",
+    "readerPromise": "Tenir ensemble rigueur conceptuelle et engagement existentiel."
+  },
+  "createdAt": "2026-08-22T00:00:00.000Z",
+  "updatedAt": "2026-08-22T00:00:00.000Z"
+}
