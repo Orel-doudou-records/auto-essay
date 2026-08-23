@@ -20,5 +20,27 @@
     "evidenceIds": [],
     "status": "proposed",
     "createdAt": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "tension-diaspora-nationalisme",
+    "projectId": "judeofuturisme",
+    "label": "diaspora contre nationalisme",
+    "description": "La pluralité des appartenances diasporiques s'oppose à l'homogénéité du passé et du sang du nationalisme.",
+    "scope": { "level": "project", "projectId": "judeofuturisme" },
+    "poles": ["diaspora", "nationalisme"],
+    "evidenceIds": [],
+    "status": "proposed",
+    "createdAt": "2026-08-24T00:00:00.000Z"
+  },
+  {
+    "id": "tension-passe-futur",
+    "projectId": "judeofuturisme",
+    "label": "réparer le passé contre réparer le futur",
+    "description": "Réparer le monde ne suffit plus : il faut réparer le futur, ce qui reconfigure le rapport au passé.",
+    "scope": { "level": "project", "projectId": "judeofuturisme" },
+    "poles": ["passé", "futur"],
+    "evidenceIds": [],
+    "status": "proposed",
+    "createdAt": "2026-08-24T00:00:00.000Z"
   }
 ]
