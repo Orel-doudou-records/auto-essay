@@ -8,6 +8,13 @@ import {
 import { createModelClient } from "../llm/client.js";
 import { StructuredClientAdapter } from "../llm/structuredAdapter.js";
 
+// Charge .env (OLLAMA_API_KEY / OLLAMA_MODEL) — sans dépendance externe.
+try {
+  process.loadEnvFile();
+} catch {
+  // Pas de .env : on utilise l'environnement existant.
+}
+
 /**
  * Entrée de commande générique : lecture diffractive d'un fragment posé
  * dans un livre, via le modèle configuré (OLLAMA_API_KEY / OLLAMA_MODEL).
