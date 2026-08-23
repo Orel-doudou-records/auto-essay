@@ -7,6 +7,7 @@ import {
   StylisticOperationCategorySchema,
   StylisticOperationFamilySchema,
 } from "./styleObservation";
+import { DiffractiveReadingSchema } from "./diffractiveReading";
 
 /**
  * Opération formelle proposée dans le contexte d'un projet.
@@ -104,13 +105,14 @@ export const ContentStyleArticulationSchema = z.object({
   support: ArticulationSupportSchema.optional(),
   risks: z.array(EditorialRiskSchema).default([]),
   alternatives: z.array(EditorialAlternativeSchema).default([]),
+  diffractiveReading: DiffractiveReadingSchema.optional(),
   origin: z.enum([
     "author_declared",
     "system_proposed",
     "co_constructed",
   ]),
   status: z
-    .enum(["candidate", "accepted", "modified", "rejected", "suspended"])
+    .enum(["candidate", "accepted", "modified", "rejected", "suspended", "archived"])
     .default("candidate"),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
