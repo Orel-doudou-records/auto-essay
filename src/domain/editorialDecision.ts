@@ -4,6 +4,10 @@ import {
   canBecomeEditorialDecision,
   type ContentStyleArticulation,
 } from "./contentStyleArticulation";
+import {
+  DiffractiveCutSchema,
+  type DiffractiveCutInput,
+} from "./diffractiveReading";
 
 export const EditorialDecisionStatusSchema = z.enum([
   "active",
@@ -29,6 +33,7 @@ export const EditorialDecisionSchema = z.object({
   formalCommitments: z.array(z.string().min(1)).min(1),
   invariants: z.array(z.string().min(1)).default([]),
   prohibitedShortcuts: z.array(z.string().min(1)).default([]),
+  cut: DiffractiveCutSchema.optional(),
   validation: z.object({
     validatedBy: z.literal("author"),
     validatedAt: z.string().datetime(),
@@ -50,6 +55,7 @@ export interface CreateEditorialDecisionInput {
   formalCommitments: string[];
   invariants?: string[];
   prohibitedShortcuts?: string[];
+  cut?: DiffractiveCutInput;
   validationNote?: string;
   supersedesDecisionId?: string;
 }
@@ -80,6 +86,7 @@ export function createEditorialDecision(
     formalCommitments: input.formalCommitments,
     invariants: input.invariants ?? [],
     prohibitedShortcuts: input.prohibitedShortcuts ?? [],
+    cut: input.cut ?? articulation.diffractiveReading?.pass4,
     validation: {
       validatedBy: "author",
       validatedAt: now,
