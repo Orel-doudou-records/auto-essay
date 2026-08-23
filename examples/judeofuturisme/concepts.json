@@ -42,5 +42,71 @@
     "evidenceIds": [],
     "status": "proposed",
     "createdAt": "2026-08-22T00:00:00.000Z"
+  },
+  {
+    "id": "concept-diaspora",
+    "projectId": "judeofuturisme",
+    "label": "diaspora",
+    "definition": "Condition temporelle, non spatiale : vivre dans un passé projeté vers le futur tout en survivant au présent. Une machine à différer qui empêche l'identité de se figer.",
+    "scope": { "level": "project", "projectId": "judeofuturisme" },
+    "sourceIds": [],
+    "evidenceIds": [],
+    "status": "proposed",
+    "createdAt": "2026-08-24T00:00:00.000Z"
+  },
+  {
+    "id": "concept-post-peuple",
+    "projectId": "judeofuturisme",
+    "label": "post-peuple",
+    "definition": "Communauté diasporique sans territoire ni souveraineté étatique, alternative au modèle de l'État-nation (Boyarin).",
+    "scope": { "level": "project", "projectId": "judeofuturisme" },
+    "sourceIds": ["boyarin2023"],
+    "evidenceIds": [],
+    "status": "proposed",
+    "createdAt": "2026-08-24T00:00:00.000Z"
+  },
+  {
+    "id": "concept-critical-fabulation",
+    "projectId": "judeofuturisme",
+    "label": "critical fabulation",
+    "definition": "Écriture avec et contre l'archive, mêlant recherche historique, théorie critique et narration spéculative (Hartman).",
+    "scope": { "level": "project", "projectId": "judeofuturisme" },
+    "sourceIds": ["hartman2009"],
+    "evidenceIds": [],
+    "status": "proposed",
+    "createdAt": "2026-08-24T00:00:00.000Z"
+  },
+  {
+    "id": "concept-postmemory",
+    "projectId": "judeofuturisme",
+    "label": "postmemory",
+    "definition": "Mémoire transmise si fort qu'elle devient quasi-mémoire pour la génération d'après (Hirsch).",
+    "scope": { "level": "project", "projectId": "judeofuturisme" },
+    "sourceIds": ["hirsch2012"],
+    "evidenceIds": [],
+    "status": "proposed",
+    "createdAt": "2026-08-24T00:00:00.000Z"
+  },
+  {
+    "id": "concept-chronopolitique",
+    "projectId": "judeofuturisme",
+    "label": "chronopolitique",
+    "definition": "Intervention politique dans la dimension du temps, non une simple esthétique du futur (Eshun).",
+    "scope": { "level": "project", "projectId": "judeofuturisme" },
+    "sourceIds": ["eshun2003"],
+    "evidenceIds": [],
+    "status": "proposed",
+    "createdAt": "2026-08-24T00:00:00.000Z"
+  },
+  {
+    "id": "concept-judeofuturisme",
+    "projectId": "judeofuturisme",
+    "label": "judéofuturisme",
+    "definition": "Des mondes parallèles pour repenser l'émancipation : réparer le futur, pas seulement le monde.",
+    "scope": { "level": "project", "projectId": "judeofuturisme" },
+    "sourceIds": [],
+    "evidenceIds": [],
+    "status": "proposed",
+    "createdAt": "2026-08-24T00:00:00.000Z"
   }
 ]
