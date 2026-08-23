@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --pool=forks",
     "diffract": "tsx src/diffract/cli.ts",
+    "diffract-batch": "tsx src/diffract/batchCli.ts",
     "lint": "eslint src"
   },
   "dependencies": {
