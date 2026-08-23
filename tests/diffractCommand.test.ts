@@ -175,6 +175,7 @@ describe("diffractCommand", () => {
         pass3: { entanglements: [] },
         pass4: { cut: "c", included: [], excluded: [], cutOfNonAdoption: [] },
         verdict: "integrate_now",
+        verdictDetail: "Intègre maintenant.",
         action: "a",
       }));
 

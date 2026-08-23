@@ -31,6 +31,7 @@ const fullOutput = {
     cutOfNonAdoption: ["perdre le pont afrofuturiste"],
   },
   verdict: "integrate_now",
+  verdictDetail: "Intègre maintenant.",
   action: "Réécrire l'introduction.",
 };
 
@@ -68,6 +69,7 @@ describe("DiffractiveReader", () => {
         cutOfNonAdoption: [],
       },
       verdict: "discard",
+      verdictDetail: "Ne pas intégrer.",
       action: "Archiver.",
     }));
     const reader = createDiffractiveReader({ generateJson });

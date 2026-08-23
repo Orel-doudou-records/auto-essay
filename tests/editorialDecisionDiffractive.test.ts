@@ -67,6 +67,7 @@ describe("EditorialDecision × diffractive cut", () => {
           cutOfNonAdoption: ["perdre le pont afrofuturiste"],
         },
         verdict: "integrate_now",
+        verdictDetail: "Intègre maintenant.",
         action: "Réécrire l'introduction.",
       })
     );

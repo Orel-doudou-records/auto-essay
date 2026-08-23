@@ -21,12 +21,33 @@ Réintroduire la méthode diffractive (Haraway/Barad, opérationnalisée par
   travers le fragment, enchevêtrements, coupe agentielle) + verdict forcé.
 - Le verdict (`integrate_now` / `adapt_differently` / `incubate` / `archive` /
   `discard`) remplace le « ça dépend ».
+- Le verdict porte sa **spécificité** (`verdictDetail` : le « comment /
+  déclencheur / pourquoi », ≤ 15 mots) et une **matrice de compromis**
+  (`tradeoffs` : 3–5 chemins d'adoption, chacun avec effort / réversibilité /
+  levier / distraction / verdict) — fidélité à la méthode canonique.
 - La coupe agentielle nomme les exclusions, y compris celles de la
   non-décision.
 
 La lecture diffractive enrichit `ContentStyleArticulation` (champ
 `diffractiveReading`, optionnel pour rétrocompatibilité) ; la coupe enrichit
 `EditorialDecision` (champ `cut`). Aucun nouvel objet canonique autonome.
+
+## Correspondance des verdicts (canonique → domaine)
+
+La méthode `abehmiel/diffract` utilise `adopt / adopt-differently / watch /
+pass`. Le domaine traduit ces verdicts en termes d'intégration éditoriale, et
+ajoute une valeur (`archive`) :
+
+| Canonique | Domaine |
+|-----------|---------|
+| adopt now | `integrate_now` |
+| adopt differently | `adapt_differently` |
+| watch | `incubate` |
+| pass | `discard` |
+| — (extension) | `archive` : garder comme trace, sans exécuter |
+
+Le « comment / déclencheur / pourquoi » canonique (porté par le verdict) vit
+dans `verdictDetail` ; la matrice de compromis canonique vit dans `tradeoffs`.
 
 ## Conséquences
 
