@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import {
   buildDiffractiveRequest,
+  extractConcepts,
+  extractTensions,
   formatReading,
   parseDiffractArgs,
   runDiffract,
@@ -23,14 +25,22 @@ try {
  *   npm run diffract -w @auto-essay/api -- \
  *     --statement "Le messianisme se technicise." \
  *     --book-file /chemin/vers/manuscrit.txt \
+ *     --concepts /chemin/concepts.json --tensions /chemin/tensions.json \
  *     --claims claim-1,claim-2 --sources source-1
  */
+function readJsonArray(path: string | undefined): unknown {
+  if (!path) return undefined;
+  return JSON.parse(readFileSync(path, "utf8"));
+}
+
 async function main(): Promise<void> {
   const args = parseDiffractArgs(process.argv.slice(2));
 
   const book = args.bookPath ? readFileSync(args.bookPath, "utf8") : args.book;
+  const concepts = extractConcepts(readJsonArray(args.conceptsPath));
+  const tensions = extractTensions(readJsonArray(args.tensionsPath));
 
-  const request = buildDiffractiveRequest({ ...args, book });
+  const request = buildDiffractiveRequest({ ...args, book, concepts, tensions });
 
   const client = await createModelClient();
   const structured = new StructuredClientAdapter(client);
