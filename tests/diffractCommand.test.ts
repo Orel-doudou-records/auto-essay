@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   buildDiffractiveRequest,
+  extractConcepts,
+  extractTensions,
   formatReading,
   parseDiffractArgs,
   runDiffract,
@@ -39,6 +41,20 @@ describe("diffractCommand", () => {
       expect(args.book).toBeUndefined();
     });
 
+    it("parses concepts and tensions file paths without reading them", () => {
+      const args = parseDiffractArgs([
+        "--statement",
+        "s",
+        "--concepts",
+        "/tmp/concepts.json",
+        "--tensions",
+        "/tmp/tensions.json",
+      ]);
+
+      expect(args.conceptsPath).toBe("/tmp/concepts.json");
+      expect(args.tensionsPath).toBe("/tmp/tensions.json");
+    });
+
     it("throws without a statement", () => {
       expect(() => parseDiffractArgs(["--book", "x"])).toThrow();
       expect(() => parseDiffractArgs(["--statement", "   "])).toThrow();
@@ -57,6 +73,56 @@ describe("diffractCommand", () => {
     });
   });
 
+  describe("extractConcepts", () => {
+    it("keeps only label and definition", () => {
+      expect(
+        extractConcepts([
+          {
+            id: "concept-exil",
+            label: "exil",
+            definition: "Condition diasporique.",
+            scope: { level: "project" },
+            status: "proposed",
+          },
+          { label: "sans definition" },
+          "not-an-object",
+        ])
+      ).toEqual([
+        { label: "exil", definition: "Condition diasporique." },
+        { label: "sans definition", definition: "" },
+      ]);
+    });
+
+    it("returns an empty list for non-arrays", () => {
+      expect(extractConcepts(undefined)).toEqual([]);
+      expect(extractConcepts("x")).toEqual([]);
+    });
+  });
+
+  describe("extractTensions", () => {
+    it("keeps only label and description", () => {
+      expect(
+        extractTensions([
+          {
+            id: "tension-technique-memoire",
+            label: "technique contre mémoire",
+            description: "L'avenir technologique contre la mémoire.",
+            poles: ["technique", "mémoire"],
+          },
+        ])
+      ).toEqual([
+        {
+          label: "technique contre mémoire",
+          description: "L'avenir technologique contre la mémoire.",
+        },
+      ]);
+    });
+
+    it("returns an empty list for non-arrays", () => {
+      expect(extractTensions(null)).toEqual([]);
+    });
+  });
+
   describe("buildDiffractiveRequest", () => {
     it("maps args to a request", () => {
       const request = buildDiffractiveRequest({
@@ -72,6 +138,32 @@ describe("diffractCommand", () => {
         sourceIds: ["s1"],
         book: "b",
       });
+    });
+
+    it("forwards concepts and tensions when present", () => {
+      const request = buildDiffractiveRequest({
+        statement: "s",
+        claimIds: [],
+        sourceIds: [],
+        concepts: [{ label: "exil", definition: "d" }],
+        tensions: [{ label: "t", description: "desc" }],
+      });
+
+      expect(request.concepts).toEqual([{ label: "exil", definition: "d" }]);
+      expect(request.tensions).toEqual([{ label: "t", description: "desc" }]);
+    });
+
+    it("omits empty concepts and tensions", () => {
+      const request = buildDiffractiveRequest({
+        statement: "s",
+        claimIds: [],
+        sourceIds: [],
+        concepts: [],
+        tensions: [],
+      });
+
+      expect(request.concepts).toBeUndefined();
+      expect(request.tensions).toBeUndefined();
     });
   });
 
