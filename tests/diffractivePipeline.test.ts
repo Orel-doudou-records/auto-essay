@@ -17,6 +17,7 @@ function readingOutput() {
       cutOfNonAdoption: [],
     },
     verdict: "integrate_now",
+    verdictDetail: "Intègre maintenant.",
     action: "a",
   };
 }

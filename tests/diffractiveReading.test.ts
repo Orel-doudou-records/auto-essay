@@ -41,6 +41,7 @@ describe("DiffractiveReading", () => {
         cutOfNonAdoption: ["Perdre le pont avec l'afrofuturisme"],
       },
       verdict: "integrate_now",
+      verdictDetail: "Intègre maintenant.",
       action: "Réécrire l'introduction autour de cette reformulation.",
     });
 
@@ -67,6 +68,7 @@ describe("DiffractiveReading", () => {
         cutOfNonAdoption: [],
       },
       verdict: "discard",
+      verdictDetail: "Ne pas intégrer.",
       action: "Archiver le fragment.",
     });
 

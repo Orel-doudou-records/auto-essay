@@ -7,8 +7,9 @@ import {
 } from "../domain/diffractiveReading";
 
 /**
- * Sortie brute attendue du modèle : les quatre passes + le verdict + l'action.
- * Le fragment (statement, claimIds, sourceIds) vient de la requête, pas du modèle.
+ * Sortie brute attendue du modèle : les quatre passes + le verdict (et sa
+ * spécificité) + l'action + la matrice de compromis. Le fragment (statement,
+ * claimIds, sourceIds) vient de la requête, pas du modèle.
  */
 const RawDiffractiveOutputSchema = z.object({
   pass1: z
@@ -51,7 +52,20 @@ const RawDiffractiveOutputSchema = z.object({
     cutOfNonAdoption: z.array(z.string().min(1)).default([]),
   }),
   verdict: VerdictSchema,
+  verdictDetail: z.string().min(1),
   action: z.string().min(1),
+  tradeoffs: z
+    .array(
+      z.object({
+        path: z.string().min(1),
+        effort: z.string().min(1),
+        reversibility: z.string().min(1),
+        leverage: z.string().min(1),
+        distractionTax: z.string().min(1),
+        verdict: VerdictSchema,
+      })
+    )
+    .default([]),
 });
 
 export interface DiffractiveReadingRequest {
@@ -70,8 +84,8 @@ export interface DiffractiveReadingRequest {
 }
 
 /**
- * Lecteur diffractif : produit une DiffractiveReading (4 passes + verdict forcé)
- * à partir d'un fragment posé dans le livre.
+ * Lecteur diffractif : produit une DiffractiveReading (4 passes + verdict forcé
+ * + matrice de compromis) à partir d'un fragment posé dans le livre.
  */
 export class DiffractiveReader {
   constructor(private readonly client: StructuredModelClient) {}
@@ -93,7 +107,9 @@ export class DiffractiveReader {
       pass3: parsed.pass3,
       pass4: parsed.pass4,
       verdict: parsed.verdict,
+      verdictDetail: parsed.verdictDetail,
       action: parsed.action,
+      tradeoffs: parsed.tradeoffs,
     });
   }
 }
@@ -147,12 +163,20 @@ ce qu'elle inclut, ce qu'elle exclut, et ce que la NON-décision exclurait aussi
 Les frontières sont édictées, pas trouvées.
 
 ## Verdict forcé
-Choisis UN verdict, sans « ça dépend » :
-- integrate_now : intégrer tel quel
-- adapt_differently : intégrer en déplaçant la coupe
-- incubate : pas encore mûr, garder en trace active
-- archive : garder comme trace/matériau, sans exécuter
-- discard : écarter
+Choisis UN verdict, sans « ça dépend », et donne sa spécificité (≤ 15 mots) :
+- integrate_now : intègre tel quel — verdictDetail = pourquoi maintenant
+- adapt_differently : intègre en déplaçant la coupe — verdictDetail = comment
+- incubate : pas encore mûr — verdictDetail = le déclencheur concret de réexamen
+- archive : garde comme trace sans exécuter — verdictDetail = ce qu'on garde
+- discard : écarte — verdictDetail = pourquoi
+
+## Matrice de compromis
+Énumère 3–5 chemins d'adoption réalistes, dont OBLIGATOIREMENT « ne rien changer »
+et au moins un « intégrer autrement que le fragment le propose ». Pour chaque chemin :
+effort (coût d'intégration), reversibility (peut-on retirer la coupe proprement),
+leverage (levier argumentatif), distractionTax (ce qui s'arrête pendant), et le
+verdict honnête pour CE chemin. Si une case est inconnue, écris « inconnu — besoin
+de <preuve> » plutôt que deviner.
 
 ## Action
 Une seule action concrète pour cette session.
@@ -169,6 +193,8 @@ Une seule action concrète pour cette session.
   "pass3": { "entanglements": [{"name": "string", "cutIfIntegrated": "string", "becomesIntelligible": ["string"], "becomesUnintelligible": ["string"]}] },
   "pass4": { "cut": "string", "included": ["string"], "excluded": ["string"], "cutOfNonAdoption": ["string"] },
   "verdict": "integrate_now|adapt_differently|incubate|archive|discard",
-  "action": "string"
+  "verdictDetail": "string",
+  "action": "string",
+  "tradeoffs": [{"path": "string", "effort": "string", "reversibility": "string", "leverage": "string", "distractionTax": "string", "verdict": "integrate_now|adapt_differently|incubate|archive|discard"}]
 }`;
 }

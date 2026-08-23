@@ -40,6 +40,7 @@ describe("ContentStyleArticulation × diffractive reading", () => {
           cutOfNonAdoption: ["perdre le pont afrofuturiste"],
         },
         verdict: "integrate_now",
+        verdictDetail: "Intègre maintenant.",
         action: "Réécrire l'introduction.",
       }),
     });

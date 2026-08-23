@@ -4,6 +4,14 @@ import { z } from "zod";
  * Verdict forcé issu d'une lecture diffractive (méthode Haraway/Barad,
  * opérationnalisée par abehmiel/diffract). Pas de « ça dépend » :
  * une coupe éditoriale est toujours nommée.
+ *
+ * Correspondance canonique (abehmiel/diffract) → domaine :
+ *   adopt now        → integrate_now
+ *   adopt differently→ adapt_differently
+ *   watch            → incubate
+ *   pass             → discard
+ *   (extension domaine) → archive : garder comme trace, sans exécuter.
+ * Le « comment / déclencheur / pourquoi » canonique vit dans `verdictDetail`.
  */
 export const VerdictSchema = z.enum([
   "integrate_now",
@@ -105,6 +113,24 @@ export type DiffractiveCutInput = z.input<typeof DiffractiveCutSchema>;
 export type Pass4 = DiffractiveCut;
 
 /**
+ * Une ligne de la matrice de compromis (canonique : « implementation tradeoff
+ * matrix »). Adaptée au manuscrit : coût d'intégration, réversibilité de la
+ * coupe, levier argumentatif, taxe de distraction, et verdict honnête pour
+ * CE chemin. Le chemin doit être l'un des 3–5 envisagés (dont « ne rien
+ * changer » et « intégrer autrement »).
+ */
+export const TradeoffSchema = z.object({
+  path: z.string().min(1),
+  effort: z.string().min(1),
+  reversibility: z.string().min(1),
+  leverage: z.string().min(1),
+  distractionTax: z.string().min(1),
+  verdict: VerdictSchema,
+});
+
+export type Tradeoff = z.infer<typeof TradeoffSchema>;
+
+/**
  * Lecture diffractive complète : la trace de raisonnement qui motive une
  * articulation. Jamais exécutable — c'est une matière que l'auteur valide
  * ensuite en EditorialDecision.
@@ -117,7 +143,10 @@ export const DiffractiveReadingSchema = z.object({
   pass3: Pass3Schema,
   pass4: DiffractiveCutSchema,
   verdict: VerdictSchema,
+  /** Le « comment / déclencheur / pourquoi » du verdict (≤ 15 mots). */
+  verdictDetail: z.string().min(1),
   action: z.string().min(1),
+  tradeoffs: z.array(TradeoffSchema).default([]),
   createdAt: z.string().datetime(),
 });
 
@@ -131,7 +160,9 @@ export interface CreateDiffractiveReadingInput {
   pass3?: Partial<Pass3>;
   pass4: DiffractiveCut;
   verdict: Verdict;
+  verdictDetail: string;
   action: string;
+  tradeoffs?: Tradeoff[];
 }
 
 export function createDiffractiveReading(
@@ -148,7 +179,9 @@ export function createDiffractiveReading(
     pass3: { entanglements: input.pass3?.entanglements ?? [] },
     pass4: input.pass4,
     verdict: input.verdict,
+    verdictDetail: input.verdictDetail,
     action: input.action,
+    tradeoffs: input.tradeoffs ?? [],
     createdAt: new Date().toISOString(),
   });
 }

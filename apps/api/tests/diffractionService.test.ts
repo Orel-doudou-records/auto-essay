@@ -12,6 +12,7 @@ function readingOutput() {
     pass3: { entanglements: [] },
     pass4: { cut: "COUPE", included: [], excluded: [], cutOfNonAdoption: [] },
     verdict: "integrate_now",
+    verdictDetail: "Intègre maintenant.",
     action: "a",
   };
 }
