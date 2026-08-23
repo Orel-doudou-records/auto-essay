@@ -9,6 +9,7 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --pool=forks",
+    "diffract": "tsx src/diffract/cli.ts",
     "lint": "eslint src"
   },
   "dependencies": {
