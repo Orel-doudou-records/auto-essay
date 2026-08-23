@@ -40,6 +40,9 @@ export * from "./tension";
 // Articulations entre contenu et opérations d'écriture
 export * from "./contentStyleArticulation";
 
+// Lecture diffractive : trace de raisonnement derrière une articulation
+export * from "./diffractiveReading";
+
 // Décisions éditoriales canoniques
 export * from "./editorialDecision";
 

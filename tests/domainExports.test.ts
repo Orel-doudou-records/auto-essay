@@ -3,6 +3,7 @@ import {
   ConceptSchema,
   ContentRelationSchema,
   ContentStyleArticulationSchema,
+  DiffractiveReadingSchema,
   EditorialDecisionSchema,
   EditorialPlanSchema,
   SourceRegimeSchema,
@@ -16,6 +17,7 @@ describe("domain public exports", () => {
     expect(StyleObservationSchema).toBeDefined();
     expect(ContentRelationSchema).toBeDefined();
     expect(ContentStyleArticulationSchema).toBeDefined();
+    expect(DiffractiveReadingSchema).toBeDefined();
     expect(EditorialDecisionSchema).toBeDefined();
     expect(EditorialPlanSchema).toBeDefined();
   });
