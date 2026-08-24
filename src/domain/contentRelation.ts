@@ -2,6 +2,11 @@ import { z } from "zod";
 
 /**
  * Portée éditoriale commune aux relations, articulations, décisions et plans.
+ *
+ * Contrat (ADR-006, R2-Q2) : `sectionId` et `paragraphId` sont des ids de
+ * NŒUDS de l'ARBRE du manuscrit (parties), pas des positions textuelles.
+ * Un id de nœud désigne toute la sous-partie (titre + texte propre +
+ * descendants). Helpers de résolution/cohérence : src/domain/scopeResolution.ts
  */
 export const EditorialScopeSchema = z
   .object({
