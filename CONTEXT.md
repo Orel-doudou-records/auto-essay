@@ -30,6 +30,9 @@ l'implémentation.
 - **Coupe déjà édictée** (`ExistingCut`) : engagement de l'auteur déjà pris
   (scope + verdict + coupe) avec lequel le lecteur diffractif compose — il ne
   recommande pas de la réédicter, il ne la contredit pas en silence.
+- **Statut d'assemblage** : statut d'une position dans le livre (arbre),
+  distinct du statut de rédaction de l'unité — une unité rédigée peut être
+  montée dans un chapitre ébauche.
 
 ## Frontière
 
