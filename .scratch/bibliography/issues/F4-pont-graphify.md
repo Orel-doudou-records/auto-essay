@@ -33,3 +33,5 @@ canonique reste dans Autoessay.
 - Tests : parse `graph.json` réel (fixture du chapitre « Jews in space »),
   BFS budgeté, qualification avec fake client, chemins.
 - Typecheck complet (core + api) avant merge.
+## Statut : ✅ livré (PR #60, merge fbaf407)
+
