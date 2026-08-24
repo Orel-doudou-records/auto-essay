@@ -1,105 +1,137 @@
 import { describe, expect, it } from "vitest";
+import type { Manuscript, Source } from "../src/domain";
+import type { Citation, CitationUse } from "../src/domain/citation";
 import {
-  CitationSchema,
-  CitationUseSchema,
-} from "../src/domain/citation";
-import { createDraftUnit, DraftUnitSchema } from "../src/domain/draftUnit";
+  assertCiteable,
+  citationsForUnit,
+  findUnitScope,
+  formatCitation,
+  sourceYear,
+} from "../src/bibliography/citation";
 
-describe("Citation", () => {
-  it("parses a verified citation with a page locator", () => {
-    const citation = CitationSchema.parse({
-      id: "citation-1",
-      projectId: "project-1",
-      sourceId: "source-1",
-      quote: "A verified quotation.",
-      locator: { kind: "page", value: "42" },
-      verificationStatus: "verified",
-      createdAt: "2026-07-21T10:00:00.000Z",
-    });
+const manuscript = {
+  id: "m1",
+  projectId: "p1",
+  title: "Essai",
+  tree: [
+    {
+      kind: "node" as const,
+      id: "chap-2",
+      title: "Chapitre 2 — Le salon",
+      children: [],
+      plan: [{ id: "e1", subject: "Le salon", unitId: "u-par", unitVersion: 1 }],
+    },
+    {
+      kind: "node" as const,
+      id: "acte-3",
+      title: "Acte III",
+      children: [
+        {
+          kind: "leaf" as const,
+          unitId: "u-feuille",
+          version: 2,
+        },
+      ],
+    },
+  ],
+} as unknown as Manuscript;
 
-    expect(citation.locator).toEqual({ kind: "page", value: "42" });
-    expect(citation.verificationStatus).toBe("verified");
+const distribution = [
+  { sourceId: "src-1", scopeId: "chap-2" },
+  { sourceId: "src-2", scopeId: "chap-2" },
+];
+
+const citations: Citation[] = [
+  {
+    id: "cit-1",
+    projectId: "p1",
+    sourceId: "src-1",
+    quote: "…",
+    locator: { kind: "section", value: "3" },
+    verificationStatus: "verified",
+    createdAt: "2026-08-24T12:00:00.000Z",
+  },
+  {
+    id: "cit-2",
+    projectId: "p1",
+    sourceId: "src-9",
+    quote: "…",
+    locator: { kind: "section", value: "1" },
+    verificationStatus: "unverified",
+    createdAt: "2026-08-24T12:00:00.000Z",
+  },
+];
+
+const uses: CitationUse[] = [
+  { citationId: "cit-1", draftUnitId: "u-par", draftUnitVersion: 1 },
+  { citationId: "cit-2", draftUnitId: "u-par", draftUnitVersion: 1 },
+];
+
+describe("findUnitScope", () => {
+  it("résout le scope d'une unité liée à une entrée de plan (E4)", () => {
+    expect(findUnitScope(manuscript, "u-par")).toBe("chap-2");
   });
 
-  it("parses a citation use with a valid character range", () => {
-    expect(
-      CitationUseSchema.parse({
-        citationId: "citation-1",
-        draftUnitId: "draft-unit-1",
-        draftUnitVersion: 1,
-        characterRange: { start: 0, end: 24 },
-      })
-    ).toEqual({
-      citationId: "citation-1",
-      draftUnitId: "draft-unit-1",
-      draftUnitVersion: 1,
-      characterRange: { start: 0, end: 24 },
-    });
+  it("résout le scope d'une feuille = son nœud parent (T1)", () => {
+    expect(findUnitScope(manuscript, "u-feuille")).toBe("acte-3");
   });
 
-  it("rejects a citation use whose character range is empty", () => {
-    expect(() =>
-      CitationUseSchema.parse({
-        citationId: "citation-1",
-        draftUnitId: "draft-unit-1",
-        draftUnitVersion: 1,
-        characterRange: { start: 12, end: 12 },
-      })
-    ).toThrow();
+  it("renvoie undefined pour une unité inconnue", () => {
+    expect(findUnitScope(manuscript, "absent")).toBeUndefined();
   });
+});
 
-  it("gives new draft units no citation uses by default", () => {
-    const unit = createDraftUnit({
-      projectId: "project-1",
-      granularity: "paragraph",
-    });
-
-    expect(unit.citationUses).toEqual([]);
-  });
-
-  it("normalizes citation uses passed to the draft unit factory", () => {
-    const citationUses = [
-      {
-        citationId: "citation-1",
-        draftUnitId: "other-draft-unit",
-        draftUnitVersion: 99,
-        characterRange: { start: 3, end: 18 },
-      },
-    ];
-
-    const unit = createDraftUnit({
-      projectId: "project-1",
-      granularity: "paragraph",
-      citationUses,
-    });
-
-    expect(unit.citationUses).toEqual([
-      {
-        citationId: "citation-1",
-        draftUnitId: unit.id,
-        draftUnitVersion: unit.version,
-        characterRange: { start: 3, end: 18 },
-      },
+describe("citationsForUnit + assertCiteable", () => {
+  it("filtre les usages par unité", () => {
+    expect(citationsForUnit("u-par", uses).map((u) => u.citationId)).toEqual([
+      "cit-1",
+      "cit-2",
     ]);
   });
 
-  it("rejects a draft unit whose citation use targets another unit or version", () => {
-    const unit = createDraftUnit({
-      projectId: "project-1",
-      granularity: "paragraph",
-    });
+  it("accepte une citation dont la source est distribuée sur le scope", () => {
+    expect(() =>
+      assertCiteable(manuscript, "u-par", distribution, [uses[0]], citations)
+    ).not.toThrow();
+  });
 
-    const result = DraftUnitSchema.safeParse({
-      ...unit,
-      citationUses: [
-        {
-          citationId: "citation-1",
-          draftUnitId: "other-draft-unit",
-          draftUnitVersion: unit.version + 1,
-        },
-      ],
-    });
+  it("refuse une citation dont la source n'est pas distribuée sur le scope", () => {
+    expect(() =>
+      assertCiteable(manuscript, "u-par", distribution, uses, citations)
+    ).toThrow("not distributed on scope 'chap-2'");
+  });
 
-    expect(result.success).toBe(false);
+  it("ne vérifie rien si l'unité n'a pas de scope", () => {
+    expect(() =>
+      assertCiteable(manuscript, "absente", distribution, uses, citations)
+    ).not.toThrow();
+  });
+});
+
+describe("sourceYear + formatCitation", () => {
+  const source: Source = {
+    id: "src-1",
+    type: "book",
+    title: "More Wandering Stars",
+    authors: ["Jack Dann"],
+    content: "",
+    publicationDate: "1981-06-01",
+    publisher: "Bantam",
+    projectId: "p1",
+  };
+
+  it("extrait l'année de publicationDate", () => {
+    expect(sourceYear(source)).toBe("1981");
+    expect(sourceYear({ ...source, publicationDate: undefined })).toBe("s.d.");
+  });
+
+  it("formate en parenthetical (Auteur, année)", () => {
+    expect(formatCitation(source)).toBe("(Jack Dann, 1981)");
+  });
+
+  it("formate en note de bas de page", () => {
+    expect(formatCitation(source, "footnote")).toBe(
+      "Jack Dann, More Wandering Stars, Bantam, 1981."
+    );
   });
 });
