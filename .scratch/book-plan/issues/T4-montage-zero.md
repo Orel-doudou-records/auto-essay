@@ -22,3 +22,5 @@ paragraphe → rédaction → lecture plan-aware → unité liée.
 ## Pièges connus
 - Ne pas casser le run.ts existant (projection) ; fichiers de données UTF-8 via
   `write` + `Copy-Item` ; pas de clé/secrets commités.
+## Statut : ✅ livré (PR #55, merge 2e4ba70)
+
