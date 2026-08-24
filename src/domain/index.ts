@@ -8,6 +8,7 @@ export * from "./claim";
 // Unités de rédaction
 export * from "./draftUnit";
 export * from "./manuscript";
+export * from "./manuscriptStatus";
 
 // Projets essayistiques
 export * from "./essayProject";
