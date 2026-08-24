@@ -115,6 +115,9 @@ export interface BookPlanEntryInput {
   subject: string;
   preview?: string;
   notes?: BookPlanNoteInput[];
+  /** Référence à l'unité réalisée (trace) : paragraphe déjà écrit. */
+  unitId?: string;
+  unitVersion?: number;
 }
 
 export interface BookPlanInput {

@@ -27,12 +27,28 @@ export type PlanNoteInput = z.input<typeof PlanNoteSchema>;
  * le modèle ; `notes` = fil humain/agent. Quand le paragraphe est écrit,
  * l'entrée devient une feuille liée — elle n'est pas détruite.
  */
-export const PlanEntrySchema = z.object({
-  id: z.string().min(1),
-  subject: z.string().min(1),
-  preview: z.string().optional(),
-  notes: z.array(PlanNoteSchema).default([]),
-});
+export const PlanEntrySchema = z
+  .object({
+    id: z.string().min(1),
+    subject: z.string().min(1),
+    preview: z.string().optional(),
+    notes: z.array(PlanNoteSchema).default([]),
+    /**
+     * Référence à l'unité rédigée qui réalise ce paragraphe. L'entrée n'est
+     * jamais détruite : c'est la trace du plan (spec E, E4).
+     */
+    unitId: z.string().min(1).optional(),
+    unitVersion: z.number().int().min(1).optional(),
+  })
+  .superRefine((entry, context) => {
+    if ((entry.unitId === undefined) !== (entry.unitVersion === undefined)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["unitVersion"],
+        message: "unitId and unitVersion must be set together",
+      });
+    }
+  });
 
 export type PlanEntry = z.infer<typeof PlanEntrySchema>;
 export type PlanEntryInput = z.input<typeof PlanEntrySchema>;

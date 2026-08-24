@@ -12,6 +12,7 @@
     "diffract": "tsx src/diffract/cli.ts",
     "diffract-batch": "tsx src/diffract/batchCli.ts",
     "diffract-plan": "tsx src/diffract/planCli.ts",
+    "draft-plan": "tsx src/diffract/draftCli.ts",
     "lint": "eslint src"
   },
   "dependencies": {

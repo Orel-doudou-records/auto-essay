@@ -170,6 +170,8 @@ export function extractBookPlan(raw: unknown): BookPlanInput[] {
         subject?: unknown;
         preview?: unknown;
         notes?: unknown;
+        unitId?: unknown;
+        unitVersion?: unknown;
       } | null;
       if (!rawEntry || typeof rawEntry.id !== "string" || typeof rawEntry.subject !== "string") {
         continue;
@@ -192,6 +194,9 @@ export function extractBookPlan(raw: unknown): BookPlanInput[] {
         subject: rawEntry.subject,
         preview: typeof rawEntry.preview === "string" ? rawEntry.preview : undefined,
         notes: notes.length > 0 ? notes : undefined,
+        unitId: typeof rawEntry.unitId === "string" ? rawEntry.unitId : undefined,
+        unitVersion:
+          typeof rawEntry.unitVersion === "number" ? rawEntry.unitVersion : undefined,
       });
     }
     if (entries.length === 0) continue;
