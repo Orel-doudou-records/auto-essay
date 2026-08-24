@@ -25,3 +25,5 @@ un id d'entrée dupliqué → `safeParse` échoue.
 - Écriture UTF-8 via `write` + `Copy-Item` (accents) ;
 - tests zod : `toEqual` (re-parse) ; `.mjs` sans `return` top-level ;
 - ne PAS rendre `plan`/`notes` obligatoires (rétro-compatibilité D).
+## Statut : ✅ livré (PR #52, merge ec6bb5e)
+
