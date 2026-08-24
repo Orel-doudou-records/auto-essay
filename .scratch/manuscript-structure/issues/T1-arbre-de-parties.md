@@ -53,3 +53,5 @@ manuscrit doit devenir un **arbre de parties** à profondeur libre.
   git normalisera (warning bénin).
 - Schémas récursifs zod : types déclarés avant les schémas, `z.lazy` pour le
   nœud, `z.union` (pas discriminatedUnion) pour l'enfant.
+## Statut : ✅ livré (PR #49, merge 22a71f4)
+
