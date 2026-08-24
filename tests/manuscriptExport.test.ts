@@ -3,6 +3,7 @@ import {
   CitationSchema,
   createDraftUnit,
   createManuscript,
+  createManuscriptLeaf,
   createSource,
 } from "../src/domain";
 import { compileManuscript } from "../src";
@@ -21,12 +22,16 @@ function citationFor(sourceId: string, id: string) {
   });
 }
 
+function leafFor(unit: { id: string; version: number }) {
+  return createManuscriptLeaf(unit.id, unit.version);
+}
+
 describe("compileManuscript", () => {
   it("est exposée par l'API publique", () => {
     expect(compileManuscript).toBeTypeOf("function");
   });
 
-  it("compile les unités ordonnées et déduplique les sources dans leur ordre d'apparition", () => {
+  it("compile les unités dans l'ordre de l'arbre et déduplique les sources", () => {
     const sourceWithDoi = createSource({
       projectId,
       type: "article",
@@ -82,10 +87,7 @@ describe("compileManuscript", () => {
     const manuscript = createManuscript({
       projectId,
       title: "Essai compilé",
-      units: [
-        { unitId: conclusion.id, version: conclusion.version, order: 1 },
-        { unitId: introduction.id, version: introduction.version, order: 0 },
-      ],
+      tree: [leafFor(introduction), leafFor(conclusion)],
     });
 
     const result = compileManuscript(
@@ -106,11 +108,46 @@ describe("compileManuscript", () => {
     );
   });
 
+  it("rend les nœuds de l'arbre en en-têtes et leur texte propre", () => {
+    const unit = createDraftUnit({
+      projectId,
+      granularity: "paragraph",
+      content: "Contenu du chapitre.",
+    });
+    const manuscript = createManuscript({
+      projectId,
+      title: "Essai structuré",
+      tree: [
+        {
+          kind: "node",
+          id: "acte-1",
+          title: "Acte I",
+          text: "Préambule de l'acte.",
+          children: [
+            {
+              kind: "node",
+              id: "chap-1",
+              title: "Chapitre 1",
+              children: [leafFor(unit)],
+            },
+          ],
+        },
+      ],
+    });
+
+    const result = compileManuscript(manuscript, [unit], [], []);
+
+    expect(result.markdown).toContain("## Acte I");
+    expect(result.markdown).toContain("Préambule de l'acte.");
+    expect(result.markdown).toContain("### Chapitre 1");
+    expect(result.markdown).toContain("Contenu du chapitre.");
+  });
+
   it("refuse une unité ou version introuvable", () => {
     const manuscript = createManuscript({
       projectId,
       title: "Essai incomplet",
-      units: [{ unitId: "unit-conclusion", version: 2, order: 0 }],
+      tree: [createManuscriptLeaf("unit-conclusion", 2)],
     });
 
     expect(() => compileManuscript(manuscript, [], [], [])).toThrow(
@@ -134,7 +171,7 @@ describe("compileManuscript", () => {
     const manuscript = createManuscript({
       projectId,
       title: "Essai incomplet",
-      units: [{ unitId: unit.id, version: unit.version, order: 0 }],
+      tree: [leafFor(unit)],
     });
 
     expect(() => compileManuscript(manuscript, [unit], [], [])).toThrow(
@@ -165,7 +202,7 @@ describe("compileManuscript", () => {
     const manuscript = createManuscript({
       projectId,
       title: "Essai incomplet",
-      units: [{ unitId: unit.id, version: unit.version, order: 0 }],
+      tree: [leafFor(unit)],
     });
 
     expect(() =>
@@ -197,7 +234,7 @@ describe("compileManuscript", () => {
     const manuscript = createManuscript({
       projectId,
       title: "Essai incomplet",
-      units: [{ unitId: unit.id, version: unit.version, order: 0 }],
+      tree: [leafFor(unit)],
     });
 
     expect(() =>
@@ -256,7 +293,7 @@ describe("compileManuscript", () => {
     const manuscript = createManuscript({
       projectId,
       title: "Références APA",
-      units: [{ unitId: unit.id, version: unit.version, order: 0 }],
+      tree: [leafFor(unit)],
     });
 
     const result = compileManuscript(manuscript, [unit], citations, sources);
@@ -278,7 +315,7 @@ describe("compileManuscript", () => {
     const manuscript = createManuscript({
       projectId,
       title: "Essai incomplet",
-      units: [{ unitId: unit.id, version: unit.version, order: 0 }],
+      tree: [leafFor(unit)],
     });
     const foreignCitation = CitationSchema.parse({
       ...citationFor("source-1", "citation-étrangère"),
@@ -339,7 +376,7 @@ describe("compileManuscript", () => {
     const manuscript = createManuscript({
       projectId,
       title: "Essai incomplet",
-      units: [{ unitId: unit.id, version: unit.version, order: 0 }],
+      tree: [leafFor(unit)],
     });
 
     expect(() =>
