@@ -31,3 +31,5 @@ Projeter les sources vers les scopes du manuscrit : `distributeBibliography`
 - Tests : validation (scopeId inconnu refusé), mode pur (matching déterministe),
   mode assisté (fake client), projection par scope.
 - Typecheck complet (core + api) avant merge.
+## Statut : ✅ livré (PR #57, merge fdce71a)
+
