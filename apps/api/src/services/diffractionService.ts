@@ -1,17 +1,21 @@
 import {
   createDiffractiveBatchRunner,
   createDiffractivePipeline,
+  type BookPartInput,
   type ContentStyleArticulation,
   type DecisionCommitmentsInput,
   type DiffractiveBatchFragment,
   type DiffractiveBatchResult,
   type DiffractiveReading,
+  type ExistingCutInput,
   type FragmentDecisionResult,
   type StructuredModelClient,
 } from "@auto-essay/core";
 
 export interface DiffractContext {
   book?: string;
+  bookParts?: BookPartInput[];
+  existingCuts?: ExistingCutInput[];
   concepts?: Array<{ label: string; definition: string }>;
   tensions?: Array<{ label: string; description: string }>;
 }
@@ -21,6 +25,8 @@ export interface DiffractInput {
   claimIds?: string[];
   sourceIds?: string[];
   book?: string;
+  bookParts?: BookPartInput[];
+  existingCuts?: ExistingCutInput[];
   concepts?: Array<{ label: string; definition: string }>;
   tensions?: Array<{ label: string; description: string }>;
 }
@@ -28,6 +34,8 @@ export interface DiffractInput {
 export interface DiffractBatchInput {
   fragments: DiffractiveBatchFragment[];
   book?: string;
+  bookParts?: BookPartInput[];
+  existingCuts?: ExistingCutInput[];
   concepts?: Array<{ label: string; definition: string }>;
   tensions?: Array<{ label: string; description: string }>;
 }
@@ -59,7 +67,13 @@ export class DiffractionService {
         claimIds: input.claimIds,
         sourceIds: input.sourceIds,
       },
-      { book: input.book, concepts: input.concepts, tensions: input.tensions }
+      {
+        book: input.book,
+        bookParts: input.bookParts,
+        existingCuts: input.existingCuts,
+        concepts: input.concepts,
+        tensions: input.tensions,
+      }
     );
   }
 
@@ -67,6 +81,8 @@ export class DiffractionService {
     return this.batch.run({
       fragments: input.fragments,
       book: input.book,
+      bookParts: input.bookParts,
+      existingCuts: input.existingCuts,
       concepts: input.concepts,
       tensions: input.tensions,
     });

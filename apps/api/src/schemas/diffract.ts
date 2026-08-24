@@ -15,11 +15,37 @@ const TensionsSchema = z.array(
   })
 );
 
+const BookPartsSchema = z.array(
+  z.object({
+    id: z.string().min(1),
+    title: z.string().min(1),
+    status: z.enum([
+      "drafting",
+      "reviewing",
+      "revising",
+      "verified",
+      "published",
+      "archived",
+    ]),
+    text: z.string(),
+  })
+);
+
+const ExistingCutsSchema = z.array(
+  z.object({
+    scope: z.string().min(1),
+    verdict: z.string().min(1),
+    cut: z.string().min(1),
+  })
+);
+
 export const DiffractBodySchema = z.object({
   statement: z.string().min(1),
   claimIds: z.array(z.string().min(1)).optional(),
   sourceIds: z.array(z.string().min(1)).optional(),
   book: z.string().optional(),
+  bookParts: BookPartsSchema.optional(),
+  existingCuts: ExistingCutsSchema.optional(),
   concepts: ConceptsSchema.optional(),
   tensions: TensionsSchema.optional(),
 });
@@ -35,6 +61,8 @@ export const DiffractBatchBodySchema = z.object({
     )
     .min(1),
   book: z.string().optional(),
+  bookParts: BookPartsSchema.optional(),
+  existingCuts: ExistingCutsSchema.optional(),
   concepts: ConceptsSchema.optional(),
   tensions: TensionsSchema.optional(),
 });
@@ -56,6 +84,8 @@ export const DiffractivePipelineBodySchema = z.object({
   context: z
     .object({
       book: z.string().optional(),
+      bookParts: BookPartsSchema.optional(),
+      existingCuts: ExistingCutsSchema.optional(),
       concepts: ConceptsSchema.optional(),
       tensions: TensionsSchema.optional(),
     })
