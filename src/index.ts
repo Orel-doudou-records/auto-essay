@@ -42,6 +42,9 @@ export * from "./state/index.js";
 // Ingestion
 export * from "./ingestion/index.js";
 
+// Bibliothèque : index bibliographique + profils (spec F)
+export * from "./bibliography/index.js";
+
 // Analyse et planification éditoriales
 export * from "./editorial/index.js";
 

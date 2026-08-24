@@ -2,6 +2,9 @@
 export * from "./source";
 export * from "./citation";
 
+// Profils sémantiques compacts (bibliothèque, spec F)
+export * from "./sourceProfile";
+
 // Assertions et claims
 export * from "./claim";
 
