@@ -1,4 +1,5 @@
 import type { Citation, DraftUnit, Manuscript, Source } from "../domain";
+import { collectLeafReferences } from "../domain";
 
 export interface ManuscriptExport {
   markdown: string;
@@ -11,12 +12,9 @@ export function compileManuscript(
   citations: Citation[],
   sources: Source[]
 ): ManuscriptExport {
-  const compiledUnits = [...manuscript.units]
-    .sort((left, right) => left.order - right.order)
-    .map((reference) => {
-      const unit = resolveUnit(manuscript, reference.unitId, reference.version, units);
-      return unit;
-    });
+  const compiledUnits = collectLeafReferences(manuscript.tree).map((leaf) =>
+    resolveUnit(manuscript, leaf.unitId, leaf.version, units)
+  );
   const referencedSources: Source[] = [];
   const sourceIds = new Set<string>();
 
@@ -30,7 +28,11 @@ export function compileManuscript(
           `Citation use must target draft unit ${unit.id}@${unit.version}`
         );
       }
-      validateCharacterRange(citationUse.characterRange, unit.content, citationUse.citationId);
+      validateCharacterRange(
+        citationUse.characterRange,
+        unit.content,
+        citationUse.citationId
+      );
       const citation = resolveProjectRecord(
         "Citation",
         citationUse.citationId,
@@ -53,7 +55,7 @@ export function compileManuscript(
 
   const sections = [
     `# ${manuscript.title}`,
-    ...compiledUnits.map((unit) => unit.content),
+    ...renderParts(manuscript.tree, manuscript, units, 2),
     "## Références",
   ];
   const references = referencedSources.map(formatApaReference).join("\n");
@@ -64,13 +66,39 @@ export function compileManuscript(
   };
 }
 
+/**
+ * Parcourt l'arbre en ordre : nœud → en-tête markdown (niveau croissant) +
+ * texte propre le cas échéant, puis enfants ; feuille → contenu de l'unité.
+ */
+function renderParts(
+  parts: Manuscript["tree"],
+  manuscript: Manuscript,
+  units: DraftUnit[],
+  level: number
+): string[] {
+  const lines: string[] = [];
+  for (const part of parts) {
+    if (part.kind === "node") {
+      lines.push(`${"#".repeat(Math.min(level, 6))} ${part.title}`);
+      if (part.text) lines.push(part.text);
+      lines.push(...renderParts(part.children, manuscript, units, level + 1));
+    } else {
+      const unit = resolveUnit(manuscript, part.unitId, part.version, units);
+      lines.push(unit.content);
+    }
+  }
+  return lines;
+}
+
 function resolveUnit(
   manuscript: Manuscript,
   unitId: string,
   version: number,
   units: DraftUnit[]
 ): DraftUnit {
-  const matches = units.filter((unit) => unit.id === unitId && unit.version === version);
+  const matches = units.filter(
+    (unit) => unit.id === unitId && unit.version === version
+  );
   const key = `${unitId}@${version}`;
 
   if (matches.length === 0) {
@@ -124,9 +152,10 @@ function validateCharacterRange(
 
 function formatApaReference(source: Source): string {
   const date = source.publicationDate ?? "n.d.";
-  const parts = source.authors.length > 0
-    ? [`${formatAuthors(source.authors)} (${date}). ${source.title}.`]
-    : [`${source.title}. (${date}).`];
+  const parts =
+    source.authors.length > 0
+      ? [`${formatAuthors(source.authors)} (${date}). ${source.title}.`]
+      : [`${source.title}. (${date}).`];
 
   if (source.publisher) {
     parts.push(`${source.publisher}.`);
@@ -163,7 +192,9 @@ function formatAuthor(author: string): string {
 
   const names = trimmed.split(/\s+/);
   const surname = names.pop();
-  const initials = names.map((name) => `${name[0]?.toUpperCase()}.`).join(" ");
+  const initials = names
+    .map((name) => `${name[0]?.toUpperCase()}.`)
+    .join(" ");
 
   return initials ? `${surname}, ${initials}` : surname ?? "";
 }
