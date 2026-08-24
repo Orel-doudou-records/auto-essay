@@ -1,7 +1,9 @@
 import { readFileSync } from "node:fs";
 import {
   buildDiffractiveRequest,
+  extractBookParts,
   extractConcepts,
+  extractExistingCuts,
   extractTensions,
   formatReading,
   parseDiffractArgs,
@@ -27,6 +29,7 @@ try {
  *     --book-file /chemin/vers/manuscrit.txt \
  *     --concepts /chemin/concepts.json --tensions /chemin/tensions.json \
  *     --claims claim-1,claim-2 --sources source-1
+ *     --book-parts /chemin/bookParts.json --cuts /chemin/cuts.json
  */
 function readJsonArray(path: string | undefined): unknown {
   if (!path) return undefined;
@@ -39,8 +42,17 @@ async function main(): Promise<void> {
   const book = args.bookPath ? readFileSync(args.bookPath, "utf8") : args.book;
   const concepts = extractConcepts(readJsonArray(args.conceptsPath));
   const tensions = extractTensions(readJsonArray(args.tensionsPath));
+  const bookParts = extractBookParts(readJsonArray(args.bookPartsPath));
+  const existingCuts = extractExistingCuts(readJsonArray(args.cutsPath));
 
-  const request = buildDiffractiveRequest({ ...args, book, concepts, tensions });
+  const request = buildDiffractiveRequest({
+    ...args,
+    book,
+    concepts,
+    tensions,
+    bookParts,
+    existingCuts,
+  });
 
   const client = await createModelClient();
   const structured = new StructuredClientAdapter(client);

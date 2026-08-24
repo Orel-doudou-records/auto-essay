@@ -1,7 +1,10 @@
 import {
   createDiffractiveReader,
+  type BookPartInput,
   type DiffractiveReadingRequest,
+  type ExistingCutInput,
 } from "./diffractiveReader";
+import type { DraftUnitStatus } from "../domain/draftUnit";
 import type { StructuredModelClient } from "../evaluation/evaluateEssay";
 import type { DiffractiveReading } from "../domain/diffractiveReading";
 
@@ -20,8 +23,12 @@ export interface DiffractCliArgs {
   sourceIds: string[];
   conceptsPath?: string;
   tensionsPath?: string;
+  bookPartsPath?: string;
+  cutsPath?: string;
   concepts?: Array<{ label: string; definition: string }>;
   tensions?: Array<{ label: string; description: string }>;
+  bookParts?: BookPartInput[];
+  existingCuts?: ExistingCutInput[];
 }
 
 /**
@@ -66,6 +73,64 @@ export function extractTensions(
 }
 
 /**
+ * Extrait des BookPartInput d'un fichier JSON brut (bookParts.json) :
+ * { id, title, status, text }. Fonction pure, sans I/O.
+ */
+export function extractBookParts(raw: unknown): BookPartInput[] {
+  if (!Array.isArray(raw)) return [];
+  const out: BookPartInput[] = [];
+  for (const item of raw) {
+    const p = item as {
+      id?: unknown;
+      title?: unknown;
+      status?: unknown;
+      text?: unknown;
+    } | null;
+    if (
+      !p ||
+      typeof p.id !== "string" ||
+      typeof p.title !== "string" ||
+      typeof p.status !== "string"
+    ) {
+      continue;
+    }
+    out.push({
+      id: p.id,
+      title: p.title,
+      status: p.status as DraftUnitStatus,
+      text: typeof p.text === "string" ? p.text : "",
+    });
+  }
+  return out;
+}
+
+/**
+ * Extrait des ExistingCutInput d'un fichier JSON brut (cuts.json) :
+ * { scope, verdict, cut }. Fonction pure, sans I/O.
+ */
+export function extractExistingCuts(raw: unknown): ExistingCutInput[] {
+  if (!Array.isArray(raw)) return [];
+  const out: ExistingCutInput[] = [];
+  for (const item of raw) {
+    const c = item as {
+      scope?: unknown;
+      verdict?: unknown;
+      cut?: unknown;
+    } | null;
+    if (
+      !c ||
+      typeof c.scope !== "string" ||
+      typeof c.verdict !== "string" ||
+      typeof c.cut !== "string"
+    ) {
+      continue;
+    }
+    out.push({ scope: c.scope, verdict: c.verdict, cut: c.cut });
+  }
+  return out;
+}
+
+/**
  * Parse les arguments d'une ligne de commande :
  * --statement <texte> --book <texte> --book-file <chemin>
  * --claims <a,b,c> --sources <a,b,c>
@@ -83,6 +148,8 @@ export function parseDiffractArgs(argv: string[]): DiffractCliArgs {
     else if (flag === "--sources") args.sourceIds = splitList(argv[++i]);
     else if (flag === "--concepts") args.conceptsPath = argv[++i] ?? "";
     else if (flag === "--tensions") args.tensionsPath = argv[++i] ?? "";
+    else if (flag === "--book-parts") args.bookPartsPath = argv[++i] ?? "";
+    else if (flag === "--cuts") args.cutsPath = argv[++i] ?? "";
   }
 
   if (!args.statement.trim()) {
@@ -114,6 +181,12 @@ export function buildDiffractiveRequest(
   }
   if (args.tensions && args.tensions.length > 0) {
     request.tensions = args.tensions;
+  }
+  if (args.bookParts && args.bookParts.length > 0) {
+    request.bookParts = args.bookParts;
+  }
+  if (args.existingCuts && args.existingCuts.length > 0) {
+    request.existingCuts = args.existingCuts;
   }
   return request;
 }

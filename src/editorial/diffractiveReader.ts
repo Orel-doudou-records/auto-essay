@@ -5,6 +5,10 @@ import {
   VerdictSchema,
   type DiffractiveReading,
 } from "../domain/diffractiveReading";
+import {
+  DraftUnitStatusSchema,
+  type DraftUnitStatus,
+} from "../domain/draftUnit";
 
 /**
  * Sortie brute attendue du modèle : les quatre passes + le verdict (et sa
@@ -68,6 +72,29 @@ const RawDiffractiveOutputSchema = z.object({
     .default([]),
 });
 
+/**
+ * Une partie du livre en cours d'écriture, avec son statut de rédaction.
+ * `text` peut être vide : une partie planifiée mais pas encore écrite est un
+ * état légitime que le lecteur doit connaître (« (pas encore écrit) »).
+ */
+export interface BookPartInput {
+  id: string;
+  title: string;
+  status: DraftUnitStatus;
+  text: string;
+}
+
+/**
+ * Une coupe déjà édictée par l'auteur (décision active). Le lecteur diffractif
+ * compose avec ces coupes au lieu de les réinventer ou de les contredire en
+ * silence.
+ */
+export interface ExistingCutInput {
+  scope: string;
+  verdict: string;
+  cut: string;
+}
+
 export interface DiffractiveReadingRequest {
   /** La position à diffracter. */
   statement: string;
@@ -75,12 +102,93 @@ export interface DiffractiveReadingRequest {
   claimIds?: string[];
   /** Sources référencées par le fragment. */
   sourceIds?: string[];
-  /** Le livre en cours d'écriture (extraits ou texte complet). */
+  /** Le livre en cours d'écriture (texte brut, forme historique). */
   book?: string;
+  /**
+   * Le livre en cours d'écriture, structuré partie par partie avec statut.
+   * Si fourni, prime sur `book` : le lecteur voit l'état du chantier.
+   */
+  bookParts?: BookPartInput[];
+  /** Coupes déjà édictées — le verdict compose avec l'existant. */
+  existingCuts?: ExistingCutInput[];
   /** Concepts déjà nommés dans le corpus. */
   concepts?: Array<{ label: string; definition: string }>;
   /** Tensions déjà nommées dans le corpus. */
   tensions?: Array<{ label: string; description: string }>;
+}
+
+const STATUS_LABELS: Record<DraftUnitStatus, string> = {
+  drafting: "ÉBAUCHE",
+  reviewing: "EN RÉVISION",
+  revising: "EN RÉÉCRITURE",
+  verified: "RÉDIGÉ (validé)",
+  published: "PUBLIÉ",
+  archived: "ARCHIVÉ",
+};
+
+/** Libellé français du statut d'une partie, pour le prompt. */
+export function statusLabel(status: DraftUnitStatus): string {
+  return STATUS_LABELS[status] ?? status;
+}
+
+/** Une ligne « [STATUT] titre (id) — texte | (pas encore écrit) ». */
+export function formatBookPart(part: BookPartInput): string {
+  const body = part.text.trim()
+    ? ` — ${part.text}`
+    : " — (pas encore écrit)";
+  return `- [${statusLabel(part.status)}] ${part.title} (${part.id})${body}`;
+}
+
+/** Une ligne « scope : verdict verdict — cut ». */
+export function formatExistingCut(cut: ExistingCutInput): string {
+  return `- ${cut.scope} : verdict ${cut.verdict} — ${cut.cut}`;
+}
+
+/** Validation légère d'un bookParts fourni (déterministe, sans I/O). */
+export function assertBookPartsValid(parts: BookPartInput[]): void {
+  if (parts.length === 0) {
+    throw new Error("bookParts must not be empty");
+  }
+  const ids = new Set(parts.map((part) => part.id));
+  if (ids.size !== parts.length) {
+    throw new Error("bookParts ids must be unique");
+  }
+  for (const part of parts) {
+    if (!part.title.trim()) {
+      throw new Error(`bookParts part '${part.id}' requires a title`);
+    }
+    if (!DraftUnitStatusSchema.safeParse(part.status).success) {
+      throw new Error(
+        `bookParts part '${part.id}' has invalid status '${part.status}'`
+      );
+    }
+  }
+}
+
+/** Section « État du livre en cours » du prompt (statuts + coupes). */
+export function buildBookStateSection(
+  parts: BookPartInput[],
+  cuts: ExistingCutInput[]
+): string {
+  const lines: string[] = ["## État du livre en cours"];
+  if (parts.length > 0) {
+    lines.push(
+      "Le livre est un chantier, pas un texte fini. Chaque partie porte un statut :",
+      ...parts.map(formatBookPart)
+    );
+  }
+  if (cuts.length > 0) {
+    lines.push(
+      "",
+      "Coupes déjà édictées (décisions actives de l'auteur) :",
+      ...cuts.map(formatExistingCut)
+    );
+  }
+  lines.push(
+    "",
+    "Le statut des parties compte pour la lecture : une partie en ébauche peut être retravaillée ou réécrite ; une partie rédigée ne doit changer que par une coupe nette ; une partie planifiée (pas encore écrite) peut accueillir le fragment. Ne recommande pas une coupe déjà édictée, et ne la contredis pas sans le dire."
+  );
+  return lines.join("\n");
 }
 
 /**
@@ -91,6 +199,9 @@ export class DiffractiveReader {
   constructor(private readonly client: StructuredModelClient) {}
 
   async read(request: DiffractiveReadingRequest): Promise<DiffractiveReading> {
+    if (request.bookParts) {
+      assertBookPartsValid(request.bookParts);
+    }
     const rawOutput = await this.client.generateJson(
       buildDiffractivePrompt(request)
     );
@@ -134,6 +245,13 @@ export function buildDiffractivePrompt(
     tensions: request.tensions ?? [],
   };
 
+  const parts = request.bookParts ?? [];
+  const cuts = request.existingCuts ?? [];
+  const hasBookState = parts.length > 0 || cuts.length > 0;
+  const bookState = hasBookState
+    ? buildBookStateSection(parts, cuts)
+    : "";
+
   return `Tu es un lecteur diffractif. Tu appliques la méthode diffractive (Haraway/Barad)
 à un fragment posé dans un livre en cours d'écriture.
 
@@ -142,7 +260,7 @@ export function buildDiffractivePrompt(
 ${JSON.stringify(payload, null, 2)}
 \`\`\`
 
-## Méthode — quatre passes
+${bookState ? `${bookState}\n\n` : ""}## Méthode — quatre passes
 
 **Pass 1 — le fragment à travers le livre.** Pose le fragment DANS ce livre :
 que devient-il une fois diffracté ici ? 3–6 réfractions. Si rien n'est non-évident,

@@ -2,7 +2,9 @@ import { readFileSync } from "node:fs";
 import { z } from "zod";
 import {
   createDiffractiveBatchRunner,
+  extractBookParts,
   extractConcepts,
+  extractExistingCuts,
   extractTensions,
   type DiffractiveBatchFragment,
 } from "@auto-essay/core";
@@ -39,7 +41,8 @@ function flag(argv: string[], name: string): string | undefined {
  *   npm run diffract-batch -w @auto-essay/api -- \
  *     --fragments /chemin/fragments.json \
  *     --book-file /chemin/manuscrit.txt \
- *     --concepts concepts.json --tensions tensions.json
+ *     --concepts concepts.json --tensions tensions.json \
+ *     --book-parts bookParts.json --cuts cuts.json
  */
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
@@ -47,6 +50,8 @@ async function main(): Promise<void> {
   const bookPath = flag(argv, "--book-file");
   const conceptsPath = flag(argv, "--concepts");
   const tensionsPath = flag(argv, "--tensions");
+  const bookPartsPath = flag(argv, "--book-parts");
+  const cutsPath = flag(argv, "--cuts");
 
   if (!fragmentsPath) {
     throw new Error("Missing required --fragments <fichier.json>");
@@ -60,11 +65,20 @@ async function main(): Promise<void> {
   const book = bookPath ? readFileSync(bookPath, "utf8") : undefined;
   const concepts = extractConcepts(readJsonArray(conceptsPath));
   const tensions = extractTensions(readJsonArray(tensionsPath));
+  const bookParts = extractBookParts(readJsonArray(bookPartsPath));
+  const existingCuts = extractExistingCuts(readJsonArray(cutsPath));
 
   const client = await createModelClient();
   const structured = new StructuredClientAdapter(client);
   const runner = createDiffractiveBatchRunner(structured);
-  const result = await runner.run({ fragments, book, concepts, tensions });
+  const result = await runner.run({
+    fragments,
+    book,
+    bookParts,
+    existingCuts,
+    concepts,
+    tensions,
+  });
 
   process.stdout.write(JSON.stringify(result, null, 2) + "\n");
 }
