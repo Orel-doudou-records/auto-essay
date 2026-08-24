@@ -144,6 +144,25 @@ export const PlanImpactSchema = z.object({
 
 export type PlanImpact = z.infer<typeof PlanImpactSchema>;
 
+export const BibliographyImpactKindSchema = z.enum([
+  "redistribuer",
+  "rapprocher",
+  "manquante",
+]);
+
+export type BibliographyImpactKind = z.infer<
+  typeof BibliographyImpactKindSchema
+>;
+
+export const BibliographyImpactSchema = z.object({
+  sourceId: z.string().min(1),
+  scopeId: z.string().min(1),
+  kind: BibliographyImpactKindSchema,
+  impact: z.string().min(1),
+});
+
+export type BibliographyImpact = z.infer<typeof BibliographyImpactSchema>;
+
 export const DiffractiveReadingSchema = z.object({
   id: z.string(),
   fragment: DiffractiveFragmentSchema,
@@ -157,6 +176,7 @@ export const DiffractiveReadingSchema = z.object({
   action: z.string().min(1),
   tradeoffs: z.array(TradeoffSchema).default([]),
   planImpacts: z.array(PlanImpactSchema).default([]),
+  bibliographyImpacts: z.array(BibliographyImpactSchema).default([]),
   createdAt: z.string().datetime(),
 });
 
@@ -174,6 +194,7 @@ export interface CreateDiffractiveReadingInput {
   action: string;
   tradeoffs?: Tradeoff[];
   planImpacts?: PlanImpact[];
+  bibliographyImpacts?: BibliographyImpact[];
 }
 
 export function createDiffractiveReading(
@@ -194,6 +215,7 @@ export function createDiffractiveReading(
     action: input.action,
     tradeoffs: input.tradeoffs ?? [],
     planImpacts: input.planImpacts ?? [],
+    bibliographyImpacts: input.bibliographyImpacts ?? [],
     createdAt: new Date().toISOString(),
   });
 }

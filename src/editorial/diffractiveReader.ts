@@ -80,6 +80,16 @@ const RawDiffractiveOutputSchema = z.object({
       })
     )
     .default([]),
+  bibliographyImpacts: z
+    .array(
+      z.object({
+        sourceId: z.string().min(1),
+        scopeId: z.string().min(1),
+        kind: z.enum(["redistribuer", "rapprocher", "manquante"]),
+        impact: z.string().min(1),
+      })
+    )
+    .default([]),
 });
 
 /**
@@ -126,6 +136,23 @@ export interface BookPlanInput {
   entries: BookPlanEntryInput[];
 }
 
+/**
+ * Une source projetée dans le scope en cours (F1/F3) : métadonnées + profil
+ * compact — jamais le corpus. Le lecteur peut proposer de la redistribuer.
+ */
+export interface BookBibliographyEntryInput {
+  sourceId: string;
+  title?: string;
+  authors?: string[];
+  subjects?: string[];
+  concepts?: string[];
+}
+
+/** La bibliothèque du chapitre en cours de lecture. */
+export interface BookBibliographyInput {
+  entries: BookBibliographyEntryInput[];
+}
+
 export interface DiffractiveReadingRequest {
   /** La position à diffracter. */
   statement: string;
@@ -144,6 +171,8 @@ export interface DiffractiveReadingRequest {
   existingCuts?: ExistingCutInput[];
   /** Le plan d'ébauche du livre (chapitres → paragraphes prévus). */
   bookPlan?: BookPlanInput[];
+  /** Bibliothèque du scope en cours (sources projetées + profils). */
+  bookBibliography?: BookBibliographyInput;
   /** Concepts déjà nommés dans le corpus. */
   concepts?: Array<{ label: string; definition: string }>;
   /** Tensions déjà nommées dans le corpus. */
@@ -292,6 +321,49 @@ export function buildBookPlanSection(plan: BookPlanInput[]): string {
   return lines.join("\n");
 }
 
+/** Validation légère d'une bibliothèque fournie (déterministe, sans I/O). */
+export function assertBibliographyValid(
+  bibliography: BookBibliographyInput
+): void {
+  const seen = new Set<string>();
+  for (const entry of bibliography.entries) {
+    if (seen.has(entry.sourceId)) {
+      throw new Error(
+        "bookBibliography source '" + entry.sourceId + "' duplicated"
+      );
+    }
+    seen.add(entry.sourceId);
+  }
+}
+
+/** Format compact d'une source projetée, pour le prompt. */
+export function formatBibliographyEntry(
+  entry: BookBibliographyEntryInput
+): string {
+  const title = entry.title ?? entry.sourceId;
+  const subjects =
+    entry.subjects && entry.subjects.length > 0
+      ? ` (sujets : ${entry.subjects.join(", ")})`
+      : "";
+  const concepts =
+    entry.concepts && entry.concepts.length > 0
+      ? ` — concepts : ${entry.concepts.join(", ")}`
+      : "";
+  return `- ${entry.sourceId} | ${title}${subjects}${concepts}`;
+}
+
+/** Section « La bibliothèque du chapitre » du prompt (sources + profils). */
+export function buildBibliographySection(input: BookBibliographyInput): string {
+  const lines: string[] = [
+    "## La bibliothèque du chapitre",
+    "Ces sources documentent le chapitre en cours (profil compact, jamais le corpus). Un choix d'écriture peut redistribuer la bibliographie : déplacer une source vers un autre chapitre, rapprocher deux sources, signaler une source manquante. Remplis alors bibliographyImpacts.",
+  ];
+  for (const entry of input.entries) {
+    lines.push(formatBibliographyEntry(entry));
+  }
+  return lines.join("\n");
+}
+
 export class DiffractiveReader {
   constructor(private readonly client: StructuredModelClient) {}
 
@@ -301,6 +373,9 @@ export class DiffractiveReader {
     }
     if (request.bookPlan) {
       assertBookPlanValid(request.bookPlan);
+    }
+    if (request.bookBibliography) {
+      assertBibliographyValid(request.bookBibliography);
     }
     const rawOutput = await this.client.generateJson(
       buildDiffractivePrompt(request)
@@ -322,6 +397,7 @@ export class DiffractiveReader {
       action: parsed.action,
       tradeoffs: parsed.tradeoffs,
       planImpacts: parsed.planImpacts,
+      bibliographyImpacts: parsed.bibliographyImpacts,
     });
   }
 }
@@ -354,6 +430,10 @@ export function buildDiffractivePrompt(
     : "";
   const plan = request.bookPlan ?? [];
   const planSection = plan.length > 0 ? buildBookPlanSection(plan) : "";
+  const bibliography = request.bookBibliography;
+  const bibliographySection = bibliography
+    ? buildBibliographySection(bibliography)
+    : "";
 
   return `Tu es un lecteur diffractif. Tu appliques la méthode diffractive (Haraway/Barad)
 à un fragment posé dans un livre en cours d'écriture.
@@ -363,7 +443,7 @@ export function buildDiffractivePrompt(
 ${JSON.stringify(payload, null, 2)}
 \`\`\`
 
-${bookState ? `${bookState}\n\n` : ""}${planSection ? `${planSection}\n\n` : ""}## Méthode — quatre passes
+${bookState ? `${bookState}\n\n` : ""}${planSection ? `${planSection}\n\n` : ""}${bibliographySection ? `${bibliographySection}\n\n` : ""}## Méthode — quatre passes
 
 **Pass 1 — le fragment à travers le livre.** Pose le fragment DANS ce livre :
 que devient-il une fois diffracté ici ? 3–6 réfractions. Si rien n'est non-évident,
@@ -417,6 +497,7 @@ Une seule action concrète pour cette session.
   "verdictDetail": "string",
   "action": "string",
   "tradeoffs": [{"path": "string", "effort": "string", "reversibility": "string", "leverage": "string", "distractionTax": "string", "verdict": "integrate_now|adapt_differently|incubate|archive|discard"}],
-  "planImpacts": [{"partId": "string", "partTitle": "string", "entryId": "string", "impact": "string"}]
+  "planImpacts": [{"partId": "string", "partTitle": "string", "entryId": "string", "impact": "string"}],
+  "bibliographyImpacts": [{"sourceId": "string", "scopeId": "string", "kind": "redistribuer|rapprocher|manquante", "impact": "string"}]
 }`;
 }
