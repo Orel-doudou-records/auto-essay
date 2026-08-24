@@ -112,7 +112,6 @@ export const DiffractivePipelineBodySchema = z.object({
       book: z.string().optional(),
       bookParts: BookPartsSchema.optional(),
       bookPlan: BookPlanSchema.optional(),
-  bookPlan: BookPlanSchema.optional(),
       existingCuts: ExistingCutsSchema.optional(),
       concepts: ConceptsSchema.optional(),
       tensions: TensionsSchema.optional(),
