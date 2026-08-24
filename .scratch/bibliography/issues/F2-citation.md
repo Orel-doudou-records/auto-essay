@@ -27,3 +27,5 @@ page). La trace doit être réversible jusqu'à l'ouvrage (exigence du brief).
 - Tests : garde pure (source hors distribution refusée), formateur, traçabilité
   paragraphe → claim → source.
 - Typecheck complet (core + api) avant merge.
+## Statut : ✅ livré (PR #58, merge f6c1353)
+
