@@ -5,6 +5,9 @@ export * from "./citation";
 // Profils sémantiques compacts (bibliothèque, spec F)
 export * from "./sourceProfile";
 
+// Distribution bibliographique : liens source ↔ scope (spec F)
+export * from "./bibliographyDistribution";
+
 // Assertions et claims
 export * from "./claim";
 
