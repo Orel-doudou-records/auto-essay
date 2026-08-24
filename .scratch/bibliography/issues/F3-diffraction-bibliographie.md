@@ -32,3 +32,5 @@ destructive du graphe ni de la bibliothèque).
   application pure (ids inconnus filtrés), rétro-compatibilité (sans
   bibliographie → pas d'impacts).
 - Typecheck complet (core + api) avant merge.
+## Statut : ✅ livré (PR #59, merge bd0ab47)
+
