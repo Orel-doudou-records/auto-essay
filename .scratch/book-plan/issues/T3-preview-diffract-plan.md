@@ -20,3 +20,5 @@ Sur le plan du Chap 2 judéofuturisme : preview par paragraphe + verdict du plan
 ## Pièges connus
 - Réutiliser `StructuredClientAdapter` (retry + jsonRepair) ; tests fake en CI,
   smoke réel 675B à part (comme pour D).
+## Statut : ✅ livré (PR #54, merge ee64007)
+
