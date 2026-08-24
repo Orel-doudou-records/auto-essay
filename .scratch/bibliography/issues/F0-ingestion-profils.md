@@ -28,3 +28,5 @@ corpus entier à un contexte.
 - Tests : schéma + factory (ids valides), découpage en lots, incrémental
   (source inchangée → non reprofilée), échec JSON d'un lot → retry.
 - Typecheck complet (core + api) avant merge.
+## Statut : ✅ livré (PR #56, merge d16fb8a)
+
