@@ -135,6 +135,15 @@ export type Tradeoff = z.infer<typeof TradeoffSchema>;
  * articulation. Jamais exécutable — c'est une matière que l'auteur valide
  * ensuite en EditorialDecision.
  */
+export const PlanImpactSchema = z.object({
+  partId: z.string().min(1),
+  partTitle: z.string().min(1),
+  entryId: z.string().min(1).optional(),
+  impact: z.string().min(1),
+});
+
+export type PlanImpact = z.infer<typeof PlanImpactSchema>;
+
 export const DiffractiveReadingSchema = z.object({
   id: z.string(),
   fragment: DiffractiveFragmentSchema,
@@ -147,6 +156,7 @@ export const DiffractiveReadingSchema = z.object({
   verdictDetail: z.string().min(1),
   action: z.string().min(1),
   tradeoffs: z.array(TradeoffSchema).default([]),
+  planImpacts: z.array(PlanImpactSchema).default([]),
   createdAt: z.string().datetime(),
 });
 
@@ -163,6 +173,7 @@ export interface CreateDiffractiveReadingInput {
   verdictDetail: string;
   action: string;
   tradeoffs?: Tradeoff[];
+  planImpacts?: PlanImpact[];
 }
 
 export function createDiffractiveReading(
@@ -182,6 +193,7 @@ export function createDiffractiveReading(
     verdictDetail: input.verdictDetail,
     action: input.action,
     tradeoffs: input.tradeoffs ?? [],
+    planImpacts: input.planImpacts ?? [],
     createdAt: new Date().toISOString(),
   });
 }

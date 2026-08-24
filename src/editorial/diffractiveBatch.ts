@@ -6,6 +6,7 @@ import type {
 import {
   createDiffractiveReader,
   type BookPartInput,
+  type BookPlanInput,
   type DiffractiveReader,
   type ExistingCutInput,
 } from "./diffractiveReader";
@@ -26,6 +27,7 @@ export interface DiffractiveBatchInput {
   book?: string;
   bookParts?: BookPartInput[];
   existingCuts?: ExistingCutInput[];
+  bookPlan?: BookPlanInput[];
   concepts?: Array<{ label: string; definition: string }>;
   tensions?: Array<{ label: string; description: string }>;
 }
@@ -71,6 +73,7 @@ export class DiffractiveBatchRunner {
           book: batch.book,
           bookParts: batch.bookParts,
           existingCuts: batch.existingCuts,
+          bookPlan: batch.bookPlan,
           concepts: batch.concepts,
           tensions: batch.tensions,
         });

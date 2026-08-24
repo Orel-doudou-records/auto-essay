@@ -70,6 +70,16 @@ const RawDiffractiveOutputSchema = z.object({
       })
     )
     .default([]),
+  planImpacts: z
+    .array(
+      z.object({
+        partId: z.string().min(1),
+        partTitle: z.string().min(1),
+        entryId: z.string().min(1).optional(),
+        impact: z.string().min(1),
+      })
+    )
+    .default([]),
 });
 
 /**
@@ -95,6 +105,24 @@ export interface ExistingCutInput {
   cut: string;
 }
 
+export interface BookPlanNoteInput {
+  kind: "human" | "agent";
+  text: string;
+}
+
+export interface BookPlanEntryInput {
+  id: string;
+  subject: string;
+  preview?: string;
+  notes?: BookPlanNoteInput[];
+}
+
+export interface BookPlanInput {
+  partId: string;
+  partTitle: string;
+  entries: BookPlanEntryInput[];
+}
+
 export interface DiffractiveReadingRequest {
   /** La position à diffracter. */
   statement: string;
@@ -111,6 +139,8 @@ export interface DiffractiveReadingRequest {
   bookParts?: BookPartInput[];
   /** Coupes déjà édictées — le verdict compose avec l'existant. */
   existingCuts?: ExistingCutInput[];
+  /** Le plan d'ébauche du livre (chapitres → paragraphes prévus). */
+  bookPlan?: BookPlanInput[];
   /** Concepts déjà nommés dans le corpus. */
   concepts?: Array<{ label: string; definition: string }>;
   /** Tensions déjà nommées dans le corpus. */
@@ -144,6 +174,28 @@ export function formatExistingCut(cut: ExistingCutInput): string {
   return `- ${cut.scope} : verdict ${cut.verdict} — ${cut.cut}`;
 }
 
+/** Une ligne d'entrée de plan : [id] sujet — aperçu : … | note (humain/agent) : …. */
+export function formatPlanEntry(entry: BookPlanEntryInput): string {
+  const parts = ["[" + entry.id + "] " + entry.subject];
+  if (entry.preview && entry.preview.trim()) {
+    parts.push("aperçu : " + entry.preview);
+  }
+  for (const note of entry.notes ?? []) {
+    parts.push(
+      "note (" + (note.kind === "human" ? "humain" : "agent") + ") : " + note.text
+    );
+  }
+  return "- " + parts.join(" — ");
+}
+
+/** Un chapitre porteur de plan, sous forme lisible pour le prompt. */
+export function formatPlanPart(part: BookPlanInput): string {
+  return [
+    "### " + part.partTitle + " (" + part.partId + ")",
+    ...part.entries.map(formatPlanEntry),
+  ].join("\n");
+}
+
 /** Validation légère d'un bookParts fourni (déterministe, sans I/O). */
 export function assertBookPartsValid(parts: BookPartInput[]): void {
   if (parts.length === 0) {
@@ -161,6 +213,36 @@ export function assertBookPartsValid(parts: BookPartInput[]): void {
       throw new Error(
         `bookParts part '${part.id}' has invalid status '${part.status}'`
       );
+    }
+  }
+}
+
+/** Validation légère d'un bookPlan fourni (déterministe, sans I/O). */
+export function assertBookPlanValid(plan: BookPlanInput[]): void {
+  if (plan.length === 0) {
+    throw new Error("bookPlan must not be empty");
+  }
+  const partIds = new Set(plan.map((part) => part.partId));
+  if (partIds.size !== plan.length) {
+    throw new Error("bookPlan partIds must be unique");
+  }
+  for (const part of plan) {
+    if (!part.partTitle.trim()) {
+      throw new Error("bookPlan part '" + part.partId + "' requires a partTitle");
+    }
+    if (part.entries.length === 0) {
+      throw new Error("bookPlan part '" + part.partId + "' requires at least one entry");
+    }
+    const entryIds = new Set(part.entries.map((entry) => entry.id));
+    if (entryIds.size !== part.entries.length) {
+      throw new Error("bookPlan part '" + part.partId + "' has duplicated entry ids");
+    }
+    for (const entry of part.entries) {
+      if (!entry.subject.trim()) {
+        throw new Error(
+          "bookPlan entry '" + entry.id + "' in part '" + part.partId + "' requires a subject"
+        );
+      }
     }
   }
 }
@@ -195,12 +277,27 @@ export function buildBookStateSection(
  * Lecteur diffractif : produit une DiffractiveReading (4 passes + verdict forcé
  * + matrice de compromis) à partir d'un fragment posé dans le livre.
  */
+/** Section « Le plan du livre » du prompt (paragraphes prévus + notes). */
+export function buildBookPlanSection(plan: BookPlanInput[]): string {
+  const lines: string[] = [
+    "## Le plan du livre",
+    "Ces paragraphes sont PRÉVUS mais pas encore écrits. Leurs aperçus et notes (humain/agent) indiquent l'intention. La position est l'ordre. Un choix d'écriture dans le fragment peut affecter un élément du plan ailleurs dans le livre (parfois plusieurs chapitres plus loin).",
+  ];
+  for (const part of plan) {
+    lines.push("", formatPlanPart(part));
+  }
+  return lines.join("\n");
+}
+
 export class DiffractiveReader {
   constructor(private readonly client: StructuredModelClient) {}
 
   async read(request: DiffractiveReadingRequest): Promise<DiffractiveReading> {
     if (request.bookParts) {
       assertBookPartsValid(request.bookParts);
+    }
+    if (request.bookPlan) {
+      assertBookPlanValid(request.bookPlan);
     }
     const rawOutput = await this.client.generateJson(
       buildDiffractivePrompt(request)
@@ -221,6 +318,7 @@ export class DiffractiveReader {
       verdictDetail: parsed.verdictDetail,
       action: parsed.action,
       tradeoffs: parsed.tradeoffs,
+      planImpacts: parsed.planImpacts,
     });
   }
 }
@@ -251,6 +349,8 @@ export function buildDiffractivePrompt(
   const bookState = hasBookState
     ? buildBookStateSection(parts, cuts)
     : "";
+  const plan = request.bookPlan ?? [];
+  const planSection = plan.length > 0 ? buildBookPlanSection(plan) : "";
 
   return `Tu es un lecteur diffractif. Tu appliques la méthode diffractive (Haraway/Barad)
 à un fragment posé dans un livre en cours d'écriture.
@@ -260,7 +360,7 @@ export function buildDiffractivePrompt(
 ${JSON.stringify(payload, null, 2)}
 \`\`\`
 
-${bookState ? `${bookState}\n\n` : ""}## Méthode — quatre passes
+${bookState ? `${bookState}\n\n` : ""}${planSection ? `${planSection}\n\n` : ""}## Méthode — quatre passes
 
 **Pass 1 — le fragment à travers le livre.** Pose le fragment DANS ce livre :
 que devient-il une fois diffracté ici ? 3–6 réfractions. Si rien n'est non-évident,
@@ -313,6 +413,7 @@ Une seule action concrète pour cette session.
   "verdict": "integrate_now|adapt_differently|incubate|archive|discard",
   "verdictDetail": "string",
   "action": "string",
-  "tradeoffs": [{"path": "string", "effort": "string", "reversibility": "string", "leverage": "string", "distractionTax": "string", "verdict": "integrate_now|adapt_differently|incubate|archive|discard"}]
+  "tradeoffs": [{"path": "string", "effort": "string", "reversibility": "string", "leverage": "string", "distractionTax": "string", "verdict": "integrate_now|adapt_differently|incubate|archive|discard"}],
+  "planImpacts": [{"partId": "string", "partTitle": "string", "entryId": "string", "impact": "string"}]
 }`;
 }

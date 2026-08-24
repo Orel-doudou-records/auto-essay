@@ -39,12 +39,37 @@ const ExistingCutsSchema = z.array(
   })
 );
 
+const BookPlanSchema = z.array(
+  z.object({
+    partId: z.string().min(1),
+    partTitle: z.string().min(1),
+    entries: z
+      .array(
+        z.object({
+          id: z.string().min(1),
+          subject: z.string().min(1),
+          preview: z.string().optional(),
+          notes: z
+            .array(
+              z.object({
+                kind: z.enum(["human", "agent"]),
+                text: z.string().min(1),
+              })
+            )
+            .optional(),
+        })
+      )
+      .min(1),
+  })
+);
+
 export const DiffractBodySchema = z.object({
   statement: z.string().min(1),
   claimIds: z.array(z.string().min(1)).optional(),
   sourceIds: z.array(z.string().min(1)).optional(),
   book: z.string().optional(),
   bookParts: BookPartsSchema.optional(),
+  bookPlan: BookPlanSchema.optional(),
   existingCuts: ExistingCutsSchema.optional(),
   concepts: ConceptsSchema.optional(),
   tensions: TensionsSchema.optional(),
@@ -62,6 +87,7 @@ export const DiffractBatchBodySchema = z.object({
     .min(1),
   book: z.string().optional(),
   bookParts: BookPartsSchema.optional(),
+  bookPlan: BookPlanSchema.optional(),
   existingCuts: ExistingCutsSchema.optional(),
   concepts: ConceptsSchema.optional(),
   tensions: TensionsSchema.optional(),
@@ -85,6 +111,8 @@ export const DiffractivePipelineBodySchema = z.object({
     .object({
       book: z.string().optional(),
       bookParts: BookPartsSchema.optional(),
+      bookPlan: BookPlanSchema.optional(),
+  bookPlan: BookPlanSchema.optional(),
       existingCuts: ExistingCutsSchema.optional(),
       concepts: ConceptsSchema.optional(),
       tensions: TensionsSchema.optional(),
