@@ -11,6 +11,7 @@
     "test": "vitest run --pool=forks",
     "diffract": "tsx src/diffract/cli.ts",
     "diffract-batch": "tsx src/diffract/batchCli.ts",
+    "diffract-plan": "tsx src/diffract/planCli.ts",
     "lint": "eslint src"
   },
   "dependencies": {

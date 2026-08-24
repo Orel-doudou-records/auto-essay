@@ -9,3 +9,4 @@ export * from "./editorialDecisionService.js";
 export * from "./sectionPlanningService.js";
 export * from "./projectionCompiler.js";
 export * from "./projectBookState.js";
+export * from "./planPreview.js";
