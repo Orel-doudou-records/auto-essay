@@ -37,3 +37,5 @@ Fonctions pures exportées depuis `@auto-essay/core` (index editorial/domain).
   choix : archivé = force le statut du parent si présent, sinon ignoré).
 - Le statut des parties planifiées (aucun enfant, aucun texte) : décider et
   documenter (proposition : `drafting` par défaut).
+## Statut : ✅ livré (PR #50, merge 7f133c3)
+

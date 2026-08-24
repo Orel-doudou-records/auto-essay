@@ -32,3 +32,5 @@ run.ts) utilise aujourd'hui des fichiers bookParts JSON faits main ; le modèle
 - Redirection PowerShell `>` = UTF-16 + bannière npm (décoder avant parse).
 - Le corpus réel : `.openclaw/tmp/judeofuturisme-extrait.txt` (extrait),
   `examples/judeofuturisme/concepts.json`, `tensions.json`.
+## Statut : ✅ livré (commit a5d362b, CI verte ; vérification réelle 675B : integrate_now dans le chap-4 planifié)
+

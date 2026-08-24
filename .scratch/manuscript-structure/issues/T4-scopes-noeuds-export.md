@@ -29,3 +29,5 @@ parse (les scopes restent des adresses ; la résolution est un service).
 - Ne pas casser les tests d'articulation existants qui utilisent des
   `sectionId` arbitraires ({sectionId: "section-1"} etc.) — le contrat doit
   rester rétro-compatible pour les scopes sans manuscrit associé.
+## Statut : ✅ livré (PR #51, merge d634e25)
+
