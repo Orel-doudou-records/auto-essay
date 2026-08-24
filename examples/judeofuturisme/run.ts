@@ -3,11 +3,14 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   ConceptSchema,
+  DraftUnitSchema,
   EssayProjectSchema,
+  ManuscriptSchema,
   RelationAnalyzer,
   TensionSchema,
   createClaim,
   importBibTeX,
+  projectBookState,
   type Claim,
 } from "@auto-essay/core";
 
@@ -66,7 +69,23 @@ const relations = await analyzer.analyze({
   tensions,
 });
 
-// 5. Résumé
+// 5. Projeter l'état du livre en cours : l'arbre du manuscrit devient la
+//    forme canonique que lira le moteur de pensée (projectBookState)
+const manuscript = ManuscriptSchema.parse(JSON.parse(read("manuscript.json")));
+const units = JSON.parse(read("units.json")).map((u: unknown) =>
+  DraftUnitSchema.parse(u)
+);
+const unitByRef = new Map(units.map((u) => [`${u.id}@${u.version}`, u]));
+const bookParts = projectBookState(manuscript, {
+  resolveLeaf(leaf) {
+    const unit = unitByRef.get(`${leaf.unitId}@${leaf.version}`);
+    return unit
+      ? { status: unit.status, text: unit.content }
+      : { status: "drafting", text: "" };
+  },
+});
+
+// 6. Résumé
 console.log(
   JSON.stringify(
     {
@@ -77,6 +96,12 @@ console.log(
       relations: relations.map((r) => ({
         type: r.type,
         description: r.description,
+      })),
+      bookParts: bookParts.map((p) => ({
+        id: p.id,
+        title: p.title,
+        status: p.status,
+        chars: p.text.length,
       })),
     },
     null,

@@ -1,0 +1,58 @@
+{
+  "id": "manuscrit-judeofuturisme",
+  "projectId": "judeofuturisme",
+  "title": "Judéofuturisme : mémoire, technique et rédemption",
+  "tree": [
+    {
+      "kind": "node",
+      "id": "acte-1",
+      "title": "Acte I — La machine à différer",
+      "text": "Ce premier acte établit la machine comme condition de l'archive : la technique n'est pas l'ennemie de la mémoire mais sa forme moderne. La diaspora fournit le banc d'essai, de la lettre du scribe au moteur de recherche.",
+      "children": [
+        {
+          "kind": "node",
+          "id": "chap-1",
+          "title": "Chapitre 1 — Écrire après la machine",
+          "children": [
+            { "kind": "leaf", "unitId": "u-acte1-c1", "version": 1 }
+          ]
+        },
+        {
+          "kind": "node",
+          "id": "chap-2",
+          "title": "Chapitre 2 — Le différer comme méthode",
+          "children": [
+            { "kind": "leaf", "unitId": "u-acte1-c2", "version": 1 }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "node",
+      "id": "acte-2",
+      "title": "Acte II — La diaspora, archive du futur",
+      "children": [
+        {
+          "kind": "node",
+          "id": "chap-3",
+          "title": "Chapitre 3 — Exil et technique",
+          "children": [
+            { "kind": "leaf", "unitId": "u-acte2-c3", "version": 1 }
+          ]
+        },
+        {
+          "kind": "node",
+          "id": "chap-4",
+          "title": "Chapitre 4 — La Terre promise comme protocole"
+        }
+      ]
+    },
+    {
+      "kind": "node",
+      "id": "acte-3",
+      "title": "Acte III — Rédemption et temporalité messianique"
+    }
+  ],
+  "createdAt": "2026-08-22T00:00:00.000Z",
+  "updatedAt": "2026-08-24T00:00:00.000Z"
+}
