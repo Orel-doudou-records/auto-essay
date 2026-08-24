@@ -119,6 +119,8 @@ function collectPlanParts(
           id: entry.id,
           subject: entry.subject,
           preview: entry.preview,
+          unitId: entry.unitId,
+          unitVersion: entry.unitVersion,
           notes: (entry.notes ?? []).map((note) => ({
             kind: note.kind,
             text: note.text,

@@ -1,0 +1,62 @@
+[
+  {
+    "partId": "chap-2",
+    "partTitle": "Chapitre 2 — Le salon",
+    "entries": [
+      { "id": "chap2-01", "subject": "Le salon" },
+      { "id": "chap2-02", "subject": "Le shabbat et la part du pauvre" },
+      { "id": "chap2-03", "subject": "Les fêtes et le couscous" },
+      { "id": "chap2-04", "subject": "Le coucher" },
+      { "id": "chap2-05", "subject": "La voiture" },
+      {
+        "id": "chap2-06",
+        "subject": "Transition : l'accident vers…",
+        "notes": [
+          {
+            "kind": "human",
+            "text": "l'accident doit relier Le coucher à La photo de mon oncle, sans pathos"
+          }
+        ]
+      },
+      { "id": "chap2-07", "subject": "La photo de mon oncle" },
+      { "id": "chap2-08", "subject": "Abikou et le rêve prémonitoire" },
+      { "id": "chap2-09", "subject": "Asimov, Hugo Gernsback & Joanna Russ" },
+      { "id": "chap2-10", "subject": "Transition avec l'anecdote" },
+      { "id": "chap2-11", "subject": "Universaliser pour survivre" },
+      { "id": "chap2-12", "subject": "Superman, le masque" },
+      {
+        "id": "chap2-13",
+        "subject": "La SF contemporaine comme cartographie des problématiques juives"
+      },
+      { "id": "chap2-14", "subject": "Star Trek et le salon inclusif" },
+      {
+        "id": "chap2-15",
+        "subject": "L'errance spatiale comme symbole diasporique (conclusion)"
+      },
+      {
+        "id": "chap2-16",
+        "subject": "Mais où sont les juifs dans l'espace ? Anecdote de Brooks"
+      }
+    ]
+  },
+  {
+    "partId": "chap-3",
+    "partTitle": "Chapitre 3 — George Clinton et l'afrofuturisme",
+    "entries": [
+      {
+        "id": "chap3-01",
+        "subject": "George Clinton et Star Trek : mais où sont les noirs dans l'espace ?"
+      },
+      {
+        "id": "chap3-02",
+        "subject": "Mothership et Funkestein (vaisseau Nation of Islam ?)"
+      },
+      {
+        "id": "chap3-03",
+        "subject": "Sun Ra, l'expérience Ovni, les pyramides et les Black Panthers"
+      },
+      { "id": "chap3-04", "subject": "L'invention de l'afrofuturisme" },
+      { "id": "chap3-05", "subject": "L'expérience extra-terrestre" }
+    ]
+  }
+]
