@@ -53,5 +53,8 @@ export * from "./editorialPlan";
 // Projections spécialisées pour exécution, évaluation et révision
 export * from "./editorialProjection";
 
+// Résolution des portées éditoriales contre l'arbre du manuscrit
+export * from "./scopeResolution";
+
 // Traces déclaratives des transformations appliquées
 export * from "./transformationTrace";
