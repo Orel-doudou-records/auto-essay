@@ -26,3 +26,5 @@ sortie signale un impact sur « L'errance spatiale… (conclusion) » ou
 ## Pièges connus
 - `formatExistingCut` existe ; ajouter `formatPlanEntry`/`formatPlanPart` sans
   casser le prompt actuel ; tests avec un adaptateur fake (pas de modèle réel).
+## Statut : ✅ livré (PR #53, merge caf1162 ; hotfix CI 8b0e14e)
+
