@@ -7,6 +7,7 @@ import type { DiffractiveReading } from "../domain/diffractiveReading";
 import {
   createDiffractiveReader,
   type BookPartInput,
+  type BookPlanInput,
   type DiffractiveReader,
   type ExistingCutInput,
 } from "./diffractiveReader";
@@ -32,6 +33,7 @@ export interface DiffractiveContext {
   book?: string;
   bookParts?: BookPartInput[];
   existingCuts?: ExistingCutInput[];
+  bookPlan?: BookPlanInput[];
   concepts?: Array<{ label: string; definition: string }>;
   tensions?: Array<{ label: string; description: string }>;
 }
@@ -74,6 +76,7 @@ export class DiffractivePipeline {
       book: context.book,
       bookParts: context.bookParts,
       existingCuts: context.existingCuts,
+      bookPlan: context.bookPlan,
       concepts: context.concepts,
       tensions: context.tensions,
     });

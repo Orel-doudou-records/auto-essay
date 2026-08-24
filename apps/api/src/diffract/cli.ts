@@ -4,6 +4,7 @@ import {
   extractBookParts,
   extractConcepts,
   extractExistingCuts,
+  extractBookPlan,
   extractTensions,
   formatReading,
   parseDiffractArgs,
@@ -44,6 +45,7 @@ async function main(): Promise<void> {
   const tensions = extractTensions(readJsonArray(args.tensionsPath));
   const bookParts = extractBookParts(readJsonArray(args.bookPartsPath));
   const existingCuts = extractExistingCuts(readJsonArray(args.cutsPath));
+  const bookPlan = extractBookPlan(readJsonArray(args.bookPlanPath));
 
   const request = buildDiffractiveRequest({
     ...args,
@@ -51,6 +53,7 @@ async function main(): Promise<void> {
     concepts,
     tensions,
     bookParts,
+    bookPlan,
     existingCuts,
   });
 

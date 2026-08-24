@@ -1,10 +1,14 @@
 import type { DraftUnitStatus } from "../domain/draftUnit";
-import type { Manuscript, ManuscriptLeaf } from "../domain/manuscript";
+import type {
+  Manuscript,
+  ManuscriptChild,
+  ManuscriptLeaf,
+} from "../domain/manuscript";
 import {
   deriveNodeStatus,
   type ResolveLeafStatus,
 } from "../domain/manuscriptStatus";
-import type { BookPartInput } from "./diffractiveReader";
+import type { BookPartInput, BookPlanInput } from "./diffractiveReader";
 
 /** Feuille résolue : le statut ET le texte de la version d'unité. */
 export interface ResolvedLeaf {
@@ -86,5 +90,42 @@ function collectParts(
       text: child.text ?? "",
     });
     collectParts(child.children, resolveLeaf, resolveLeafStatus, child.title, out);
+  }
+}
+/**
+ * Projette le plan d'ébauche d'un manuscrit (spec E) : les chapitres qui
+ * portent un plan deviennent la forme lue par le lecteur diffractif
+ * (section « Le plan du livre »). Les aperçus et notes sont conservés ;
+ * le contenu des unités déjà écrites n'apparaît pas ici (c'est le rôle de
+ * projectBookState). Pur, sans I/O.
+ */
+export function projectBookPlan(manuscript: Manuscript): BookPlanInput[] {
+  const parts: BookPlanInput[] = [];
+  collectPlanParts(manuscript.tree, parts);
+  return parts;
+}
+
+function collectPlanParts(
+  children: ManuscriptChild[],
+  out: BookPlanInput[]
+): void {
+  for (const child of children) {
+    if (child.kind !== "node") continue;
+    if (child.plan && child.plan.length > 0) {
+      out.push({
+        partId: child.id,
+        partTitle: child.title,
+        entries: child.plan.map((entry) => ({
+          id: entry.id,
+          subject: entry.subject,
+          preview: entry.preview,
+          notes: (entry.notes ?? []).map((note) => ({
+            kind: note.kind,
+            text: note.text,
+          })),
+        })),
+      });
+    }
+    collectPlanParts(child.children, out);
   }
 }

@@ -5,6 +5,7 @@ import {
   extractBookParts,
   extractConcepts,
   extractExistingCuts,
+  extractBookPlan,
   extractTensions,
   type DiffractiveBatchFragment,
 } from "@auto-essay/core";
@@ -52,6 +53,7 @@ async function main(): Promise<void> {
   const tensionsPath = flag(argv, "--tensions");
   const bookPartsPath = flag(argv, "--book-parts");
   const cutsPath = flag(argv, "--cuts");
+  const bookPlanPath = flag(argv, "--book-plan");
 
   if (!fragmentsPath) {
     throw new Error("Missing required --fragments <fichier.json>");
@@ -67,6 +69,7 @@ async function main(): Promise<void> {
   const tensions = extractTensions(readJsonArray(tensionsPath));
   const bookParts = extractBookParts(readJsonArray(bookPartsPath));
   const existingCuts = extractExistingCuts(readJsonArray(cutsPath));
+  const bookPlan = extractBookPlan(readJsonArray(bookPlanPath));
 
   const client = await createModelClient();
   const structured = new StructuredClientAdapter(client);
@@ -75,6 +78,7 @@ async function main(): Promise<void> {
     fragments,
     book,
     bookParts,
+    bookPlan,
     existingCuts,
     concepts,
     tensions,

@@ -2,6 +2,9 @@ import {
   createDiffractiveReader,
   type BookPartInput,
   type DiffractiveReadingRequest,
+  type BookPlanEntryInput,
+  type BookPlanInput,
+  type BookPlanNoteInput,
   type ExistingCutInput,
 } from "./diffractiveReader";
 import type { DraftUnitStatus } from "../domain/draftUnit";
@@ -25,10 +28,12 @@ export interface DiffractCliArgs {
   tensionsPath?: string;
   bookPartsPath?: string;
   cutsPath?: string;
+  bookPlanPath?: string;
   concepts?: Array<{ label: string; definition: string }>;
   tensions?: Array<{ label: string; description: string }>;
   bookParts?: BookPartInput[];
   existingCuts?: ExistingCutInput[];
+  bookPlan?: BookPlanInput[];
 }
 
 /**
@@ -136,6 +141,65 @@ export function extractExistingCuts(raw: unknown): ExistingCutInput[] {
  * --claims <a,b,c> --sources <a,b,c>
  * --concepts <fichier.json> --tensions <fichier.json>
  */
+/**
+ * Extrait des BookPlanInput d'un fichier JSON brut (bookPlan.json) :
+ * { partId, partTitle, entries: [{ id, subject, preview?, notes? }] }.
+ * Fonction pure, sans I/O.
+ */
+export function extractBookPlan(raw: unknown): BookPlanInput[] {
+  if (!Array.isArray(raw)) return [];
+  const out: BookPlanInput[] = [];
+  for (const item of raw) {
+    const p = item as {
+      partId?: unknown;
+      partTitle?: unknown;
+      entries?: unknown;
+    } | null;
+    if (
+      !p ||
+      typeof p.partId !== "string" ||
+      typeof p.partTitle !== "string" ||
+      !Array.isArray(p.entries)
+    ) {
+      continue;
+    }
+    const entries: BookPlanEntryInput[] = [];
+    for (const e of p.entries) {
+      const rawEntry = e as {
+        id?: unknown;
+        subject?: unknown;
+        preview?: unknown;
+        notes?: unknown;
+      } | null;
+      if (!rawEntry || typeof rawEntry.id !== "string" || typeof rawEntry.subject !== "string") {
+        continue;
+      }
+      const notes: BookPlanNoteInput[] = [];
+      if (Array.isArray(rawEntry.notes)) {
+        for (const n of rawEntry.notes) {
+          const rawNote = n as { kind?: unknown; text?: unknown } | null;
+          if (
+            rawNote &&
+            (rawNote.kind === "human" || rawNote.kind === "agent") &&
+            typeof rawNote.text === "string"
+          ) {
+            notes.push({ kind: rawNote.kind, text: rawNote.text });
+          }
+        }
+      }
+      entries.push({
+        id: rawEntry.id,
+        subject: rawEntry.subject,
+        preview: typeof rawEntry.preview === "string" ? rawEntry.preview : undefined,
+        notes: notes.length > 0 ? notes : undefined,
+      });
+    }
+    if (entries.length === 0) continue;
+    out.push({ partId: p.partId, partTitle: p.partTitle, entries });
+  }
+  return out;
+}
+
 export function parseDiffractArgs(argv: string[]): DiffractCliArgs {
   const args: DiffractCliArgs = { statement: "", claimIds: [], sourceIds: [] };
 
@@ -150,6 +214,7 @@ export function parseDiffractArgs(argv: string[]): DiffractCliArgs {
     else if (flag === "--tensions") args.tensionsPath = argv[++i] ?? "";
     else if (flag === "--book-parts") args.bookPartsPath = argv[++i] ?? "";
     else if (flag === "--cuts") args.cutsPath = argv[++i] ?? "";
+    else if (flag === "--book-plan") args.bookPlanPath = argv[++i] ?? "";
   }
 
   if (!args.statement.trim()) {
@@ -187,6 +252,9 @@ export function buildDiffractiveRequest(
   }
   if (args.existingCuts && args.existingCuts.length > 0) {
     request.existingCuts = args.existingCuts;
+  }
+  if (args.bookPlan && args.bookPlan.length > 0) {
+    request.bookPlan = args.bookPlan;
   }
   return request;
 }
