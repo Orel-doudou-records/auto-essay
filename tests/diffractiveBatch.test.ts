@@ -81,4 +81,27 @@ describe("DiffractiveBatchRunner", () => {
     expect(result.readings).toEqual([]);
     expect(result.failures).toEqual([]);
   });
+
+  it("forwards bookBibliography (graph neighborhoods) into the prompt", async () => {
+    const generateJson = vi.fn(async () => validOutput());
+    const runner = createDiffractiveBatchRunner({ generateJson });
+
+    const result = await runner.run({
+      fragments: [{ statement: "f1" }],
+      bookBibliography: {
+        entries: [{ sourceId: "eshun2003" }],
+        graphNeighborhoods: [
+          {
+            term: "star trek",
+            text: "Voisinage du graphe (2 nœuds, 1 arête) :\n- Star Trek [concept] (trek.md)",
+          },
+        ],
+      },
+    });
+
+    expect(result.readings).toHaveLength(1);
+    const prompt = generateJson.mock.calls[0][0] as string;
+    expect(prompt).toContain("Signaux du graphe de la bibliothèque");
+    expect(prompt).toContain("#### Terme du graphe : star trek");
+  });
 });

@@ -17,7 +17,10 @@ export function AppShell({ projectId, children }: AppShellProps) {
       ]
     : [];
 
-  const topLinks = [{ to: "/", label: "Projets" }];
+  const topLinks = [
+    { to: "/", label: "Projets" },
+    { to: "/demo", label: "Démo" },
+  ];
 
   const links = [...topLinks, ...projectLinks];
 

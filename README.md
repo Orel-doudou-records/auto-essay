@@ -185,6 +185,15 @@ Fonctionnalités à venir :
 - [ ] Mode section/chapitre/livre complet dans l'UI
 - [ ] Intégration Git
 
+## Démo distribuable
+
+Une démo autonome de la lecture diffractive (chapitre 2 du Judéofuturisme,
+bibliothèque graphifiée) vit dans [DEMO.md](DEMO.md) : lancement en deux
+commandes (
+pm install + 
+pm run dev), page http://localhost:5173/demo,
+et architecture du chemin complet (web → API → lecteur diffractif → Ollama).
+
 ## Licence
 
 MIT

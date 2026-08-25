@@ -1,6 +1,65 @@
-import type { EssayProject, Source, DraftUnit } from "@auto-essay/core";
+import type {
+  BookPartInput,
+  BookPlanInput,
+  DiffractiveReading,
+  EssayProject,
+  Source,
+  DraftUnit,
+} from "@auto-essay/core";
 
 const API = "/api";
+
+export interface DemoContextPayload {
+  id: string;
+  title: string;
+  chapter: { id: string; title: string };
+  context: {
+    bookParts: BookPartInput[];
+    bookPlan: BookPlanInput[];
+    concepts: Array<{ label: string; definition: string }>;
+    tensions: Array<{ label: string; description: string }>;
+    bookBibliography: {
+      entries: Array<{
+        sourceId: string;
+        title?: string;
+        authors?: string[];
+        subjects?: string[];
+        concepts?: string[];
+      }>;
+      graphNeighborhoods?: Array<{ term: string; text: string }>;
+    };
+  };
+  graphSummary: { nodes: number; links: number; terms: string[] };
+  sourcesCount: number;
+  suggestedFragments: Array<{ label: string; statement: string }>;
+}
+
+export type DiffractReadingPayload = {
+  statement: string;
+  bookParts?: BookPartInput[];
+  bookPlan?: BookPlanInput[];
+  concepts?: Array<{ label: string; definition: string }>;
+  tensions?: Array<{ label: string; description: string }>;
+  bookBibliography?: DemoContextPayload["context"]["bookBibliography"];
+};
+
+export async function fetchDemoContext(): Promise<DemoContextPayload> {
+  const res = await fetch(`${API}/demo/judeofuturisme`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<DemoContextPayload>;
+}
+
+export async function runDiffractReading(
+  payload: DiffractReadingPayload
+): Promise<DiffractiveReading> {
+  const res = await fetch(`${API}/diffract`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<DiffractiveReading>;
+}
 
 export async function fetchProjects(): Promise<EssayProject[]> {
   const res = await fetch(`${API}/projects`);

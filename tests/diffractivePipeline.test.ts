@@ -111,4 +111,28 @@ describe("DiffractivePipeline", () => {
     expect(result.decision.cut?.cut).toBe("LA COUPE");
     expect(result.event.action).toBe("accepted");
   });
+
+  it("passes bookBibliography from the context into the prompt", async () => {
+    const generateJson = vi.fn(async () => readingOutput());
+    const pipeline = createDiffractivePipeline({ generateJson });
+
+    await pipeline.diffract(
+      { statement: "position" },
+      {
+        bookBibliography: {
+          entries: [],
+          graphNeighborhoods: [
+            {
+              term: "golem",
+              text: "Voisinage du graphe (1 nœud, 0 arête) :\n- Golem [concept] (golem.md)",
+            },
+          ],
+        },
+      }
+    );
+
+    const prompt = generateJson.mock.calls[0][0] as string;
+    expect(prompt).toContain("Signaux du graphe de la bibliothèque");
+    expect(prompt).toContain("#### Terme du graphe : golem");
+  });
 });
