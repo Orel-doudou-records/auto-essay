@@ -1,6 +1,7 @@
 import {
   createDiffractiveBatchRunner,
   createDiffractivePipeline,
+  type BookBibliographyInput,
   type BookPartInput,
   type BookPlanInput,
   type ContentStyleArticulation,
@@ -18,6 +19,7 @@ export interface DiffractContext {
   bookParts?: BookPartInput[];
   bookPlan?: BookPlanInput[];
   existingCuts?: ExistingCutInput[];
+  bookBibliography?: BookBibliographyInput;
   concepts?: Array<{ label: string; definition: string }>;
   tensions?: Array<{ label: string; description: string }>;
 }
@@ -30,6 +32,7 @@ export interface DiffractInput {
   bookParts?: BookPartInput[];
   bookPlan?: BookPlanInput[];
   existingCuts?: ExistingCutInput[];
+  bookBibliography?: BookBibliographyInput;
   concepts?: Array<{ label: string; definition: string }>;
   tensions?: Array<{ label: string; description: string }>;
 }
@@ -40,6 +43,7 @@ export interface DiffractBatchInput {
   bookParts?: BookPartInput[];
   bookPlan?: BookPlanInput[];
   existingCuts?: ExistingCutInput[];
+  bookBibliography?: BookBibliographyInput;
   concepts?: Array<{ label: string; definition: string }>;
   tensions?: Array<{ label: string; description: string }>;
 }
@@ -76,6 +80,7 @@ export class DiffractionService {
         bookParts: input.bookParts,
         existingCuts: input.existingCuts,
         bookPlan: input.bookPlan,
+        bookBibliography: input.bookBibliography,
         concepts: input.concepts,
         tensions: input.tensions,
       }
@@ -89,6 +94,7 @@ export class DiffractionService {
       bookParts: input.bookParts,
       existingCuts: input.existingCuts,
       bookPlan: input.bookPlan,
+      bookBibliography: input.bookBibliography,
       concepts: input.concepts,
       tensions: input.tensions,
     });

@@ -9,6 +9,7 @@ import { reviseChatRoutes } from "./routes/reviseChat.js";
 import { evaluateRoutes } from "./routes/evaluate.js";
 import { exportRoutes } from "./routes/export.js";
 import { diffractRoutes } from "./routes/diffract.js";
+import { demoRoutes } from "./routes/demo.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
 export function createApp(): Hono {
@@ -27,6 +28,7 @@ export function createApp(): Hono {
   app.route("/api/projects/:projectId/units/:unitId/evaluate", evaluateRoutes());
   app.route("/api/projects/:projectId/export", exportRoutes());
   app.route("/api/diffract", diffractRoutes());
+  app.route("/api/demo", demoRoutes());
 
   app.onError(errorHandler);
 

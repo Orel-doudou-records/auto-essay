@@ -28,7 +28,7 @@ const RawDiffractiveOutputSchema = z.object({
         .array(
           z.object({
             default: z.string().min(1),
-            priorCut: z.string().min(1).optional(),
+            priorCut: z.string().min(1).optional().nullable(),
           })
         )
         .default([]),
@@ -75,7 +75,7 @@ const RawDiffractiveOutputSchema = z.object({
       z.object({
         partId: z.string().min(1),
         partTitle: z.string().min(1),
-        entryId: z.string().min(1).optional(),
+        entryId: z.string().min(1).optional().nullable(),
         impact: z.string().min(1),
       })
     )
@@ -405,6 +405,17 @@ export class DiffractiveReader {
     );
     const parsed = RawDiffractiveOutputSchema.parse(rawOutput);
 
+    // Tolérance LLM : null sur un champ optionnel → absent (jamais null dans
+    // le domaine). EntréeId d'un impact de plan, coupe antérieure d'un défaut.
+    const planImpacts = parsed.planImpacts.map((impact) => ({
+      ...impact,
+      entryId: impact.entryId ?? undefined,
+    }));
+    const revealedDefaults = parsed.pass2.revealedDefaults.map((def) => ({
+      ...def,
+      priorCut: def.priorCut ?? undefined,
+    }));
+
     return createDiffractiveReading({
       fragment: {
         statement: request.statement,
@@ -412,14 +423,17 @@ export class DiffractiveReader {
         sourceIds: request.sourceIds ?? [],
       },
       pass1: parsed.pass1,
-      pass2: parsed.pass2,
+      pass2: {
+        namedPatterns: parsed.pass2.namedPatterns,
+        revealedDefaults,
+      },
       pass3: parsed.pass3,
       pass4: parsed.pass4,
       verdict: parsed.verdict,
       verdictDetail: parsed.verdictDetail,
       action: parsed.action,
       tradeoffs: parsed.tradeoffs,
-      planImpacts: parsed.planImpacts,
+      planImpacts,
       bibliographyImpacts: parsed.bibliographyImpacts,
     });
   }

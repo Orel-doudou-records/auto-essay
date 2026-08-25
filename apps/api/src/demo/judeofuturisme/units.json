@@ -1,0 +1,38 @@
+[
+  {
+    "id": "u-acte1-c1",
+    "projectId": "judeofuturisme",
+    "granularity": "chapter",
+    "targetWordCount": 5000,
+    "evidencePack": { "sourceIds": [] },
+    "content": "La machine à différer n'est pas un artifice : elle est la condition matérielle de l'archive. Écrire après la machine, c'est reconnaître que la trace précède le sens et que la technique n'ajoute rien à la mémoire — elle la rend possible. Les premiers scribes de la diaspora n'ont pas consigné une mémoire déjà là : ils ont fabriqué, geste après geste, la possibilité d'un peuple qui se souvient. La machine, du rouleau au moteur de recherche, perpétue ce geste : différer la disparition, mettre en réserve ce qui autrement s'évanouirait. C'est pourquoi le judéofuturisme ne craint pas la technique : il la reconnaît comme la forme moderne de la lettre, et se demande seulement ce qu'une communauté qui écrit depuis deux mille ans peut enseigner à une civilisation qui oublie en temps réel.",
+    "status": "verified",
+    "version": 1,
+    "createdAt": "2026-08-22T00:00:00.000Z",
+    "updatedAt": "2026-08-24T00:00:00.000Z"
+  },
+  {
+    "id": "u-acte1-c2",
+    "projectId": "judeofuturisme",
+    "granularity": "chapter",
+    "targetWordCount": 5000,
+    "evidencePack": { "sourceIds": [] },
+    "content": "Le différer n'est pas un retard mais une posture : tenir ensemble l'urgence et la patience, la promesse et l'ajournement. Le messianisme juif a toujours pensé l'avenir comme une dette plutôt que comme un programme ; la technique contemporaine, elle, promet des lendemains sans reste. Confrontées, les deux temporalités s'éclairent mutuellement : la machine apprend à différer ce qui ne peut pas être livré immédiatement, et la tradition découvre dans l'itération, la version, la révision, une parenté inattendue avec ses propres pratiques de lecture. La rédemption n'est pas un état à atteindre mais un processus à ne pas interrompre — exactement comme un texte qui se réécrit sans fin.",
+    "status": "verified",
+    "version": 1,
+    "createdAt": "2026-08-22T00:00:00.000Z",
+    "updatedAt": "2026-08-24T00:00:00.000Z"
+  },
+  {
+    "id": "u-acte2-c3",
+    "projectId": "judeofuturisme",
+    "granularity": "section",
+    "targetWordCount": 1200,
+    "evidencePack": { "sourceIds": [] },
+    "content": "L'exil est le premier système technique de la diaspora : un savoir-faire de survie culturelle étalé sur des siècles. Ce chapitre explorera comment les outils contemporains — archives numériques, génération, traduction — prolongent ou trahissent ce savoir-faire, et comment la promesse du retour s'y reformule.",
+    "status": "drafting",
+    "version": 1,
+    "createdAt": "2026-08-23T00:00:00.000Z",
+    "updatedAt": "2026-08-24T00:00:00.000Z"
+  }
+]

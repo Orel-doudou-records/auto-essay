@@ -126,4 +126,26 @@ describe("DiffractiveReader", () => {
     expect(prompt).toContain("Further Considerations on Afrofuturism");
     expect(prompt).toContain("le graphe suggère, la sémantique reste la tienne");
   });
+
+  it("normalizes null on optional fields (LLM tolerance)", async () => {
+    const generateJson = vi.fn(async () => ({
+      ...fullOutput,
+      pass2: {
+        namedPatterns: [],
+        revealedDefaults: [
+          { default: "un défaut", priorCut: null },
+        ],
+      },
+      planImpacts: [
+        { partId: "chap-2", partTitle: "Le salon", entryId: null, impact: "Conclusion." },
+      ],
+    }));
+    const reader = createDiffractiveReader({ generateJson });
+
+    const reading = await reader.read({ statement: "Fragment." });
+
+    expect(reading.pass2.revealedDefaults[0].priorCut).toBeUndefined();
+    expect(reading.planImpacts[0].entryId).toBeUndefined();
+    expect(reading.planImpacts[0].impact).toBe("Conclusion.");
+  });
 });

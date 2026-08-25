@@ -182,7 +182,22 @@ describe("diffractCommand", () => {
             subjects: ["afrofuturisme"],
             concepts: ["chronopolitique"],
           },
+          {
+            sourceId: "sans-profil",
+            title: "Ignorée",
+          },
         ],
+      });
+    });
+
+    it("keeps unprofiled sources as bare entries", () => {
+      const raw = {
+        sources: [{ id: "s1", title: "Sans profil", authors: ["A"] }],
+        profiles: [],
+      };
+
+      expect(extractBookBibliography(raw)).toEqual({
+        entries: [{ sourceId: "s1", title: "Sans profil", authors: ["A"] }],
       });
     });
 

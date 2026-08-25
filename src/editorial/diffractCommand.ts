@@ -281,6 +281,7 @@ export function extractBookBibliography(
       ? v.filter((x): x is string => typeof x === "string")
       : undefined;
   const entries: BookBibliographyInput["entries"] = [];
+  const seen = new Set<string>();
   if (Array.isArray(data.profiles)) {
     for (const item of data.profiles) {
       const p = item as {
@@ -291,6 +292,7 @@ export function extractBookBibliography(
       if (!p || typeof p.sourceId !== "string") continue;
       const source = sourceById.get(p.sourceId);
       if (!source) continue;
+      seen.add(p.sourceId);
       entries.push({
         sourceId: p.sourceId,
         title: source.title,
@@ -299,6 +301,16 @@ export function extractBookBibliography(
         concepts: strList(p.concepts),
       });
     }
+  }
+  // Les sources sans profil restent dans la bibliothèque du chapitre :
+  // entrée nue (id + titre + auteurs), le graphe porte déjà les concepts.
+  for (const [sourceId, source] of sourceById) {
+    if (seen.has(sourceId)) continue;
+    entries.push({
+      sourceId,
+      title: source.title,
+      authors: source.authors,
+    });
   }
   return entries.length > 0 ? { entries } : undefined;
 }
