@@ -1,0 +1,953 @@
+{
+ "nodes": [
+  {
+   "id": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_isaac_asimovs_science_fiction_magazine",
+   "label": "Isaac Asimov's Science Fiction Magazine",
+   "file_type": "document",
+   "source_file": "dialnet-jewsinspaceahistoryofextraterrestrialdiasp--s003.md"
+  },
+  {
+   "id": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_space_age_jew",
+   "label": "Space Age Jew",
+   "file_type": "concept",
+   "source_file": "dialnet-jewsinspaceahistoryofextraterrestrialdiasp--s003.md"
+  },
+  {
+   "id": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_william_tenn",
+   "label": "William Tenn",
+   "file_type": "document",
+   "author": "William Tenn",
+   "source_file": "dialnet-jewsinspaceahistoryofextraterrestrialdiasp--s003.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_gernsback",
+   "label": "Hugo Gernsback",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s039.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_s026_asimov",
+   "label": "Isaac Asimov",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s026.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_wandering_stars",
+   "label": "Wandering Stars",
+   "file_type": "document",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s047.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_scientifiction",
+   "label": "Scientifiction (Science Fiction)",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s039.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_amazing_stories",
+   "label": "Amazing Stories",
+   "file_type": "document",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s039.md"
+  },
+  {
+   "id": "jewish-fantasy-worldwide-trends-in-speculative-sto--s011_julie_a_hawkins",
+   "label": "Julie A. Hawkins",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s011.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_s026_cigan",
+   "label": "Chaim Cigan",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s026.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_s026_freedman",
+   "label": "Carl Freedman",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s026.md"
+  },
+  {
+   "id": "motifs_of_secrecy_hawkins_end_of_eternity",
+   "label": "The End of Eternity",
+   "file_type": "document",
+   "author": "Isaac Asimov",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s030.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_s031_foundation_series",
+   "label": "Foundation Series",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s031.md"
+  },
+  {
+   "id": "motifs_of_secrecy_hawkins_foundations_edge",
+   "label": "Foundation's Edge",
+   "file_type": "document",
+   "author": "Isaac Asimov",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s030.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_wandering_stars",
+   "label": "Wandering Stars (Anthology)",
+   "file_type": "document",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s039.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_foundation",
+   "label": "Foundation",
+   "file_type": "document",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s051.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_i_robot",
+   "label": "I, Robot",
+   "file_type": "document",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s051.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_jack_dann",
+   "label": "Jack Dann",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s039.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_phyllis_gottlieb",
+   "label": "Phyllis Gotlieb",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s039.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_ashkenazi",
+   "label": "Ashkenazi Jews",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s039.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_joanna_russ",
+   "label": "Joanna Russ",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s047.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_feminist_themes",
+   "label": "Feminist Themes",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s047.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_the_stepford_wives",
+   "label": "The Stepford Wives",
+   "file_type": "document",
+   "author": "Ira Levin",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s047.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_betty_friedan",
+   "label": "Betty Friedan",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s047.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_gloria_steinem",
+   "label": "Gloria Steinem",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s047.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_anne_roiphe",
+   "label": "Anne Roiphe",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s047.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_erica_jong",
+   "label": "Erica Jong",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s047.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_bella_abzug",
+   "label": "Bella Abzug",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s047.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_pamela_sargent",
+   "label": "Pamela Sargent",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s047.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_star_trek",
+   "label": "Star Trek",
+   "file_type": "document",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s047.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_superman",
+   "label": "Superman",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s047.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_jerry_siegel",
+   "label": "Jerry Siegel",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s047.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_joe_shuster",
+   "label": "Joe Shuster",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s047.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_action_comics",
+   "label": "Action Comics",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s047.md"
+  },
+  {
+   "id": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_jews_in_space",
+   "label": "Jews in Space (Mel Brooks)",
+   "file_type": "concept",
+   "source_file": "dialnet-jewsinspaceahistoryofextraterrestrialdiasp--s001.md"
+  },
+  {
+   "id": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_lena_kugler",
+   "label": "Lena Kugler",
+   "file_type": "document",
+   "author": "Lena Kugler",
+   "source_file": "dialnet-jewsinspaceahistoryofextraterrestrialdiasp--s001.md"
+  },
+  {
+   "id": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_mel_brooks",
+   "label": "Mel Brooks",
+   "file_type": "document",
+   "author": "Mel Brooks",
+   "source_file": "dialnet-jewsinspaceahistoryofextraterrestrialdiasp--s001.md"
+  },
+  {
+   "id": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_jews_in_space_exhibition",
+   "label": "Jews in Space Exhibition",
+   "file_type": "concept",
+   "source_file": "dialnet-jewsinspaceahistoryofextraterrestrialdiasp--s001.md"
+  },
+  {
+   "id": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_hannah_arendt",
+   "label": "Hannah Arendt",
+   "file_type": "document",
+   "author": "Hannah Arendt",
+   "source_file": "dialnet-jewsinspaceahistoryofextraterrestrialdiasp--s001.md"
+  },
+  {
+   "id": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_martin_salomonski",
+   "label": "Martin Salomonski",
+   "file_type": "document",
+   "author": "Martin Salomonski",
+   "source_file": "dialnet-jewsinspaceahistoryofextraterrestrialdiasp--s001.md"
+  },
+  {
+   "id": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_extraterrestrial_diaspora",
+   "label": "Extraterrestrial Diaspora",
+   "file_type": "concept",
+   "source_file": "dialnet-jewsinspaceahistoryofextraterrestrialdiasp--s001.md"
+  },
+  {
+   "id": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_galactic_jewishness",
+   "label": "Galactic Jewishness",
+   "file_type": "concept",
+   "source_file": "dialnet-jewsinspaceahistoryofextraterrestrialdiasp--s001.md"
+  },
+  {
+   "id": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_daniel_boyarin",
+   "label": "Daniel Boyarin",
+   "file_type": "document",
+   "author": "Daniel Boyarin",
+   "source_file": "dialnet-jewsinspaceahistoryofextraterrestrialdiasp--s003.md"
+  },
+  {
+   "id": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_jonathan_boyarin",
+   "label": "Jonathan Boyarin",
+   "file_type": "document",
+   "author": "Jonathan Boyarin",
+   "source_file": "dialnet-jewsinspaceahistoryofextraterrestrialdiasp--s003.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_william_tenn",
+   "label": "William Tenn",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s039.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_avram_davidson",
+   "label": "Avram Davidson",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s039.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_robert_silverberg",
+   "label": "Robert Silverberg",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s039.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_carol_carr",
+   "label": "Carol Carr",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s039.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_bernard_malamud",
+   "label": "Bernard Malamud",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s039.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_george_alec_effinger",
+   "label": "George Alec Effinger",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s039.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_ashkanormative",
+   "label": "Ashkanormative",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s039.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_more_wandering_stars",
+   "label": "More Wandering Stars (Anthology)",
+   "file_type": "document",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s039.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_brooklyn_project",
+   "label": "Brooklyn Project",
+   "file_type": "document",
+   "author": "William Tenn",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s047.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_me_myself_and_i",
+   "label": "Me, Myself and I",
+   "file_type": "document",
+   "author": "William Tenn",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s047.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_on_venus_have_we_got_a_rabbi",
+   "label": "On Venus, Have We Got a Rabbi",
+   "file_type": "document",
+   "author": "William Tenn",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s047.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_golem",
+   "label": "Golem",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s039.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_dybbuk",
+   "label": "Dybbuk",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s005.md"
+  },
+  {
+   "id": "jewish-fantasy-worldwide-trends-in-speculative-sto--s014_mara_w_cohen_ioannides",
+   "label": "Mara W. Cohen Ioannides",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s014.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_jewish_science_fiction",
+   "label": "Jewish Science Fiction",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s008.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_golems",
+   "label": "Golems",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s009.md"
+  },
+  {
+   "id": "contra_torrentem_esther",
+   "label": "Esther",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s027.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_book_of_esther",
+   "label": "The Book of Esther",
+   "file_type": "document",
+   "author": "Emily Barton",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s009.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_kabbalists",
+   "label": "Kabbalists",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s009.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_amit",
+   "label": "Amit",
+   "file_type": "concept",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s009.md"
+  },
+  {
+   "id": "contra_torrentem_by_night_under_the_stone_bridge",
+   "label": "By Night Under the Stone Bridge",
+   "file_type": "document",
+   "author": "Leo Perutz",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s027.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_s044_writing_jewish_heroines_journey",
+   "label": "Writing the Jewish Heroine's Journey",
+   "file_type": "document",
+   "author": "Evonne Marzouk and Patti McCarthy",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s044.md"
+  },
+  {
+   "id": "jewish_fantasy_worldwide_trends_in_speculative_sto_s044_marzouk_the_prophetess",
+   "label": "The Prophetess",
+   "file_type": "document",
+   "author": "Evonne Marzouk",
+   "source_file": "jewish-fantasy-worldwide-trends-in-speculative-sto--s044.md"
+  },
+  {
+   "id": "atlantic_juif_zotero_import_jewish_diaspora_history",
+   "label": "Jewish Diaspora History",
+   "file_type": "concept",
+   "source_file": "atlantic-juif-zotero-import--biblio.md"
+  },
+  {
+   "id": "atlantic_juif_zotero_import_jewish_sanctuary_in_the_atlantic_world",
+   "label": "Jewish Sanctuary in the Atlantic World: A Social and Architectural History",
+   "file_type": "paper",
+   "author": "Stiefel, Barry L.",
+   "source_file": "atlantic-juif-zotero-import--biblio.md"
+  },
+  {
+   "id": "atlantic_juif_zotero_import_the_sephardic_atlantic_colonial_histories_and_postcolonial_perspectives",
+   "label": "The Sephardic Atlantic: Colonial Histories and Postcolonial Perspectives",
+   "file_type": "paper",
+   "author": "Stiefel, Barry L.; Rittenberg, David; Gruber, Samuel D.",
+   "source_file": "atlantic-juif-zotero-import--biblio.md"
+  },
+  {
+   "id": "atlantic_juif_zotero_import_jewish_sanctuary",
+   "label": "Jewish Sanctuary",
+   "file_type": "concept",
+   "source_file": "atlantic-juif-zotero-import--biblio.md"
+  },
+  {
+   "id": "atlantic_juif_zotero_import_atlantic_world",
+   "label": "Atlantic World",
+   "file_type": "concept",
+   "source_file": "atlantic-juif-zotero-import--biblio.md"
+  },
+  {
+   "id": "atlantic_juif_zotero_import_synagogues",
+   "label": "Synagogues",
+   "file_type": "concept",
+   "source_file": "atlantic-juif-zotero-import--biblio.md"
+  }
+ ],
+ "links": [
+  {
+   "source": "atlantic_juif_zotero_import_the_sephardic_atlantic_colonial_histories_and_postcolonial_perspectives",
+   "target": "atlantic_juif_zotero_import_jewish_sanctuary_in_the_atlantic_world",
+   "relation": "semantically_similar_to",
+   "confidence": "INFERRED",
+   "confidence_score": 0.75
+  },
+  {
+   "source": "atlantic_juif_zotero_import_jewish_sanctuary_in_the_atlantic_world",
+   "target": "atlantic_juif_zotero_import_jewish_sanctuary",
+   "relation": "conceptually_related_to",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "atlantic_juif_zotero_import_jewish_sanctuary_in_the_atlantic_world",
+   "target": "atlantic_juif_zotero_import_atlantic_world",
+   "relation": "conceptually_related_to",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "atlantic_juif_zotero_import_jewish_sanctuary_in_the_atlantic_world",
+   "target": "atlantic_juif_zotero_import_synagogues",
+   "relation": "conceptually_related_to",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "atlantic_juif_zotero_import_jewish_sanctuary_in_the_atlantic_world",
+   "target": "atlantic_juif_zotero_import_jewish_diaspora_history",
+   "relation": "conceptually_related_to",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_lena_kugler",
+   "target": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_hannah_arendt",
+   "relation": "references",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_lena_kugler",
+   "target": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_mel_brooks",
+   "relation": "references",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_lena_kugler",
+   "target": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_martin_salomonski",
+   "relation": "references",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_lena_kugler",
+   "target": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_jews_in_space",
+   "relation": "conceptually_related_to",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_lena_kugler",
+   "target": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_extraterrestrial_diaspora",
+   "relation": "conceptually_related_to",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_lena_kugler",
+   "target": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_galactic_jewishness",
+   "relation": "conceptually_related_to",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_lena_kugler",
+   "target": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_daniel_boyarin",
+   "relation": "references",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_lena_kugler",
+   "target": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_jonathan_boyarin",
+   "relation": "references",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_jews_in_space",
+   "target": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_mel_brooks",
+   "relation": "implements",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_jews_in_space_exhibition",
+   "target": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_jews_in_space",
+   "relation": "conceptually_related_to",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_william_tenn",
+   "target": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_space_age_jew",
+   "relation": "conceptually_related_to",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_isaac_asimovs_science_fiction_magazine",
+   "target": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_space_age_jew",
+   "relation": "conceptually_related_to",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish-fantasy-worldwide-trends-in-speculative-sto--s011_julie_a_hawkins",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_s026_asimov",
+   "relation": "references",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish-fantasy-worldwide-trends-in-speculative-sto--s014_mara_w_cohen_ioannides",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_ashkanormative",
+   "relation": "references",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_robert_silverberg",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_dybbuk",
+   "relation": "references",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_ashkanormative",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_jewish_science_fiction",
+   "relation": "shares_data_with",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "contra_torrentem_esther",
+   "target": "jewish_fantasy_worldwide_trends_book_of_esther",
+   "relation": "references",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "contra_torrentem_esther",
+   "target": "jewish_fantasy_worldwide_trends_kabbalists",
+   "relation": "references",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "contra_torrentem_esther",
+   "target": "jewish_fantasy_worldwide_trends_amit",
+   "relation": "references",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "contra_torrentem_esther",
+   "target": "jewish_fantasy_worldwide_trends_golems",
+   "relation": "references",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_s026_asimov",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_s026_cigan",
+   "relation": "references",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_gernsback",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_s026_asimov",
+   "relation": "shares_data_with",
+   "confidence": "INFERRED",
+   "confidence_score": 0.8
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_s026_asimov",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_wandering_stars",
+   "relation": "references",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_s026_freedman",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_s026_asimov",
+   "relation": "references",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "motifs_of_secrecy_hawkins_end_of_eternity",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_s026_asimov",
+   "relation": "implements",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_s026_asimov",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_s031_foundation_series",
+   "relation": "authored",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "motifs_of_secrecy_hawkins_foundations_edge",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_s026_asimov",
+   "relation": "implements",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_wandering_stars",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_s026_asimov",
+   "relation": "references",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_foundation",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_s026_asimov",
+   "relation": "implements",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_i_robot",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_s026_asimov",
+   "relation": "implements",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "contra_torrentem_by_night_under_the_stone_bridge",
+   "target": "contra_torrentem_esther",
+   "relation": "references",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_s044_writing_jewish_heroines_journey",
+   "target": "contra_torrentem_esther",
+   "relation": "references",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_s044_marzouk_the_prophetess",
+   "target": "contra_torrentem_esther",
+   "relation": "references",
+   "confidence": "INFERRED",
+   "confidence_score": 0.85
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_gernsback",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_wandering_stars",
+   "relation": "references",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_gernsback",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_scientifiction",
+   "relation": "conceptually_related_to",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_gernsback",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_amazing_stories",
+   "relation": "implements",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_amazing_stories",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_ashkenazi",
+   "relation": "shares_data_with",
+   "confidence": "INFERRED",
+   "confidence_score": 0.9
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_wandering_stars",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_jack_dann",
+   "relation": "implements",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_wandering_stars",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_william_tenn",
+   "relation": "references",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_wandering_stars",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_avram_davidson",
+   "relation": "references",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_wandering_stars",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_robert_silverberg",
+   "relation": "references",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_wandering_stars",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_carol_carr",
+   "relation": "references",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_wandering_stars",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_bernard_malamud",
+   "relation": "references",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_wandering_stars",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_george_alec_effinger",
+   "relation": "references",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_wandering_stars",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_ashkanormative",
+   "relation": "shares_data_with",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_jack_dann",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_wandering_stars",
+   "relation": "references",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_more_wandering_stars",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_jack_dann",
+   "relation": "implements",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_william_tenn",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_brooklyn_project",
+   "relation": "authored",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_william_tenn",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_me_myself_and_i",
+   "relation": "authored",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_william_tenn",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_on_venus_have_we_got_a_rabbi",
+   "relation": "authored",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_avram_davidson",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_golem",
+   "relation": "references",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_more_wandering_stars",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_phyllis_gottlieb",
+   "relation": "references",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_phyllis_gottlieb",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_golem",
+   "relation": "references",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_phyllis_gottlieb",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_wandering_stars",
+   "relation": "contributed_to",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_jerry_siegel",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_superman",
+   "relation": "creates",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_joe_shuster",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_superman",
+   "relation": "creates",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_action_comics",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_superman",
+   "relation": "references",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_the_stepford_wives",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_feminist_themes",
+   "relation": "references",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_betty_friedan",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_feminist_themes",
+   "relation": "associated_with",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_gloria_steinem",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_feminist_themes",
+   "relation": "associated_with",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_anne_roiphe",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_feminist_themes",
+   "relation": "associated_with",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_erica_jong",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_feminist_themes",
+   "relation": "associated_with",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_bella_abzug",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_feminist_themes",
+   "relation": "associated_with",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_joanna_russ",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_feminist_themes",
+   "relation": "associated_with",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  },
+  {
+   "source": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_pamela_sargent",
+   "target": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_feminist_themes",
+   "relation": "associated_with",
+   "confidence": "EXTRACTED",
+   "confidence_score": 1
+  }
+ ]
+}

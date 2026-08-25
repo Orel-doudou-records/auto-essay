@@ -37,5 +37,40 @@ taille) que le lecteur diffractif reçoit comme « état du livre en cours ».
 - Le **statut de rédaction** : `units.json` (`status` de chaque unité) —
   c'est lui qui pilote l'état projeté.
 
+## Bibliothèque du chapitre 2 graphifiée (pont Graphify, F4/G1)
+
+Le chapitre 2 (« Le salon ») est documenté par le corpus **Jews in space**
+(corpus entier extracté par graphify : 3 286 nœuds / 3 223 arêtes). Ce dossier
+embarque un **sous-graphe budgété** dédié au chapitre :
+
+- `graph-chap2.json` - voisinages BFS (depth 2, maxNodes 30) autour des termes
+  du chapitre (asimov, gernsback, joanna russ, star trek, superman,
+  jews in space, wandering stars, golem, diaspora), mergés et dédupliqués.
+- `library-chap2.json` - les sources « paper/document » du sous-graphe, pour
+  `--bibliography` (profil vide : le graphe porte déjà subjects/concepts).
+- `build-graph-chap2.mjs` - régénère les deux fichiers depuis le graph.json
+  fusionné par graphify-portable :
+  `node build-graph-chap2.mjs <graph.json du corpus complet>` (défaut :
+  `./graph.json` à côté du script).
+
+### Lecture diffractive avec le graphe
+
+```bash
+npm run diffract -w @auto-essay/api -- \
+  --statement "Le vaisseau est un salon : ..." \
+  --book-parts /chemin/bookParts.json \
+  --book-plan examples/judeofuturisme/plan.json \
+  --concepts examples/judeofuturisme/concepts.json \
+  --tensions examples/judeofuturisme/tensions.json \
+  --bibliography examples/judeofuturisme/library-chap2.json \
+  --graph examples/judeofuturisme/graph-chap2.json \
+  --graph-terms "asimov,star trek,superman,jews in space,diaspora"
+```
+
+Le prompt reçoit chaque voisinage comme **signal candidat** (section « Signaux
+du graphe de la bibliothèque ») : le graphe suggère des rapprochements, le
+lecteur les qualifie dans `bibliographyImpacts` (rapprocher / redistribuer /
+source manquante).
+
 Aucun de ces contenus n'est compilé dans le moteur : ils sont chargés au runtime.
 La bibliographie est illustrative ; remplace-la par tes propres références.
