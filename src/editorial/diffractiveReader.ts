@@ -148,9 +148,20 @@ export interface BookBibliographyEntryInput {
   concepts?: string[];
 }
 
+/** Un voisinage de graphe (Graphify) projeté dans le scope : terme + texte. */
+export interface BookGraphNeighborhoodInput {
+  term: string;
+  text: string;
+}
+
 /** La bibliothèque du chapitre en cours de lecture. */
 export interface BookBibliographyInput {
   entries: BookBibliographyEntryInput[];
+  /**
+   * Signaux du graphe de corpus (voisinages autour de termes du chapitre).
+   * Le graphe suggère des rapprochements ; la lecture les qualifie.
+   */
+  graphNeighborhoods?: BookGraphNeighborhoodInput[];
 }
 
 export interface DiffractiveReadingRequest {
@@ -352,7 +363,7 @@ export function formatBibliographyEntry(
   return `- ${entry.sourceId} | ${title}${subjects}${concepts}`;
 }
 
-/** Section « La bibliothèque du chapitre » du prompt (sources + profils). */
+/** Section « La bibliothèque du chapitre » du prompt (sources + profils + graphe). */
 export function buildBibliographySection(input: BookBibliographyInput): string {
   const lines: string[] = [
     "## La bibliothèque du chapitre",
@@ -360,6 +371,18 @@ export function buildBibliographySection(input: BookBibliographyInput): string {
   ];
   for (const entry of input.entries) {
     lines.push(formatBibliographyEntry(entry));
+  }
+  const neighborhoods = input.graphNeighborhoods ?? [];
+  if (neighborhoods.length > 0) {
+    lines.push(
+      "",
+      "### Signaux du graphe de la bibliothèque",
+      "Graphify propose ci-dessous des voisinages autour des termes du chapitre (termes, nœuds, arêtes). Ce sont des signaux candidats : le graphe suggère, la sémantique reste la tienne. Qualifie-les dans bibliographyImpacts (rapprocher, redistribuer, source manquante) ou ignore-les explicitement.",
+    );
+    for (const hood of neighborhoods) {
+      lines.push("#### Terme du graphe : " + hood.term);
+      lines.push(hood.text);
+    }
   }
   return lines.join("\n");
 }

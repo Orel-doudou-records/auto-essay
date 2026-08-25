@@ -5,8 +5,15 @@ import {
   type BookPlanEntryInput,
   type BookPlanInput,
   type BookPlanNoteInput,
+  type BookBibliographyInput,
   type ExistingCutInput,
 } from "./diffractiveReader";
+import {
+  findNode,
+  formatNeighborhood,
+  queryNeighborhood,
+  type KnowledgeGraph,
+} from "../bibliography/graphify";
 import type { DraftUnitStatus } from "../domain/draftUnit";
 import type { StructuredModelClient } from "../evaluation/evaluateEssay";
 import type { DiffractiveReading } from "../domain/diffractiveReading";
@@ -29,11 +36,16 @@ export interface DiffractCliArgs {
   bookPartsPath?: string;
   cutsPath?: string;
   bookPlanPath?: string;
+  bibliographyPath?: string;
+  graphPath?: string;
+  graphTerms?: string[];
   concepts?: Array<{ label: string; definition: string }>;
   tensions?: Array<{ label: string; description: string }>;
   bookParts?: BookPartInput[];
   existingCuts?: ExistingCutInput[];
   bookPlan?: BookPlanInput[];
+  bookBibliography?: BookBibliographyInput;
+  graphNeighborhoods?: Array<{ term: string; text: string }>;
 }
 
 /**
@@ -220,6 +232,9 @@ export function parseDiffractArgs(argv: string[]): DiffractCliArgs {
     else if (flag === "--book-parts") args.bookPartsPath = argv[++i] ?? "";
     else if (flag === "--cuts") args.cutsPath = argv[++i] ?? "";
     else if (flag === "--book-plan") args.bookPlanPath = argv[++i] ?? "";
+    else if (flag === "--bibliography") args.bibliographyPath = argv[++i] ?? "";
+    else if (flag === "--graph") args.graphPath = argv[++i] ?? "";
+    else if (flag === "--graph-terms") args.graphTerms = splitList(argv[++i]);
   }
 
   if (!args.statement.trim()) {
@@ -235,6 +250,78 @@ export function splitList(raw: string | undefined): string[] {
     .split(",")
     .map((item) => item.trim())
     .filter((item) => item.length > 0);
+}
+
+/**
+ * Extrait la bibliothèque projetée d'un fichier library.json brut (F0) :
+ * { sources: [{ id, title, authors }], profiles: [{ sourceId, subjects,
+ * concepts }] }. Les profils sans source connue sont ignorés. Pure, sans I/O.
+ */
+export function extractBookBibliography(
+  raw: unknown
+): BookBibliographyInput | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const data = raw as { sources?: unknown; profiles?: unknown };
+  const sourceById = new Map<string, { title?: string; authors?: string[] }>();
+  if (Array.isArray(data.sources)) {
+    for (const item of data.sources) {
+      const s = item as { id?: unknown; title?: unknown; authors?: unknown } | null;
+      if (!s || typeof s.id !== "string") continue;
+      const authors = Array.isArray(s.authors)
+        ? s.authors.filter((a): a is string => typeof a === "string")
+        : undefined;
+      sourceById.set(s.id, {
+        title: typeof s.title === "string" ? s.title : undefined,
+        authors: authors && authors.length > 0 ? authors : undefined,
+      });
+    }
+  }
+  const strList = (v: unknown): string[] | undefined =>
+    Array.isArray(v)
+      ? v.filter((x): x is string => typeof x === "string")
+      : undefined;
+  const entries: BookBibliographyInput["entries"] = [];
+  if (Array.isArray(data.profiles)) {
+    for (const item of data.profiles) {
+      const p = item as {
+        sourceId?: unknown;
+        subjects?: unknown;
+        concepts?: unknown;
+      } | null;
+      if (!p || typeof p.sourceId !== "string") continue;
+      const source = sourceById.get(p.sourceId);
+      if (!source) continue;
+      entries.push({
+        sourceId: p.sourceId,
+        title: source.title,
+        authors: source.authors,
+        subjects: strList(p.subjects),
+        concepts: strList(p.concepts),
+      });
+    }
+  }
+  return entries.length > 0 ? { entries } : undefined;
+}
+
+/**
+ * Extrait les voisinages du graphe autour de termes (BFS budgété, zéro token).
+ * Chaque terme trouvé devient un signal { terme, voisinage formaté } pour le
+ * prompt. Les termes sans nœud correspondant sont ignorés (garde pure).
+ */
+export function buildGraphNeighborhoods(
+  graph: KnowledgeGraph,
+  terms: string[],
+  options: { depth?: number; maxNodes?: number } = {}
+): Array<{ term: string; text: string }> {
+  const out: Array<{ term: string; text: string }> = [];
+  for (const term of terms) {
+    if (!term.trim()) continue;
+    const node = findNode(graph, term);
+    if (!node) continue;
+    const hood = queryNeighborhood(graph, node.id, options);
+    out.push({ term, text: formatNeighborhood(hood) });
+  }
+  return out;
 }
 
 export function buildDiffractiveRequest(
@@ -260,6 +347,16 @@ export function buildDiffractiveRequest(
   }
   if (args.bookPlan && args.bookPlan.length > 0) {
     request.bookPlan = args.bookPlan;
+  }
+  const neighborhoods =
+    args.graphNeighborhoods && args.graphNeighborhoods.length > 0
+      ? args.graphNeighborhoods
+      : undefined;
+  if (args.bookBibliography || neighborhoods) {
+    request.bookBibliography = {
+      entries: args.bookBibliography?.entries ?? [],
+      graphNeighborhoods: neighborhoods,
+    };
   }
   return request;
 }

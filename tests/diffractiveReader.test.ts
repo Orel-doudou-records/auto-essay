@@ -105,4 +105,25 @@ describe("DiffractiveReader", () => {
     expect(prompt).toContain("Extrait du manuscrit.");
     expect(prompt).toContain("quatre passes");
   });
+
+  it("embeds graph neighborhoods as candidate signals to qualify", () => {
+    const prompt = buildDiffractivePrompt({
+      statement: "Le vaisseau est un salon.",
+      bookBibliography: {
+        entries: [{ sourceId: "eshun2003", title: "Further Considerations on Afrofuturism" }],
+        graphNeighborhoods: [
+          {
+            term: "star trek",
+            text: "Voisinage du graphe (2 nœuds, 1 arête) :\n- Star Trek [concept] (trek.md)\n* Star Trek --influences [EXTRACTED 1]--> Spock",
+          },
+        ],
+      },
+    });
+
+    expect(prompt).toContain("Signaux du graphe de la bibliothèque");
+    expect(prompt).toContain("#### Terme du graphe : star trek");
+    expect(prompt).toContain("Star Trek --influences [EXTRACTED 1]--> Spock");
+    expect(prompt).toContain("Further Considerations on Afrofuturism");
+    expect(prompt).toContain("le graphe suggère, la sémantique reste la tienne");
+  });
 });
