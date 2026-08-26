@@ -51,6 +51,7 @@ export interface ChapterUnitReference {
   id: string;
   status: DraftUnitStatus;
   contentLength: number;
+  preparedForWriting: boolean;
   provenance: {
     association: "manuscript_leaf" | "section_context";
   };
@@ -170,6 +171,8 @@ function projectSection(input: {
       id: unit.id,
       status: unit.status,
       contentLength: unit.content.length,
+      preparedForWriting:
+        unit.content.length === 0 && unit.appliedDecisionIds.length > 0,
       provenance: { association },
     })),
     sources: uniqueDistributionForSection(input.distribution, input.section.id, input.chapterId)
