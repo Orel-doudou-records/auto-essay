@@ -101,6 +101,57 @@ export async function fetchEditorialSectionContext(
   return res.json() as Promise<EditorialSectionContextPayload>;
 }
 
+export interface EditorialWritingContextPayload {
+  sectionId: string;
+  decision: EditorialSectionContextPayload["decisions"][number];
+  evidencePack: {
+    sourceIds: string[];
+    keyCitations: Array<{ sourceId: string; quote: string; context?: string; pageRange?: string }>;
+    supportingClaimIds: string[];
+    objections: Array<{ statement: string; sourceId?: string; responseStrategy?: string }>;
+    authorNotes?: string;
+  };
+  visibleSources: Array<{
+    sourceId: string;
+    title: string;
+    qualified: boolean;
+    inclusion: "evidence_pack" | "visible_only";
+    exclusionReason?: "missing_or_unqualified_profile" | "missing_excerpt";
+    excerpt?: string;
+    provenance: {
+      distributionRationale?: string;
+      distributionConfidence?: number;
+      profile?: { subjects: string[]; concepts: string[]; abstract?: string };
+      pageRange?: string;
+    };
+  }>;
+}
+
+export async function fetchEditorialWritingContext(
+  projectId: string,
+  sectionId: string,
+  decisionId: string
+): Promise<EditorialWritingContextPayload> {
+  const params = new URLSearchParams({ decisionId });
+  const res = await fetch(`${API}/projects/${projectId}/editorial/sections/${sectionId}/writing-context?${params}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<EditorialWritingContextPayload>;
+}
+
+export async function createEditorialWritingDraftUnit(
+  projectId: string,
+  sectionId: string,
+  payload: { decisionId: string; targetWordCount?: number }
+): Promise<{ unit: Pick<DraftUnit, "id" | "content" | "targetWordCount">; generated: false }> {
+  const res = await fetch(`${API}/projects/${projectId}/editorial/sections/${sectionId}/draft-units`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<{ unit: Pick<DraftUnit, "id" | "content" | "targetWordCount">; generated: false }>;
+}
+
 export async function runEditorialSectionReading(
   projectId: string,
   sectionId: string,

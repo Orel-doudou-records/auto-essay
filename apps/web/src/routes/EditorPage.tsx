@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useParams, useSearchParams, Link } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,8 +11,16 @@ import type { DraftUnit } from "@auto-essay/core";
 
 export function EditorPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const [searchParams] = useSearchParams();
   const { units, loading, error, add, update, generate, reviseChat } = useUnits(projectId);
   const [selectedUnit, setSelectedUnit] = useState<DraftUnit | null>(null);
+  const requestedUnitId = searchParams.get("unitId");
+
+  useEffect(() => {
+    if (!requestedUnitId) return;
+    const requestedUnit = units.find((unit) => unit.id === requestedUnitId);
+    if (requestedUnit) setSelectedUnit(requestedUnit);
+  }, [requestedUnitId, units]);
   const [newSection, setNewSection] = useState("");
 
   async function handleAddUnit(e: React.FormEvent) {

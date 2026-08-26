@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { mutateWorkspace } from "../src/services/editorialWorkspaceStore.js";
+import { setSources } from "../src/services/sourceStore.js";
 import { makeTempDataDir, makeTestApp, postJson } from "./helper";
 
 const now = "2026-08-26T12:00:00.000Z";
@@ -55,8 +57,17 @@ async function createWorkspace() {
           },
         ],
       },
-      distribution: [],
-      profiles: [],
+      distribution: [
+        { sourceId: "source-qualified", scopeId: "section-1", rationale: "source distribuée", confidence: 0.9 },
+        { sourceId: "source-unqualified", scopeId: "section-1", rationale: "piste distribuée", confidence: 0.5 },
+        { sourceId: "source-empty-profile", scopeId: "section-1", rationale: "profil vide", confidence: 0.4 },
+        { sourceId: "source-empty-excerpt", scopeId: "section-1", rationale: "extrait absent", confidence: 0.4 },
+      ],
+      profiles: [
+        { sourceId: "source-qualified", subjects: ["mémoire"], concepts: ["archive"], abstract: "Un extrait qualifié pour la section." },
+        { sourceId: "source-empty-profile", subjects: [], concepts: [] },
+        { sourceId: "source-empty-excerpt", subjects: ["mémoire"], concepts: [] },
+      ],
       articulations: [
         {
           id: "proposal-1",
@@ -136,6 +147,146 @@ describe("editorial workspace routes", () => {
     );
     expect(reading.status).toBe(200);
     await expect(reading.json()).resolves.toMatchObject({ executable: false });
+  });
+
+  it("prepares a traceable writing context with only active decisions and qualified evidence", async () => {
+    const { app, projectId } = await createWorkspace();
+    await setSources(projectId, [
+      {
+        id: "source-qualified",
+        projectId,
+        type: "note",
+        title: "Archive qualifiée",
+        content: "Extrait qualifié utilisable comme preuve dans la rédaction.",
+        authors: ["A. Auteur"],
+        annotations: [],
+        epistemicLimits: [],
+        tags: [],
+        verificationStatus: "verified",
+      },
+      {
+        id: "source-empty-excerpt",
+        projectId,
+        type: "note",
+        title: "Extrait absent",
+        content: "",
+        authors: [],
+        annotations: [],
+        epistemicLimits: [],
+        tags: [],
+        verificationStatus: "verified",
+      },
+      {
+        id: "source-empty-profile",
+        projectId,
+        type: "note",
+        title: "Profil sans qualification",
+        content: "Texte disponible, mais profil dépourvu de qualification.",
+        authors: [],
+        annotations: [],
+        epistemicLimits: [],
+        tags: [],
+        verificationStatus: "verified",
+      },
+      {
+        id: "source-unqualified",
+        projectId,
+        type: "note",
+        title: "Piste non qualifiée",
+        content: "Texte visible mais sans profil associé.",
+        authors: [],
+        annotations: [],
+        epistemicLimits: [],
+        tags: [],
+        verificationStatus: "unverified",
+      },
+    ]);
+
+    const modified = await postJson(
+      app,
+      `/api/projects/${projectId}/editorial/proposals/proposal-1/modify`,
+      {
+        contentCommitments: ["Conserver la tension"],
+        formalCommitments: ["Ralentir le rythme"],
+        invariants: ["Préserver la voix située"],
+        prohibitedShortcuts: ["Ne pas réduire la source à une preuve neutre"],
+        validationNote: "Je prépare cette décision pour la rédaction.",
+      }
+    );
+    const { decision } = (await modified.json()) as { decision: { id: string } };
+
+    const prepared = await app.request(
+      `/api/projects/${projectId}/editorial/sections/section-1/writing-context?decisionId=${decision.id}`
+    );
+    expect(prepared.status).toBe(200);
+    const preparedBody = (await prepared.json()) as {
+      decision: { id: string; validation: { validatedBy: string } };
+      evidencePack: { sourceIds: string[]; keyCitations: Array<{ sourceId: string; quote: string }> };
+      visibleSources: Array<{ sourceId: string; qualified: boolean; inclusion: string }>;
+    };
+    expect(preparedBody.decision).toMatchObject({ id: decision.id, validation: { validatedBy: "author" } });
+    expect(preparedBody.evidencePack.sourceIds).toEqual(["source-qualified"]);
+    expect(preparedBody.evidencePack.keyCitations).toEqual([
+      {
+        sourceId: "source-qualified",
+        quote: "Extrait qualifié utilisable comme preuve dans la rédaction.",
+        context: "source distribuée",
+      },
+    ]);
+    expect(preparedBody.visibleSources).toEqual(expect.arrayContaining([
+      expect.objectContaining({ sourceId: "source-qualified", qualified: true, inclusion: "evidence_pack" }),
+      expect.objectContaining({
+        sourceId: "source-unqualified",
+        qualified: false,
+        inclusion: "visible_only",
+        exclusionReason: "missing_or_unqualified_profile",
+      }),
+      expect.objectContaining({
+        sourceId: "source-empty-profile",
+        qualified: false,
+        inclusion: "visible_only",
+        exclusionReason: "missing_or_unqualified_profile",
+      }),
+      expect.objectContaining({
+        sourceId: "source-empty-excerpt",
+        qualified: false,
+        inclusion: "visible_only",
+        exclusionReason: "missing_excerpt",
+      }),
+    ]));
+
+    const created = await postJson(
+      app,
+      `/api/projects/${projectId}/editorial/sections/section-1/draft-units`,
+      { decisionId: decision.id, targetWordCount: 180 }
+    );
+    expect(created.status).toBe(201);
+    await expect(created.json()).resolves.toMatchObject({
+      unit: {
+        content: "",
+        targetWordCount: 180,
+        evidencePack: { sourceIds: ["source-qualified"] },
+        appliedDecisionIds: [decision.id],
+        appliedArticulationIds: ["proposal-1"],
+      },
+      generated: false,
+    });
+
+    const candidate = await app.request(
+      `/api/projects/${projectId}/editorial/sections/section-1/writing-context?decisionId=proposal-2`
+    );
+    expect(candidate.status).toBe(404);
+
+    await mutateWorkspace(projectId, (workspace) => {
+      const activeDecision = workspace.decisions.find((item) => item.id === decision.id);
+      if (!activeDecision) throw new Error("expected active decision fixture");
+      activeDecision.status = "revoked";
+      activeDecision.updatedAt = now;
+    });
+    const revoked = await app.request(
+      `/api/projects/${projectId}/editorial/sections/section-1/writing-context?decisionId=${decision.id}`
+    );
+    expect(revoked.status).toBe(404);
   });
 
   it("requires an author note for adaptation and archives a rejection without an active cut", async () => {
