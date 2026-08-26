@@ -1,15 +1,19 @@
 import { EssayEvaluator, RevisionBriefGenerator, type DraftUnit } from "@auto-essay/core";
-import { createModelClient } from "../llm/client.js";
+import type { ModelClientFactory } from "../llm/client.js";
 import { StructuredClientAdapter } from "../llm/structuredAdapter.js";
 import { getUnit, updateUnit } from "./unitStore.js";
 import { listSources } from "./sourceStore.js";
 
-export async function evaluateUnit(projectId: string, unitId: string) {
+export async function evaluateUnit(
+  projectId: string,
+  unitId: string,
+  modelClientFactory: ModelClientFactory
+) {
   const unit = await getUnit(projectId, unitId);
   if (!unit) throw new Error("unit not found");
 
   const sources = await listSources(projectId);
-  const client = await createModelClient();
+  const client = await modelClientFactory();
   const structured = new StructuredClientAdapter(client);
 
   const evaluator = new EssayEvaluator(structured, "judge-model");

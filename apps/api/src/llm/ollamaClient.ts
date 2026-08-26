@@ -1,40 +1,32 @@
 import type { ModelClient } from "./client.js";
+import { invalidResponseError } from "./errors.js";
+import {
+  requestProvider,
+  type ModelClientRequestOptions,
+} from "./request.js";
 
-/**
- * Adaptateur Ollama Cloud (API native /api/chat).
- * Authentification par clé API (Bearer). Base par défaut : https://ollama.com.
- * Modèle configurable via OLLAMA_MODEL (défaut : mistral-large-3:675b).
- */
 export class OllamaClient implements ModelClient {
   constructor(
     private readonly apiKey: string,
     private readonly baseUrl: string = "https://ollama.com",
-    private readonly model: string = "mistral-large-3:675b"
+    private readonly model: string = "mistral-large-3:675b",
+    private readonly requestOptions: ModelClientRequestOptions = {}
   ) {}
 
   async complete(system: string, user: string): Promise<string> {
-    const res = await fetch(`${this.baseUrl}/api/chat`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: this.model,
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: user },
-        ],
-        stream: false,
-      }),
-    });
-
-    if (!res.ok) {
-      throw new Error(`Ollama error ${res.status}: ${await res.text()}`);
+    const response = await this.requestChat(system, user, false);
+    let data: unknown;
+    try {
+      data = await response.json();
+    } catch (error) {
+      throw invalidResponseError("ollama", error);
     }
 
-    const data = (await res.json()) as { message?: { content?: string } };
-    return data.message?.content ?? "";
+    const content = parseMessageContent(data);
+    if (content === undefined) {
+      throw invalidResponseError("ollama");
+    }
+    return content;
   }
 
   async completeStream(
@@ -42,56 +34,87 @@ export class OllamaClient implements ModelClient {
     user: string,
     onChunk: (chunk: string) => void
   ): Promise<void> {
-    const res = await fetch(`${this.baseUrl}/api/chat`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: this.model,
-        messages: [
-          { role: "system", content: system },
-          { role: "user", content: user },
-        ],
-        stream: true,
-      }),
-    });
-
-    if (!res.ok) {
-      throw new Error(`Ollama error ${res.status}: ${await res.text()}`);
-    }
-
-    const reader = res.body?.getReader();
+    const response = await this.requestChat(system, user, true);
+    const reader = response.body?.getReader();
     if (!reader) {
-      throw new Error("No response body");
+      throw invalidResponseError("ollama");
     }
 
     const decoder = new TextDecoder();
     let buffer = "";
-
     while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+      let chunk: Uint8Array | undefined;
+      try {
+        const result = await reader.read();
+        if (result.done) break;
+        chunk = result.value;
+      } catch (error) {
+        throw invalidResponseError("ollama", error);
+      }
 
-      buffer += decoder.decode(value, { stream: true });
+      buffer += decoder.decode(chunk, { stream: true });
       const lines = buffer.split("\n");
       buffer = lines.pop() ?? "";
-
       for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-
-        try {
-          const json = JSON.parse(trimmed) as {
-            message?: { content?: string };
-          };
-          const chunk = json.message?.content;
-          if (chunk) onChunk(chunk);
-        } catch {
-          // ignore les lignes mal formées
-        }
+        parseStreamLine(line, onChunk);
       }
     }
+
+    if (buffer.trim()) {
+      parseStreamLine(buffer, onChunk);
+    }
   }
+
+  private requestChat(system: string, user: string, stream: boolean): Promise<Response> {
+    return requestProvider(
+      "ollama",
+      `${this.baseUrl}/api/chat`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: this.model,
+          messages: [
+            { role: "system", content: system },
+            { role: "user", content: user },
+          ],
+          stream,
+        }),
+      },
+      this.requestOptions
+    );
+  }
+}
+
+function parseMessageContent(data: unknown): string | undefined {
+  if (!isRecord(data) || !isRecord(data.message)) {
+    return undefined;
+  }
+
+  return typeof data.message.content === "string" ? data.message.content : undefined;
+}
+
+function parseStreamLine(line: string, onChunk: (chunk: string) => void): void {
+  const trimmed = line.trim();
+  if (!trimmed) return;
+
+  let data: unknown;
+  try {
+    data = JSON.parse(trimmed);
+  } catch (error) {
+    throw invalidResponseError("ollama", error);
+  }
+
+  const content = parseMessageContent(data);
+  if (content === undefined) {
+    throw invalidResponseError("ollama");
+  }
+  if (content) onChunk(content);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }

@@ -1,20 +1,31 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { makeTestApp, makeTempDataDir, postJson } from "./helper.js";
+import { MockClient } from "../src/llm/mockClient.js";
 import fs from "node:fs/promises";
 
 describe("integration flow", () => {
   let dataDir: string;
+  let previousOpenAiKey: string | undefined;
 
   beforeEach(async () => {
     dataDir = makeTempDataDir();
+    previousOpenAiKey = process.env.OPENAI_API_KEY;
+    process.env.OPENAI_API_KEY = "test-key-that-must-not-be-used";
   });
 
   afterEach(async () => {
+    if (previousOpenAiKey === undefined) {
+      delete process.env.OPENAI_API_KEY;
+    } else {
+      process.env.OPENAI_API_KEY = previousOpenAiKey;
+    }
     await fs.rm(dataDir, { recursive: true, force: true });
   });
 
   it("creates a project, imports a source, creates a unit, generates, revises and exports", async () => {
-    const app = makeTestApp(dataDir);
+    const app = makeTestApp(dataDir, {
+      modelClientFactory: async () => new MockClient(),
+    });
 
     const { project } = await (
       await postJson(app, "/api/projects", { title: "Mon essai" })

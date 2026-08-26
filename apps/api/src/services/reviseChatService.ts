@@ -1,5 +1,5 @@
 import type { DraftUnit } from "@auto-essay/core";
-import { createModelClient } from "../llm/client.js";
+import type { ModelClientFactory } from "../llm/client.js";
 import { getUnit, updateUnit } from "./unitStore.js";
 import { listSources } from "./sourceStore.js";
 
@@ -12,13 +12,14 @@ export interface ReviseChatResult {
 export async function reviseUnitChat(
   projectId: string,
   unitId: string,
-  instruction: string
+  instruction: string,
+  modelClientFactory: ModelClientFactory
 ): Promise<ReviseChatResult> {
   const unit = await getUnit(projectId, unitId);
   if (!unit) throw new Error("unit not found");
 
   const sources = await listSources(projectId);
-  const client = await createModelClient();
+  const client = await modelClientFactory();
 
   const system = `Tu es un réviseur d'essais. Tu reçois une unité de rédaction et une instruction de révision.
 Réponds uniquement avec le texte révisé, sans balises, sans commentaire.
@@ -56,13 +57,14 @@ export async function streamReviseUnitChat(
   projectId: string,
   unitId: string,
   instruction: string,
-  onEvent: (event: { type: string; payload?: unknown }) => void
+  onEvent: (event: { type: string; payload?: unknown }) => void,
+  modelClientFactory: ModelClientFactory
 ): Promise<void> {
   const unit = await getUnit(projectId, unitId);
   if (!unit) throw new Error("unit not found");
 
   const sources = await listSources(projectId);
-  const client = await createModelClient();
+  const client = await modelClientFactory();
 
   onEvent({ type: "thinking" });
 

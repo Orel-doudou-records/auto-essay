@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { OllamaClient } from "../src/llm/ollamaClient";
+import type { ModelClientError } from "../src/llm/errors";
 
 describe("OllamaClient", () => {
   afterEach(() => {
@@ -30,13 +31,26 @@ describe("OllamaClient", () => {
     expect(body.messages).toHaveLength(2);
   });
 
-  it("throws on non-ok response", async () => {
+  it("normalizes an authentication failure", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue(new Response("unauthorized", { status: 401 }))
     );
 
     const client = new OllamaClient("bad-key");
-    await expect(client.complete("s", "u")).rejects.toThrow(/401/);
+    await expect(client.complete("s", "u")).rejects.toMatchObject({
+      kind: "authentication",
+      retryable: false,
+    } satisfies Partial<ModelClientError>);
+  });
+
+  it("rejects a malformed streaming event as an invalid provider response", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("{not-json}\n", { status: 200 })));
+
+    const client = new OllamaClient("test-key");
+    await expect(client.completeStream("s", "u", () => undefined)).rejects.toMatchObject({
+      kind: "response_invalid",
+      retryable: false,
+    } satisfies Partial<ModelClientError>);
   });
 });

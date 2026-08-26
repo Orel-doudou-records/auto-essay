@@ -1,18 +1,19 @@
 import { createParagraphGenerator, type DraftUnit } from "@auto-essay/core";
-import { createModelClient } from "../llm/client.js";
+import type { ModelClientFactory } from "../llm/client.js";
 import { StructuredClientAdapter } from "../llm/structuredAdapter.js";
 import { getUnit, updateUnit } from "./unitStore.js";
 import { listSources } from "./sourceStore.js";
 
 export async function generateUnitContent(
   projectId: string,
-  unitId: string
+  unitId: string,
+  modelClientFactory: ModelClientFactory
 ): Promise<DraftUnit> {
   const unit = await getUnit(projectId, unitId);
   if (!unit) throw new Error("unit not found");
 
   const sources = await listSources(projectId);
-  const client = await createModelClient();
+  const client = await modelClientFactory();
   const structured = new StructuredClientAdapter(client);
 
   const generator = createParagraphGenerator(structured);

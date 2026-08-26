@@ -1,13 +1,13 @@
-import { createApp } from "../src/app.js";
+import { createApp, type AppOptions } from "../src/app.js";
 import type { Hono } from "hono";
 import os from "node:os";
 import path from "node:path";
 
-export function makeTestApp(dataDir?: string): Hono {
+export function makeTestApp(dataDir?: string, options: AppOptions = {}): Hono {
   if (dataDir) {
     process.env.AUTO_ESSAY_DATA_DIR = dataDir;
   }
-  return createApp();
+  return createApp(options);
 }
 
 export function makeTempDataDir(): string {
