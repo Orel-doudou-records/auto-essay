@@ -25,7 +25,7 @@
     "prepare:demo-runtime": "node -e \"const fs=require('fs');fs.mkdirSync('.demo-dist',{recursive:true});fs.writeFileSync('.demo-dist/package.json',JSON.stringify({type:'commonjs'}))\"",
     "typecheck": "npm run build:core && npm run typecheck -w @auto-essay/api && npm run typecheck -w @auto-essay/web",
     "test": "vitest run && npm run test:api && npm run test:web",
-    "test:api": "env -u OLLAMA_API_KEY -u OLLAMA_BASE_URL -u OLLAMA_MODEL -u OPENAI_API_KEY -u OPENAI_BASE_URL -u OPENAI_API_BASE -u OPENAI_MODEL npm run test -w @auto-essay/api",
+    "test:api": "npm run test -w @auto-essay/api",
     "test:web": "npm run test -w @auto-essay/web",
     "lint": "eslint src tests && npm run lint:api && npm run lint:web",
     "lint:api": "eslint apps/api/src",
