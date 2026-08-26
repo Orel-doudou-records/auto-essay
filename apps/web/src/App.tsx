@@ -5,6 +5,7 @@ import { SourcesPage } from "@/routes/SourcesPage";
 import { EditorPage } from "@/routes/EditorPage";
 import { EvaluatePage } from "@/routes/EvaluatePage";
 import { DemoPage } from "@/routes/DemoPage";
+import { AuthorWorkshopPage } from "@/routes/AuthorWorkshopPage";
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
         <Route path="/projects/:projectId" element={<ProjectPage />} />
         <Route path="/projects/:projectId/sources" element={<SourcesPage />} />
         <Route path="/projects/:projectId/editor" element={<EditorPage />} />
+        <Route path="/projects/:projectId/atelier" element={<AuthorWorkshopPage />} />
         <Route path="/projects/:projectId/evaluate/:unitId" element={<EvaluatePage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

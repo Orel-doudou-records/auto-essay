@@ -61,6 +61,47 @@ export async function runDiffractReading(
   return res.json() as Promise<DiffractiveReading>;
 }
 
+export interface EditorialSectionContextPayload {
+  projectId: string;
+  section: { id: string; title: string };
+  bookParts: Array<{ id: string; title: string; status: string }>;
+  bookPlan: BookPlanInput[];
+  existingCuts: Array<{ scope: string; verdict: string; cut: string }>;
+  decisions: Array<{ id: string; status: string; contentCommitments: string[] }>;
+  sources: Array<{
+    sourceId: string;
+    title: string;
+    authors: string[];
+    subjects: string[];
+    concepts: string[];
+    abstract?: string;
+    qualified: boolean;
+  }>;
+}
+
+export async function fetchEditorialSectionContext(
+  projectId: string,
+  sectionId: string
+): Promise<EditorialSectionContextPayload> {
+  const res = await fetch(`${API}/projects/${projectId}/editorial/sections/${sectionId}/context`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<EditorialSectionContextPayload>;
+}
+
+export async function runEditorialSectionReading(
+  projectId: string,
+  sectionId: string,
+  payload: { statement: string; articulationId?: string }
+): Promise<{ reading: DiffractiveReading; executable: false }> {
+  const res = await fetch(`${API}/projects/${projectId}/editorial/sections/${sectionId}/readings`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<{ reading: DiffractiveReading; executable: false }>;
+}
+
 export async function fetchProjects(): Promise<EssayProject[]> {
   const res = await fetch(`${API}/projects`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
