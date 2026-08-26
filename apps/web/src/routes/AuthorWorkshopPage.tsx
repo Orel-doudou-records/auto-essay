@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import type { DiffractiveReading } from "@auto-essay/core";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
@@ -9,11 +9,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
   acceptEditorialProposal,
+  createEditorialWritingDraftUnit,
   fetchEditorialSectionContext,
+  fetchEditorialWritingContext,
   modifyEditorialProposal,
   rejectEditorialProposal,
   runEditorialSectionReading,
   type EditorialSectionContextPayload,
+  type EditorialWritingContextPayload,
 } from "@/api";
 
 const VERDICT_LABELS: Record<string, string> = {
@@ -64,6 +67,12 @@ export function AuthorWorkshopPage() {
   const [decisionLoading, setDecisionLoading] = useState(false);
   const [decisionError, setDecisionError] = useState<string | null>(null);
   const [decisionMessage, setDecisionMessage] = useState<string | null>(null);
+  const [writingDecisionId, setWritingDecisionId] = useState("");
+  const [writingContext, setWritingContext] = useState<EditorialWritingContextPayload | null>(null);
+  const [writingLoading, setWritingLoading] = useState(false);
+  const [writingError, setWritingError] = useState<string | null>(null);
+  const [draftMessage, setDraftMessage] = useState<string | null>(null);
+  const [createdDraftUnitId, setCreatedDraftUnitId] = useState<string | null>(null);
 
   const readingProposal = context?.proposals.find((proposal) => proposal.id === readingProposalId);
 
@@ -75,6 +84,11 @@ export function AuthorWorkshopPage() {
     setProposalId(nextProposal?.id ?? "");
     setContentCommitments(nextProposal?.contentCommitments.join("\n") ?? "");
     setFormalCommitments(nextProposal?.formalCommitments.join("\n") ?? "");
+    setWritingDecisionId(next.decisions[0]?.id ?? "");
+    setWritingContext(null);
+    setWritingError(null);
+    setDraftMessage(null);
+    setCreatedDraftUnitId(null);
     if (!preserveReading) {
       setReading(null);
       setReadingProposalId(null);
@@ -124,6 +138,44 @@ export function AuthorWorkshopPage() {
       setReadingError(error instanceof Error ? error.message : String(error));
     } finally {
       setReadingLoading(false);
+    }
+  }
+
+  async function prepareWritingContext() {
+    if (!projectId || !context || !writingDecisionId || writingLoading) return;
+    setWritingLoading(true);
+    setWritingError(null);
+    setDraftMessage(null);
+    setCreatedDraftUnitId(null);
+    try {
+      const prepared = await fetchEditorialWritingContext(
+        projectId,
+        context.section.id,
+        writingDecisionId
+      );
+      setWritingContext(prepared);
+    } catch (error) {
+      setWritingContext(null);
+      setWritingError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setWritingLoading(false);
+    }
+  }
+
+  async function createWritingDraftUnit() {
+    if (!projectId || !context || !writingContext || writingLoading) return;
+    setWritingLoading(true);
+    setWritingError(null);
+    try {
+      const result = await createEditorialWritingDraftUnit(projectId, context.section.id, {
+        decisionId: writingContext.decision.id,
+      });
+      setCreatedDraftUnitId(result.unit.id);
+      setDraftMessage(`Unité ${result.unit.id} créée, avec un contenu vide.`);
+    } catch (error) {
+      setWritingError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setWritingLoading(false);
     }
   }
 
@@ -257,6 +309,55 @@ export function AuthorWorkshopPage() {
               )}
             </WorkshopCard>
 
+            <WorkshopCard title="Préparer la rédaction">
+              {context.decisions.length === 0 ? (
+                <p className="text-muted-foreground">Une décision auteur active est nécessaire avant de préparer une unité de rédaction.</p>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-muted-foreground">Cette préparation assemble des décisions et des preuves ; elle ne génère aucun texte.</p>
+                  {context.decisions.length > 1 && (
+                    <div className="space-y-2">
+                      <Label htmlFor="writingDecisionId">Décision active</Label>
+                      <select
+                        id="writingDecisionId"
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        value={writingDecisionId}
+                        onChange={(event) => {
+                          setWritingDecisionId(event.target.value);
+                          setWritingContext(null);
+                          setDraftMessage(null);
+                          setCreatedDraftUnitId(null);
+                        }}
+                      >
+                        {context.decisions.map((decision) => <option key={decision.id} value={decision.id}>{decision.id}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  <Button onClick={() => void prepareWritingContext()} disabled={writingLoading || !writingDecisionId}>
+                    {writingLoading ? "Préparation…" : "Préparer le contexte de rédaction"}
+                  </Button>
+                  {writingError && <p className="text-sm text-rose-600">Préparation indisponible : {writingError}</p>}
+                  {writingContext && (
+                    <WritingContextResult
+                      context={writingContext}
+                      loading={writingLoading}
+                      onCreate={() => void createWritingDraftUnit()}
+                    />
+                  )}
+                  {draftMessage && (
+                    <div className="flex flex-wrap items-center gap-3 rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+                      <p>{draftMessage}</p>
+                      {createdDraftUnitId && projectId && (
+                        <Link className="font-medium underline" to={`/projects/${projectId}/editor?unitId=${createdDraftUnitId}`}>
+                          Ouvrir l’unité préparée
+                        </Link>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </WorkshopCard>
+
             <WorkshopCard title="Sources de la section">
               {context.sources.length === 0 ? <p className="text-muted-foreground">Aucune source distribuée dans cette portée.</p> : (
                 <ul className="space-y-2">
@@ -317,6 +418,39 @@ export function AuthorWorkshopPage() {
         )}
       </div>
     </AppShell>
+  );
+}
+
+function WritingContextResult({
+  context,
+  loading,
+  onCreate,
+}: {
+  context: EditorialWritingContextPayload;
+  loading: boolean;
+  onCreate: () => void;
+}) {
+  return (
+    <div className="space-y-3 rounded border border-emerald-200 bg-emerald-50/40 p-3">
+      <p className="font-medium">Contexte de rédaction préparé : aucune génération n’a été lancée.</p>
+      <p className="text-muted-foreground">Décision {context.decision.id}, validée par {context.decision.validation.validatedBy}.</p>
+      <p className="text-muted-foreground">{context.evidencePack.sourceIds.length} preuve{context.evidencePack.sourceIds.length > 1 ? "s" : ""} retenue{context.evidencePack.sourceIds.length > 1 ? "s" : ""} dans l’EvidencePack.</p>
+      <ul className="space-y-2">
+        {context.visibleSources.map((source) => (
+          <li key={source.sourceId} className="rounded bg-background/70 px-3 py-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="font-medium">{source.title}</span>
+              <span className={source.inclusion === "evidence_pack" ? "text-emerald-700" : "text-amber-700"}>
+                {source.inclusion === "evidence_pack" ? "Preuve retenue" : "Visible, non retenue"}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">Distribution : {source.provenance.distributionRationale}</p>
+            {source.exclusionReason && <p className="text-xs text-muted-foreground">Exclusion : {source.exclusionReason === "missing_or_unqualified_profile" ? "profil manquant ou non qualifiant" : "extrait manquant"}.</p>}
+          </li>
+        ))}
+      </ul>
+      <Button onClick={onCreate} disabled={loading}>Créer une unité de rédaction vide</Button>
+    </div>
   );
 }
 

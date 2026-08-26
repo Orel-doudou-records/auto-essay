@@ -46,6 +46,12 @@ export const RejectProposalBodySchema = z.object({
   note: z.string().min(1).optional(),
 });
 
+export const CreateWritingDraftUnitBodySchema = z.object({
+  decisionId: z.string().min(1),
+  targetWordCount: z.number().int().positive().optional(),
+});
+
 export type EditorialWorkspaceBody = z.infer<typeof EditorialWorkspaceBodySchema>;
 export type ReadSectionBody = z.infer<typeof ReadSectionBodySchema>;
 export type DecisionCommitmentsBody = z.infer<typeof DecisionCommitmentsSchema>;
+export type CreateWritingDraftUnitBody = z.infer<typeof CreateWritingDraftUnitBodySchema>;

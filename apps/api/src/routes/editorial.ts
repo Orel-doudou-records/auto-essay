@@ -13,6 +13,7 @@ import type { ModelClientFactory } from "../llm/client.js";
 import { StructuredClientAdapter } from "../llm/structuredAdapter.js";
 import {
   AcceptProposalBodySchema,
+  CreateWritingDraftUnitBodySchema,
   EditorialWorkspaceBodySchema,
   ModifyProposalBodySchema,
   ReadSectionBodySchema,
@@ -29,7 +30,8 @@ import {
 } from "../services/editorialWorkspaceStore.js";
 import { getProject } from "../services/projectStore.js";
 import { listSources } from "../services/sourceStore.js";
-import { listUnits } from "../services/unitStore.js";
+import { createUnit, listUnits } from "../services/unitStore.js";
+import { prepareWritingContext } from "../services/writingContextService.js";
 
 export function editorialRoutes(modelClientFactory: ModelClientFactory): Hono {
   const app = new Hono();
@@ -49,6 +51,42 @@ export function editorialRoutes(modelClientFactory: ModelClientFactory): Hono {
     const projectId = c.req.param("projectId") as string;
     const context = await loadSectionContext(projectId, c.req.param("sectionId") as string);
     return c.json(toPublicContext(context));
+  });
+
+  app.get("/sections/:sectionId/writing-context", async (c) => {
+    const projectId = c.req.param("projectId") as string;
+    const sectionId = c.req.param("sectionId") as string;
+    const decisionId = c.req.query("decisionId");
+    if (!decisionId) {
+      throw new HTTPException(400, { message: "decisionId is required" });
+    }
+
+    const { writingContext } = await loadWritingContext(projectId, sectionId, decisionId);
+    return c.json(writingContext);
+  });
+
+  app.post("/sections/:sectionId/draft-units", async (c) => {
+    const projectId = c.req.param("projectId") as string;
+    const sectionId = c.req.param("sectionId") as string;
+    const body = CreateWritingDraftUnitBodySchema.parse(await c.req.json());
+    const { decision, writingContext } = await loadWritingContext(
+      projectId,
+      sectionId,
+      body.decisionId
+    );
+    const unit = await createUnit(projectId, {
+      granularity: "paragraph",
+      targetWordCount: body.targetWordCount,
+      content: "",
+      status: "drafting",
+      thesis: decision.contentCommitments.join(" "),
+      contextInPlan: { section: sectionId },
+      evidencePack: writingContext.evidencePack,
+      appliedDecisionIds: [decision.id],
+      appliedArticulationIds: [decision.articulationId],
+    });
+
+    return c.json({ unit, generated: false }, 201);
   });
 
   app.post("/sections/:sectionId/readings", async (c) => {
@@ -183,7 +221,21 @@ async function loadSectionContext(projectId: string, sectionId: string) {
     },
     relatedDecisions,
     projectedSources,
+    sources,
   };
+}
+
+async function loadWritingContext(projectId: string, sectionId: string, decisionId: string) {
+  const context = await loadSectionContext(projectId, sectionId);
+  const decision = findActiveWritingDecision(context.relatedDecisions, decisionId, sectionId);
+  const writingContext = prepareWritingContext({
+    sectionId,
+    decision,
+    sources: context.sources,
+    profiles: context.workspace.profiles,
+    distribution: context.workspace.distribution,
+  });
+  return { decision, writingContext };
 }
 
 function toPublicContext(context: SectionContext) {
@@ -217,6 +269,24 @@ function toPublicContext(context: SectionContext) {
       qualified: source.subjects.length > 0 || source.concepts.length > 0 || Boolean(source.abstract),
     })),
   };
+}
+
+function findActiveWritingDecision(
+  decisions: EditorialDecision[],
+  decisionId: string,
+  sectionId: string
+): EditorialDecision {
+  const decision = decisions.find((item) => item.id === decisionId && item.status === "active");
+  if (!decision) {
+    throw new HTTPException(404, { message: "active editorial decision not found" });
+  }
+  if (decision.scope.level === "section" && decision.scope.sectionId !== sectionId) {
+    throw new HTTPException(400, { message: "decision does not belong to this section" });
+  }
+  if (decision.scope.level === "paragraph") {
+    throw new HTTPException(400, { message: "paragraph decisions require a paragraph writing context" });
+  }
+  return decision;
 }
 
 function findArticulation(

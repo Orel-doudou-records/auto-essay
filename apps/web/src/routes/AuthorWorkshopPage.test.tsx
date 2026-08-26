@@ -4,7 +4,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthorWorkshopPage } from "./AuthorWorkshopPage";
 import {
   acceptEditorialProposal,
+  createEditorialWritingDraftUnit,
   fetchEditorialSectionContext,
+  fetchEditorialWritingContext,
+  generateUnit,
   modifyEditorialProposal,
   rejectEditorialProposal,
   runEditorialSectionReading,
@@ -12,6 +15,9 @@ import {
 
 vi.mock("@/api", () => ({
   fetchEditorialSectionContext: vi.fn(),
+  fetchEditorialWritingContext: vi.fn(),
+  createEditorialWritingDraftUnit: vi.fn(),
+  generateUnit: vi.fn(),
   runEditorialSectionReading: vi.fn(),
   acceptEditorialProposal: vi.fn(),
   modifyEditorialProposal: vi.fn(),
@@ -19,6 +25,9 @@ vi.mock("@/api", () => ({
 }));
 
 const fetchContext = vi.mocked(fetchEditorialSectionContext);
+const fetchWritingContext = vi.mocked(fetchEditorialWritingContext);
+const createWritingDraftUnit = vi.mocked(createEditorialWritingDraftUnit);
+const generateDraftUnit = vi.mocked(generateUnit);
 const runReading = vi.mocked(runEditorialSectionReading);
 const acceptProposal = vi.mocked(acceptEditorialProposal);
 const modifyProposal = vi.mocked(modifyEditorialProposal);
@@ -119,6 +128,74 @@ describe("AuthorWorkshopPage", () => {
         articulationId: "proposal-1",
       });
     });
+  });
+
+  it("prepares an active decision into a traceable empty draft unit without generation", async () => {
+    const activeContext = {
+      ...context,
+      decisions: [{
+        id: "decision-1",
+        status: "active" as const,
+        contentCommitments: ["Conserver la tension"],
+        formalCommitments: ["Ralentir le rythme"],
+        validation: { validatedBy: "author" as const, validatedAt: "2026-08-26T12:00:00.000Z" },
+      }],
+    };
+    fetchContext.mockResolvedValue(activeContext);
+    fetchWritingContext.mockResolvedValue({
+      sectionId: "section-1",
+      decision: activeContext.decisions[0],
+      evidencePack: {
+        sourceIds: ["source-qualified"],
+        keyCitations: [{ sourceId: "source-qualified", quote: "Extrait traçable", context: "source distribuée" }],
+        supportingClaimIds: [],
+        objections: [],
+      },
+      visibleSources: [
+        {
+          sourceId: "source-qualified",
+          title: "Archive qualifiée",
+          qualified: true,
+          inclusion: "evidence_pack" as const,
+          excerpt: "Extrait traçable",
+          provenance: { distributionRationale: "source distribuée", distributionConfidence: 0.9 },
+        },
+        {
+          sourceId: "source-unqualified",
+          title: "Piste non qualifiée",
+          qualified: false,
+          inclusion: "visible_only" as const,
+          exclusionReason: "missing_or_unqualified_profile" as const,
+          provenance: { distributionRationale: "piste distribuée", distributionConfidence: 0.5 },
+        },
+      ],
+    });
+    createWritingDraftUnit.mockResolvedValue({
+      unit: { id: "unit-1", content: "", targetWordCount: 200 },
+      generated: false,
+    });
+    renderPage();
+
+    fireEvent.change(screen.getByLabelText("ID de section"), { target: { value: "section-1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Charger l’atelier" }));
+    await screen.findByRole("heading", { name: "Section réelle" });
+    fireEvent.click(screen.getByRole("button", { name: "Préparer le contexte de rédaction" }));
+
+    expect(await screen.findByText("Contexte de rédaction préparé : aucune génération n’a été lancée.")).toBeInTheDocument();
+    expect(screen.getAllByText("Archive qualifiée").at(0)?.closest("li")).toHaveTextContent("Preuve retenue");
+    expect(screen.getAllByText("Piste non qualifiée").at(0)?.closest("li")).toHaveTextContent("Visible, non retenue");
+    fireEvent.click(screen.getByRole("button", { name: "Créer une unité de rédaction vide" }));
+
+    expect(await screen.findByText("Unité unit-1 créée, avec un contenu vide.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ouvrir l’unité préparée" })).toHaveAttribute(
+      "href",
+      "/projects/project-1/editor?unitId=unit-1"
+    );
+    expect(fetchWritingContext).toHaveBeenCalledWith("project-1", "section-1", "decision-1");
+    expect(createWritingDraftUnit).toHaveBeenCalledWith("project-1", "section-1", {
+      decisionId: "decision-1",
+    });
+    expect(generateDraftUnit).not.toHaveBeenCalled();
   });
 
   it("validates a candidate and refreshes the active decision and cut", async () => {
