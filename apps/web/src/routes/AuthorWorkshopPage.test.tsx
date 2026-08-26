@@ -2,15 +2,27 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthorWorkshopPage } from "./AuthorWorkshopPage";
-import { fetchEditorialSectionContext, runEditorialSectionReading } from "@/api";
+import {
+  acceptEditorialProposal,
+  fetchEditorialSectionContext,
+  modifyEditorialProposal,
+  rejectEditorialProposal,
+  runEditorialSectionReading,
+} from "@/api";
 
 vi.mock("@/api", () => ({
   fetchEditorialSectionContext: vi.fn(),
   runEditorialSectionReading: vi.fn(),
+  acceptEditorialProposal: vi.fn(),
+  modifyEditorialProposal: vi.fn(),
+  rejectEditorialProposal: vi.fn(),
 }));
 
 const fetchContext = vi.mocked(fetchEditorialSectionContext);
 const runReading = vi.mocked(runEditorialSectionReading);
+const acceptProposal = vi.mocked(acceptEditorialProposal);
+const modifyProposal = vi.mocked(modifyEditorialProposal);
+const rejectProposal = vi.mocked(rejectEditorialProposal);
 
 const context = {
   projectId: "project-1",
@@ -19,6 +31,14 @@ const context = {
   bookPlan: [],
   existingCuts: [],
   decisions: [],
+  proposals: [
+    {
+      id: "proposal-1",
+      status: "candidate" as const,
+      contentCommitments: ["Conserver la tension"],
+      formalCommitments: ["Ralentir le rythme"],
+    },
+  ],
   sources: [
     {
       sourceId: "source-qualified",
@@ -91,13 +111,100 @@ describe("AuthorWorkshopPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Lire le fragment" }));
 
     expect(await screen.findByText("Intégrer maintenant")).toBeInTheDocument();
-    expect(screen.getByText("Proposition non exécutable")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Valider (P1.4)" })).toBeDisabled();
+    expect(screen.getByText("Proposition non exécutable avant acte auteur")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Valider" })).toBeEnabled();
     await waitFor(() => {
       expect(runReading).toHaveBeenCalledWith("project-1", "section-1", {
         statement: "Un fragment situé.",
+        articulationId: "proposal-1",
       });
     });
+  });
+
+  it("validates a candidate and refreshes the active decision and cut", async () => {
+    fetchContext
+      .mockResolvedValueOnce(context)
+      .mockResolvedValueOnce({
+        ...context,
+        proposals: [],
+        decisions: [{
+          id: "decision-1",
+          status: "active" as const,
+          contentCommitments: ["Conserver la tension"],
+          formalCommitments: ["Ralentir le rythme"],
+          validation: { validatedBy: "author" as const, validatedAt: "2026-08-26T12:00:00.000Z" },
+          supersedesDecisionId: "decision-prior",
+        }],
+        existingCuts: [{ scope: "section-1", verdict: "integrate_now", cut: "Conserver la tension" }],
+      });
+    runReading.mockResolvedValue({ reading, executable: false });
+    acceptProposal.mockResolvedValue();
+    renderPage();
+
+    fireEvent.change(screen.getByLabelText("ID de section"), { target: { value: "section-1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Charger l’atelier" }));
+    await screen.findByRole("heading", { name: "Section réelle" });
+    fireEvent.change(screen.getByLabelText("Fragment à lire"), { target: { value: "Un fragment situé." } });
+    fireEvent.click(screen.getByRole("button", { name: "Lire le fragment" }));
+    await screen.findByRole("button", { name: "Valider" });
+    fireEvent.change(screen.getByLabelText("Note de validation (facultative)"), { target: { value: "Je valide cette coupe pour la section." } });
+    fireEvent.click(screen.getByRole("button", { name: "Valider" }));
+
+    expect(await screen.findByText("Décision validée et coupe active rafraîchie.")).toBeInTheDocument();
+    expect(acceptProposal).toHaveBeenCalledWith("project-1", "proposal-1", {
+      contentCommitments: ["Conserver la tension"],
+      formalCommitments: ["Ralentir le rythme"],
+      validationNote: "Je valide cette coupe pour la section.",
+    });
+    expect(screen.getAllByText("Conserver la tension")).toHaveLength(2);
+    expect(screen.getByText("Supersède la décision decision-prior")).toBeInTheDocument();
+  });
+
+  it("requires a note before submitting an adaptation, then persists the adapted act", async () => {
+    fetchContext.mockResolvedValue(context);
+    runReading.mockResolvedValue({ reading, executable: false });
+    modifyProposal.mockResolvedValue();
+    renderPage();
+
+    fireEvent.change(screen.getByLabelText("ID de section"), { target: { value: "section-1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Charger l’atelier" }));
+    await screen.findByRole("heading", { name: "Section réelle" });
+    fireEvent.change(screen.getByLabelText("Fragment à lire"), { target: { value: "Un fragment situé." } });
+    fireEvent.click(screen.getByRole("button", { name: "Lire le fragment" }));
+    await screen.findByRole("button", { name: "Adapter" });
+    fireEvent.click(screen.getByRole("button", { name: "Adapter" }));
+    expect(screen.getByRole("button", { name: "Enregistrer l’adaptation" })).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("Note d’adaptation"), { target: { value: "Je conserve la tension mais je ralentis la cadence." } });
+    fireEvent.click(screen.getByRole("button", { name: "Enregistrer l’adaptation" }));
+
+    expect(await screen.findByText("Décision adaptée et coupe active rafraîchie.")).toBeInTheDocument();
+    expect(modifyProposal).toHaveBeenCalledWith("project-1", "proposal-1", {
+      contentCommitments: ["Conserver la tension"],
+      formalCommitments: ["Ralentir le rythme"],
+      validationNote: "Je conserve la tension mais je ralentis la cadence.",
+    });
+    expect(rejectProposal).not.toHaveBeenCalled();
+  });
+
+  it("archives a rejected candidate without presenting a new active cut", async () => {
+    fetchContext.mockResolvedValue(context);
+    runReading.mockResolvedValue({ reading, executable: false });
+    rejectProposal.mockResolvedValue();
+    renderPage();
+
+    fireEvent.change(screen.getByLabelText("ID de section"), { target: { value: "section-1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Charger l’atelier" }));
+    await screen.findByRole("heading", { name: "Section réelle" });
+    fireEvent.change(screen.getByLabelText("Fragment à lire"), { target: { value: "Un fragment situé." } });
+    fireEvent.click(screen.getByRole("button", { name: "Lire le fragment" }));
+    await screen.findByRole("button", { name: "Refuser" });
+    fireEvent.click(screen.getByRole("button", { name: "Refuser" }));
+    fireEvent.change(screen.getByLabelText("Note de refus (facultative)"), { target: { value: "Je garde cette piste en réserve." } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirmer le refus" }));
+
+    expect(await screen.findByText("Proposition refusée et archivée ; aucune coupe active n’a été créée.")).toBeInTheDocument();
+    expect(rejectProposal).toHaveBeenCalledWith("project-1", "proposal-1", "Je garde cette piste en réserve.");
   });
 
   it("renders an error when the selected scope cannot be loaded", async () => {
