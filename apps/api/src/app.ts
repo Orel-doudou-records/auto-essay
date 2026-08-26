@@ -11,7 +11,7 @@ import { exportRoutes } from "./routes/export.js";
 import { diffractRoutes } from "./routes/diffract.js";
 import { demoRoutes } from "./routes/demo.js";
 import { errorHandler } from "./middleware/errorHandler.js";
-import { createModelClient, type ModelClientFactory } from "./llm/client.js";
+import { createModelClientFactory, type ModelClientFactory } from "./llm/client.js";
 
 export interface AppOptions {
   modelClientFactory?: ModelClientFactory;
@@ -19,7 +19,7 @@ export interface AppOptions {
 
 export function createApp(options: AppOptions = {}): Hono {
   const app = new Hono();
-  const modelClientFactory = options.modelClientFactory ?? createModelClient;
+  const modelClientFactory = options.modelClientFactory ?? createModelClientFactory({ provider: "mock" });
 
   app.use(logger());
   app.use(cors({ origin: "*" }));

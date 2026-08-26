@@ -39,7 +39,9 @@ L'API est disponible sur `http://localhost:3000` et le frontend sur `http://loca
 
 Les données locales sont stockées dans `~/.auto-essay/` (variable `AUTO_ESSAY_DATA_DIR` pour changer).
 
-Pour utiliser un modèle de langage externe, définissez `OPENAI_API_KEY`. Sans clé, un client mock retourne des réponses factices.
+L’API sélectionne explicitement son fournisseur LLM avec `AUTO_ESSAY_LLM_PROVIDER` : `mock` (défaut), `ollama` ou `openai-compatible`. Le mode `mock` est le mode sûr pour le développement et les tests. Pour un fournisseur OpenAI-compatible, définissez `AUTO_ESSAY_LLM_PROVIDER=openai-compatible` et `OPENAI_API_KEY`, avec `OPENAI_BASE_URL` et `OPENAI_MODEL` si nécessaire. Pour Ollama, utilisez `AUTO_ESSAY_LLM_PROVIDER=ollama`, `OLLAMA_API_KEY`, puis optionnellement `OLLAMA_BASE_URL` et `OLLAMA_MODEL`.
+
+`OPENAI_API_BASE` reste accepté comme alias de migration de `OPENAI_BASE_URL`, mais les deux variables doivent avoir la même valeur si elles sont définies simultanément.
 
 ## Exemple minimal
 

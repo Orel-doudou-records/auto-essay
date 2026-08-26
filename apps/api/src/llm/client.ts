@@ -1,3 +1,8 @@
+import {
+  resolveModelClientConfig,
+  type ModelClientConfig,
+} from "../env.js";
+
 export interface ModelClient {
   complete(system: string, user: string): Promise<string>;
   completeStream(
@@ -9,17 +14,26 @@ export interface ModelClient {
 
 export type ModelClientFactory = () => Promise<ModelClient>;
 
+export function createModelClientFactory(config: ModelClientConfig): ModelClientFactory {
+  return async () => {
+    switch (config.provider) {
+      case "ollama": {
+        const { OllamaClient } = await import("./ollamaClient.js");
+        return new OllamaClient(config.apiKey, config.baseUrl, config.model);
+      }
+      case "openai-compatible": {
+        const { OpenAiClient } = await import("./openAiClient.js");
+        return new OpenAiClient(config.apiKey, config.baseUrl, config.model);
+      }
+      case "mock": {
+        const { MockClient } = await import("./mockClient.js");
+        return new MockClient();
+      }
+    }
+  };
+}
+
 export const createModelClient: ModelClientFactory = async (): Promise<ModelClient> => {
-  const ollamaKey = process.env.OLLAMA_API_KEY;
-  if (ollamaKey) {
-    const { OllamaClient } = await import("./ollamaClient.js");
-    return new OllamaClient(ollamaKey, process.env.OLLAMA_BASE_URL, process.env.OLLAMA_MODEL);
-  }
-  const key = process.env.OPENAI_API_KEY;
-  if (key) {
-    const { OpenAiClient } = await import("./openAiClient.js");
-    return new OpenAiClient(key, process.env.OPENAI_BASE_URL, process.env.OPENAI_MODEL);
-  }
-  const { MockClient } = await import("./mockClient.js");
-  return new MockClient();
+  const factory = createModelClientFactory(resolveModelClientConfig(process.env));
+  return factory();
 };

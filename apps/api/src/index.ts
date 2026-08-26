@@ -1,26 +1,27 @@
 import { serve } from "@hono/node-server";
 import { createApp } from "./app.js";
+import { loadEnvironmentFile, resolveModelClientConfig } from "./env.js";
+import { createModelClientFactory } from "./llm/client.js";
 
-// Charge .env (OLLAMA_API_KEY / OLLAMA_MODEL) - le serveur doit voir la clé
-// comme la CLI (process.loadEnvFile, cwd = apps/api en npm workspace).
-try {
-  process.loadEnvFile();
-} catch {
-  // Pas de .env : environnement existant ou mode mock.
-}
-if (!process.env.OLLAMA_API_KEY && !process.env.OPENAI_API_KEY) {
+loadEnvironmentFile();
+const modelClientConfig = resolveModelClientConfig(process.env);
+const app = createApp({
+  modelClientFactory: createModelClientFactory(modelClientConfig),
+});
+const port = Number(process.env.PORT || "3000");
+
+if (modelClientConfig.provider === "mock") {
+  console.log("INFO: fournisseur LLM simulé sélectionné.");
+} else {
   console.log(
-    "INFO: aucune clé de modèle détectée — l'API utilisera le client simulé (mock)."
+    `INFO: fournisseur LLM ${modelClientConfig.provider} sélectionné${
+      modelClientConfig.model ? ` (modèle ${modelClientConfig.model})` : ""
+    }.`
   );
 }
-
-const app = createApp();
-
-const port = Number(process.env.PORT || "3000");
 
 serve({
   fetch: app.fetch,
   port,
 });
-
 console.log(`API listening on http://localhost:${port}`);
