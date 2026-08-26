@@ -101,6 +101,51 @@ export async function fetchEditorialSectionContext(
   return res.json() as Promise<EditorialSectionContextPayload>;
 }
 
+export interface ChapterEditorialWorkspacePayload {
+  chapter: { id: string; title: string; writingStatus: string };
+  sections: Array<{
+    id: string;
+    title: string;
+    order: number;
+    writingStatus: string;
+    decisions: Array<{ id: string; contentCommitments: string[] }>;
+    units: Array<{
+      id: string;
+      status: string;
+      contentLength: number;
+      preparedForWriting: boolean;
+      provenance: { association: "manuscript_leaf" | "section_context" };
+    }>;
+    sources: Array<{
+      sourceId: string;
+      title: string;
+      qualified: boolean;
+      availability: "evidence_pack" | "visible_only";
+      exclusionReason?: "missing_source" | "missing_or_unqualified_profile" | "missing_excerpt";
+      provenance: {
+        distributionScopeId: string;
+        distributionRationale?: string;
+        distributionConfidence?: number;
+        profile?: { subjects: string[]; concepts: string[]; abstract?: string };
+      };
+    }>;
+    readiness: "has_active_decision" | "needs_active_decision";
+    transitions: {
+      workshop: { sectionId: string; href: string };
+      preparedUnits: Array<{ unitId: string; href: string }>;
+    };
+  }>;
+}
+
+export async function fetchChapterEditorialWorkspace(
+  projectId: string,
+  chapterId: string
+): Promise<ChapterEditorialWorkspacePayload> {
+  const res = await fetch(`${API}/projects/${projectId}/editorial/chapters/${chapterId}/workspace`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<ChapterEditorialWorkspacePayload>;
+}
+
 export interface EditorialWritingContextPayload {
   sectionId: string;
   decision: EditorialSectionContextPayload["decisions"][number];
