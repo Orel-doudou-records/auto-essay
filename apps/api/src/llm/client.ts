@@ -7,7 +7,9 @@ export interface ModelClient {
   ): Promise<void>;
 }
 
-export async function createModelClient(): Promise<ModelClient> {
+export type ModelClientFactory = () => Promise<ModelClient>;
+
+export const createModelClient: ModelClientFactory = async (): Promise<ModelClient> => {
   const ollamaKey = process.env.OLLAMA_API_KEY;
   if (ollamaKey) {
     const { OllamaClient } = await import("./ollamaClient.js");
@@ -20,4 +22,4 @@ export async function createModelClient(): Promise<ModelClient> {
   }
   const { MockClient } = await import("./mockClient.js");
   return new MockClient();
-}
+};

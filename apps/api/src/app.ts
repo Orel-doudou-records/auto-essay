@@ -11,9 +11,15 @@ import { exportRoutes } from "./routes/export.js";
 import { diffractRoutes } from "./routes/diffract.js";
 import { demoRoutes } from "./routes/demo.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+import { createModelClient, type ModelClientFactory } from "./llm/client.js";
 
-export function createApp(): Hono {
+export interface AppOptions {
+  modelClientFactory?: ModelClientFactory;
+}
+
+export function createApp(options: AppOptions = {}): Hono {
   const app = new Hono();
+  const modelClientFactory = options.modelClientFactory ?? createModelClient;
 
   app.use(logger());
   app.use(cors({ origin: "*" }));
@@ -23,11 +29,11 @@ export function createApp(): Hono {
   app.route("/api/projects", projectsRoutes());
   app.route("/api/projects/:projectId/sources", sourcesRoutes());
   app.route("/api/projects/:projectId/units", unitsRoutes());
-  app.route("/api/projects/:projectId/units/:unitId/generate", generateRoutes());
-  app.route("/api/projects/:projectId/units/:unitId/revise-chat", reviseChatRoutes());
-  app.route("/api/projects/:projectId/units/:unitId/evaluate", evaluateRoutes());
+  app.route("/api/projects/:projectId/units/:unitId/generate", generateRoutes(modelClientFactory));
+  app.route("/api/projects/:projectId/units/:unitId/revise-chat", reviseChatRoutes(modelClientFactory));
+  app.route("/api/projects/:projectId/units/:unitId/evaluate", evaluateRoutes(modelClientFactory));
   app.route("/api/projects/:projectId/export", exportRoutes());
-  app.route("/api/diffract", diffractRoutes());
+  app.route("/api/diffract", diffractRoutes(modelClientFactory));
   app.route("/api/demo", demoRoutes());
 
   app.onError(errorHandler);
