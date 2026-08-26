@@ -6,6 +6,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ChapterOperationPanel } from "@/components/editorial/ChapterOperationPanel";
 
 export function ChapterWorkshopPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -65,6 +66,8 @@ export function ChapterWorkshopPage() {
                 Statut de rédaction : {workspace.chapter.writingStatus}
               </p>
             </div>
+
+            <ChapterOperationPanel projectId={projectId ?? ""} chapterId={workspace.chapter.id} />
 
             {workspace.sections.length === 0 ? (
               <Card>

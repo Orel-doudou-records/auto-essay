@@ -146,6 +146,82 @@ export async function fetchChapterEditorialWorkspace(
   return res.json() as Promise<ChapterEditorialWorkspacePayload>;
 }
 
+export interface ChapterOperationPayload {
+  id: string;
+  state: "preparing" | "awaiting_author" | "running" | "paused" | "failed" | "cancelled" | "completed";
+  provenance: { projectId: string; chapterId: string; requestedBy: "author" };
+  trace: Array<{
+    type: string;
+    actor: "author" | "system";
+    occurredAt: string;
+    detail?: string;
+  }>;
+}
+
+type ChapterOperationResponse = { operation: ChapterOperationPayload; executed: false };
+
+export async function createChapterOperation(
+  projectId: string,
+  chapterId: string
+): Promise<ChapterOperationResponse> {
+  return submitChapterOperation(projectId, "", "POST", { chapterId });
+}
+
+export async function awaitChapterOperationAuthor(
+  projectId: string,
+  operationId: string
+): Promise<ChapterOperationResponse> {
+  return submitChapterOperation(projectId, `${operationId}/await-author`, "POST");
+}
+
+export async function startChapterOperation(
+  projectId: string,
+  operationId: string
+): Promise<ChapterOperationResponse> {
+  return submitChapterOperation(projectId, `${operationId}/start`, "POST");
+}
+
+export async function pauseChapterOperation(
+  projectId: string,
+  operationId: string,
+  detail?: string
+): Promise<ChapterOperationResponse> {
+  return submitChapterOperation(projectId, `${operationId}/pause`, "POST", { detail });
+}
+
+export async function resumeChapterOperation(
+  projectId: string,
+  operationId: string
+): Promise<ChapterOperationResponse> {
+  return submitChapterOperation(projectId, `${operationId}/resume`, "POST");
+}
+
+export async function cancelChapterOperation(
+  projectId: string,
+  operationId: string,
+  detail?: string
+): Promise<ChapterOperationResponse> {
+  return submitChapterOperation(projectId, `${operationId}/cancel`, "POST", { detail });
+}
+
+async function submitChapterOperation(
+  projectId: string,
+  suffix: string,
+  method: "POST",
+  body: Record<string, unknown> = {}
+): Promise<ChapterOperationResponse> {
+  const path = suffix
+    ? `${API}/projects/${projectId}/editorial/chapter-operations/${suffix}`
+    : `${API}/projects/${projectId}/editorial/chapter-operations`;
+  const res = await fetch(path, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<ChapterOperationResponse>;
+}
+
 export interface EditorialWritingContextPayload {
   sectionId: string;
   decision: EditorialSectionContextPayload["decisions"][number];
