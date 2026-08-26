@@ -30,6 +30,15 @@ l'implémentation.
 - **Coupe déjà édictée** (`ExistingCut`) : engagement de l'auteur déjà pris
   (scope + verdict + coupe) avec lequel le lecteur diffractif compose — il ne
   recommande pas de la réédicter, il ne la contredit pas en silence.
+- **Atelier de décision auteur** : parcours mono-auteur qui rend une lecture
+  diffractive située, puis recueille une validation, une adaptation ou un
+  refus. Il conserve la proposition comme trace et ne rend exécutable qu'une
+  décision explicitement validée.
+- **Refus éditorial** : acte de l'auteur qui archive une proposition et sa
+  lecture sans créer de décision active ni de coupe déjà édictée.
+- **Source non qualifiée** : source visible dans une bibliothèque distribuée,
+  mais dépourvue du profil ou de l'extrait nécessaire pour devenir une preuve
+  automatique dans un `EvidencePack`.
 - **Statut d'assemblage** : statut d'une position dans le livre (arbre),
   distinct du statut de rédaction de l'unité — une unité rédigée peut être
   montée dans un chapitre ébauche.
