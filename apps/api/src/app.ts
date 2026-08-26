@@ -10,6 +10,7 @@ import { evaluateRoutes } from "./routes/evaluate.js";
 import { exportRoutes } from "./routes/export.js";
 import { diffractRoutes } from "./routes/diffract.js";
 import { demoRoutes } from "./routes/demo.js";
+import { editorialRoutes } from "./routes/editorial.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { createModelClientFactory, type ModelClientFactory } from "./llm/client.js";
 
@@ -33,6 +34,7 @@ export function createApp(options: AppOptions = {}): Hono {
   app.route("/api/projects/:projectId/units/:unitId/revise-chat", reviseChatRoutes(modelClientFactory));
   app.route("/api/projects/:projectId/units/:unitId/evaluate", evaluateRoutes(modelClientFactory));
   app.route("/api/projects/:projectId/export", exportRoutes());
+  app.route("/api/projects/:projectId/editorial", editorialRoutes(modelClientFactory));
   app.route("/api/diffract", diffractRoutes(modelClientFactory));
   app.route("/api/demo", demoRoutes());
 
