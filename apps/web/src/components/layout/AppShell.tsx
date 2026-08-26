@@ -15,6 +15,7 @@ export function AppShell({ projectId, children }: AppShellProps) {
         { to: `/projects/${projectId}/sources`, label: "Sources" },
         { to: `/projects/${projectId}/editor`, label: "Éditeur" },
         { to: `/projects/${projectId}/atelier`, label: "Atelier" },
+        { to: `/projects/${projectId}/chapitre`, label: "Chapitre" },
       ]
     : [];
 
