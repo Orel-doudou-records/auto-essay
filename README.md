@@ -43,6 +43,8 @@ L’API sélectionne explicitement son fournisseur LLM avec `AUTO_ESSAY_LLM_PROV
 
 `OPENAI_API_BASE` reste accepté comme alias de migration de `OPENAI_BASE_URL`, mais les deux variables doivent avoir la même valeur si elles sont définies simultanément.
 
+La commande canonique de vérification est `npm test`. Elle neutralise les identifiants LLM pour la suite API, force le mode mock et refuse tout appel réseau non simulé. Les tests de contrat des adaptateurs simulent explicitement `fetch` ; aucun test ne doit appeler un fournisseur réel.
+
 ## Exemple minimal
 
 ```typescript
