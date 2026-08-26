@@ -120,9 +120,14 @@ describe("editorial workspace routes", () => {
     const contextBody = (await context.json()) as {
       section: { id: string };
       bookParts: Array<Record<string, unknown>>;
+      proposals: Array<{ id: string; status: string }>;
     };
     expect(contextBody.section.id).toBe("section-1");
     expect(contextBody.bookParts[0]).not.toHaveProperty("text");
+    expect(contextBody.proposals).toMatchObject([
+      { id: "proposal-1", status: "candidate", contentCommitments: ["Clarifier l’enjeu"] },
+      { id: "proposal-2", status: "candidate", formalCommitments: ["Épurer le lexique"] },
+    ]);
 
     const reading = await postJson(
       app,
@@ -154,7 +159,7 @@ describe("editorial workspace routes", () => {
     );
     expect(modified.status).toBe(201);
     await expect(modified.json()).resolves.toMatchObject({
-      decision: { status: "active" },
+      decision: { status: "active", validation: { validatedBy: "author" } },
       event: { action: "modified" },
     });
 

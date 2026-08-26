@@ -67,7 +67,20 @@ export interface EditorialSectionContextPayload {
   bookParts: Array<{ id: string; title: string; status: string }>;
   bookPlan: BookPlanInput[];
   existingCuts: Array<{ scope: string; verdict: string; cut: string }>;
-  decisions: Array<{ id: string; status: string; contentCommitments: string[] }>;
+  decisions: Array<{
+    id: string;
+    status: "active";
+    contentCommitments: string[];
+    formalCommitments: string[];
+    validation: { validatedBy: "author"; validatedAt: string; note?: string };
+    supersedesDecisionId?: string;
+  }>;
+  proposals: Array<{
+    id: string;
+    status: "candidate";
+    contentCommitments: string[];
+    formalCommitments: string[];
+  }>;
   sources: Array<{
     sourceId: string;
     title: string;
@@ -100,6 +113,52 @@ export async function runEditorialSectionReading(
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json() as Promise<{ reading: DiffractiveReading; executable: false }>;
+}
+
+type EditorialDecisionPayload = {
+  contentCommitments: string[];
+  formalCommitments: string[];
+  invariants?: string[];
+  prohibitedShortcuts?: string[];
+  validationNote?: string;
+};
+
+async function submitEditorialProposal(
+  projectId: string,
+  proposalId: string,
+  action: "accept" | "modify" | "reject",
+  payload: EditorialDecisionPayload | { note?: string }
+): Promise<void> {
+  const res = await fetch(`${API}/projects/${projectId}/editorial/proposals/${proposalId}/${action}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+}
+
+export function acceptEditorialProposal(
+  projectId: string,
+  proposalId: string,
+  payload: EditorialDecisionPayload
+): Promise<void> {
+  return submitEditorialProposal(projectId, proposalId, "accept", payload);
+}
+
+export function modifyEditorialProposal(
+  projectId: string,
+  proposalId: string,
+  payload: EditorialDecisionPayload
+): Promise<void> {
+  return submitEditorialProposal(projectId, proposalId, "modify", payload);
+}
+
+export function rejectEditorialProposal(
+  projectId: string,
+  proposalId: string,
+  note?: string
+): Promise<void> {
+  return submitEditorialProposal(projectId, proposalId, "reject", { note });
 }
 
 export async function fetchProjects(): Promise<EssayProject[]> {

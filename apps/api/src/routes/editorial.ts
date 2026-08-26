@@ -193,7 +193,25 @@ function toPublicContext(context: SectionContext) {
     bookParts: context.bookParts.map(({ id, title, status }) => ({ id, title, status })),
     bookPlan: context.bookPlan,
     existingCuts: context.existingCuts,
-    decisions: context.relatedDecisions,
+    decisions: context.relatedDecisions.map((decision) => ({
+      id: decision.id,
+      status: decision.status,
+      contentCommitments: decision.contentCommitments,
+      formalCommitments: decision.formalCommitments,
+      validation: decision.validation,
+      supersedesDecisionId: decision.supersedesDecisionId,
+    })),
+    proposals: context.workspace.articulations
+      .filter(
+        (proposal) =>
+          proposal.status === "candidate" && proposal.scope.sectionId === context.section.id
+      )
+      .map((proposal) => ({
+        id: proposal.id,
+        status: proposal.status,
+        contentCommitments: proposal.intendedEffects.content,
+        formalCommitments: proposal.intendedEffects.form,
+      })),
     sources: context.projectedSources.map((source) => ({
       ...source,
       qualified: source.subjects.length > 0 || source.concepts.length > 0 || Boolean(source.abstract),
