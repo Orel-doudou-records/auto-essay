@@ -139,8 +139,16 @@ describe("projectChapterEditorialState", () => {
           writingStatus: "verified",
           decisions: [{ id: "decision-section-1", provenance: { scope: "section-1" } }],
           units: [
-            { id: "unit-mounted", provenance: { association: "manuscript_leaf" } },
-            { id: "unit-prepared", provenance: { association: "section_context" } },
+            {
+              id: "unit-mounted",
+              preparedForWriting: false,
+              provenance: { association: "manuscript_leaf" },
+            },
+            {
+              id: "unit-prepared",
+              preparedForWriting: true,
+              provenance: { association: "section_context" },
+            },
           ],
           sources: [
             { sourceId: "source-qualified", qualified: true, availability: "evidence_pack" },

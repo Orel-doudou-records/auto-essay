@@ -5,6 +5,7 @@ import {
   projectBibliography,
   projectBookPlan,
   projectBookState,
+  projectChapterEditorialState,
   type ContentStyleArticulation,
   type EditorialDecision,
   type ManuscriptChild,
@@ -51,6 +52,13 @@ export function editorialRoutes(modelClientFactory: ModelClientFactory): Hono {
     const projectId = c.req.param("projectId") as string;
     const context = await loadSectionContext(projectId, c.req.param("sectionId") as string);
     return c.json(toPublicContext(context));
+  });
+
+  app.get("/chapters/:chapterId/workspace", async (c) => {
+    const projectId = c.req.param("projectId") as string;
+    const chapterId = c.req.param("chapterId") as string;
+    const workspace = await loadChapterWorkspace(projectId, chapterId);
+    return c.json(toPublicChapterWorkspace(projectId, workspace));
   });
 
   app.get("/sections/:sectionId/writing-context", async (c) => {
@@ -165,6 +173,57 @@ export function editorialRoutes(modelClientFactory: ModelClientFactory): Hono {
 }
 
 type SectionContext = Awaited<ReturnType<typeof loadSectionContext>>;
+
+async function loadChapterWorkspace(projectId: string, chapterId: string) {
+  await getProject(projectId);
+  const [workspace, sources, units] = await Promise.all([
+    getWorkspace(projectId),
+    listSources(projectId),
+    listUnits(projectId),
+  ]);
+
+  try {
+    return projectChapterEditorialState({
+      chapterId,
+      manuscript: workspace.manuscript,
+      units,
+      decisions: workspace.decisions,
+      sources,
+      profiles: workspace.profiles,
+      distribution: workspace.distribution,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("chapter not found:")) {
+      throw new HTTPException(404, { message: "manuscript chapter not found" });
+    }
+    throw error;
+  }
+}
+
+function toPublicChapterWorkspace(
+  projectId: string,
+  workspace: Awaited<ReturnType<typeof loadChapterWorkspace>>
+) {
+  return {
+    chapter: workspace.chapter,
+    sections: workspace.sections.map((section) => ({
+      ...section,
+      readiness: section.decisions.length > 0 ? "has_active_decision" : "needs_active_decision",
+      transitions: {
+        workshop: {
+          sectionId: section.id,
+          href: `/projects/${projectId}/atelier?sectionId=${section.id}`,
+        },
+        preparedUnits: section.units
+          .filter((unit) => unit.preparedForWriting)
+          .map((unit) => ({
+            unitId: unit.id,
+            href: `/projects/${projectId}/editor?unitId=${unit.id}`,
+          })),
+      },
+    })),
+  };
+}
 
 async function loadSectionContext(projectId: string, sectionId: string) {
   await getProject(projectId);
