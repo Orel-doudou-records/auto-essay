@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import {
   createEditorialDecisionService,
@@ -6,6 +6,7 @@ import {
   projectBookPlan,
   projectBookState,
   projectChapterEditorialState,
+  type ChapterOperationEventType,
   type ContentStyleArticulation,
   type EditorialDecision,
   type ManuscriptChild,
@@ -14,6 +15,8 @@ import type { ModelClientFactory } from "../llm/client.js";
 import { StructuredClientAdapter } from "../llm/structuredAdapter.js";
 import {
   AcceptProposalBodySchema,
+  ChapterOperationDetailBodySchema,
+  CreateChapterOperationBodySchema,
   CreateWritingDraftUnitBodySchema,
   EditorialWorkspaceBodySchema,
   ModifyProposalBodySchema,
@@ -33,6 +36,11 @@ import { getProject } from "../services/projectStore.js";
 import { listSources } from "../services/sourceStore.js";
 import { createUnit, listUnits } from "../services/unitStore.js";
 import { prepareWritingContext } from "../services/writingContextService.js";
+import {
+  createStoredChapterOperation,
+  getChapterOperation,
+  transitionStoredChapterOperation,
+} from "../services/chapterOperationStore.js";
 
 export function editorialRoutes(modelClientFactory: ModelClientFactory): Hono {
   const app = new Hono();
@@ -60,6 +68,40 @@ export function editorialRoutes(modelClientFactory: ModelClientFactory): Hono {
     const workspace = await loadChapterWorkspace(projectId, chapterId);
     return c.json(toPublicChapterWorkspace(projectId, workspace));
   });
+
+  app.post("/chapter-operations", async (c) => {
+    const projectId = c.req.param("projectId") as string;
+    await getProject(projectId);
+    const body = CreateChapterOperationBodySchema.parse(await c.req.json());
+    const operation = await createStoredChapterOperation(projectId, body.chapterId);
+    return c.json({ operation, executed: false }, 201);
+  });
+
+  app.get("/chapter-operations/:operationId", async (c) => {
+    const projectId = c.req.param("projectId") as string;
+    await getProject(projectId);
+    const operation = await getChapterOperation(projectId, c.req.param("operationId") as string);
+    if (!operation) {
+      throw new HTTPException(404, { message: "chapter operation not found" });
+    }
+    return c.json({ operation });
+  });
+
+  app.post("/chapter-operations/:operationId/await-author", async (c) =>
+    transitionChapterOperationRoute(c, "await_author_approval", "system")
+  );
+  app.post("/chapter-operations/:operationId/start", async (c) =>
+    transitionChapterOperationRoute(c, "start", "author")
+  );
+  app.post("/chapter-operations/:operationId/pause", async (c) =>
+    transitionChapterOperationRoute(c, "pause", "system")
+  );
+  app.post("/chapter-operations/:operationId/resume", async (c) =>
+    transitionChapterOperationRoute(c, "resume", "author")
+  );
+  app.post("/chapter-operations/:operationId/cancel", async (c) =>
+    transitionChapterOperationRoute(c, "cancel", "author")
+  );
 
   app.get("/sections/:sectionId/writing-context", async (c) => {
     const projectId = c.req.param("projectId") as string;
@@ -173,6 +215,38 @@ export function editorialRoutes(modelClientFactory: ModelClientFactory): Hono {
 }
 
 type SectionContext = Awaited<ReturnType<typeof loadSectionContext>>;
+
+async function transitionChapterOperationRoute(
+  c: Context,
+  type: Exclude<ChapterOperationEventType, "created">,
+  actor: "author" | "system"
+) {
+  const projectId = c.req.param("projectId") as string;
+  await getProject(projectId);
+  const body = ChapterOperationDetailBodySchema.parse(await c.req.json());
+  try {
+    const operation = await transitionStoredChapterOperation(
+      projectId,
+      c.req.param("operationId") as string,
+      {
+        type,
+        actor,
+        occurredAt: new Date().toISOString(),
+        detail: body.detail,
+      }
+    );
+    if (!operation) {
+      throw new HTTPException(404, { message: "chapter operation not found" });
+    }
+    return c.json({ operation, executed: false });
+  } catch (error) {
+    if (error instanceof HTTPException) throw error;
+    if (error instanceof Error) {
+      throw new HTTPException(400, { message: error.message });
+    }
+    throw error;
+  }
+}
 
 async function loadChapterWorkspace(projectId: string, chapterId: string) {
   await getProject(projectId);

@@ -51,7 +51,17 @@ export const CreateWritingDraftUnitBodySchema = z.object({
   targetWordCount: z.number().int().positive().optional(),
 });
 
+export const CreateChapterOperationBodySchema = z.object({
+  chapterId: z.string().min(1),
+});
+
+export const ChapterOperationDetailBodySchema = z.object({
+  detail: z.string().min(1).optional(),
+});
+
 export type EditorialWorkspaceBody = z.infer<typeof EditorialWorkspaceBodySchema>;
 export type ReadSectionBody = z.infer<typeof ReadSectionBodySchema>;
 export type DecisionCommitmentsBody = z.infer<typeof DecisionCommitmentsSchema>;
 export type CreateWritingDraftUnitBody = z.infer<typeof CreateWritingDraftUnitBodySchema>;
+export type CreateChapterOperationBody = z.infer<typeof CreateChapterOperationBodySchema>;
+export type ChapterOperationDetailBody = z.infer<typeof ChapterOperationDetailBodySchema>;

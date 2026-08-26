@@ -64,3 +64,6 @@ export * from "./scopeResolution";
 
 // Traces déclaratives des transformations appliquées
 export * from "./transformationTrace";
+
+// Opérations de chapitre déclaratives et observables, sans exécution implicite
+export * from "./chapterOperation";
