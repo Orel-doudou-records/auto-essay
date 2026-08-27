@@ -1,6 +1,7 @@
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { ZodError } from "zod";
+import { logger } from "../observability/logger.js";
 
 export async function errorHandler(err: Error, c: Context) {
   if (err instanceof HTTPException) {
@@ -9,6 +10,6 @@ export async function errorHandler(err: Error, c: Context) {
   if (err instanceof ZodError) {
     return c.json({ error: "ValidationError", message: err.message }, 400);
   }
-  console.error(err);
+  logger.error("Erreur HTTP interne.", err, { method: c.req.method, path: c.req.path });
   return c.json({ error: "InternalError", message: err.message }, 500);
 }

@@ -51,7 +51,7 @@ export default tseslint.config(
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
       ],
       "@typescript-eslint/no-floating-promises": "error",
-      "no-console": "warn",
+      "no-console": "error",
     },
   },
   {

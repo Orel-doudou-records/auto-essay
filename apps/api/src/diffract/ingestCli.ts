@@ -1,3 +1,4 @@
+import { cliOutput } from "../observability/cliOutput.js";
 import { readFileSync, writeFileSync } from "node:fs";
 import {
   buildProfiles,
@@ -43,7 +44,7 @@ async function main(): Promise<void> {
   const projectId = "bibliography";
   const { sources, errors } = importBibTeX(readFileSync(bibPath, "utf8"), projectId);
   if (errors.length > 0) {
-    console.error("Erreurs d'import bibliographie :", errors.length);
+    cliOutput.error(`Erreurs d'import bibliographie : ${errors.length}`);
   }
 
   let library: Library = createLibrary(sources);
@@ -62,12 +63,12 @@ async function main(): Promise<void> {
 
   const merged = mergeLibraryProfiles(library, profiles);
   writeFileSync(outPath, JSON.stringify(merged, null, 2));
-  console.log(
+  cliOutput.success(
     `library.json écrit : ${merged.sources.length} sources, ${merged.profiles.length} profils (${profiles.length} nouveaux).`
   );
 }
 
 main().catch((error: unknown) => {
-  console.error(error instanceof Error ? error.message : String(error));
+  cliOutput.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;
 });
