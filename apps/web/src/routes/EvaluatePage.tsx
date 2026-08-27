@@ -121,9 +121,9 @@ export function EvaluatePage() {
 
   return (
     <AppShell projectId={projectId}>
-      <div className="mx-auto max-w-3xl space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Évaluation</h1>
+      <div>
+        <div>
+          <h1>Évaluation</h1>
           <Link to={`/projects/${projectId}/editor`}>
             <Button variant="outline" size="sm">Retour à l'éditeur</Button>
           </Link>
@@ -144,11 +144,11 @@ export function EvaluatePage() {
           <CardHeader>
             <CardTitle>{unit.thesis || unit.contextInPlan?.section}</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
+          <CardContent>
+            <p>
               Statut : {unit.status} — Version {unit.version}
             </p>
-            <div className="flex flex-wrap gap-2">
+            <div>
               <Button
                 onClick={handleDocumentaryEvaluate}
                 disabled={loadingAction !== null}
@@ -185,20 +185,20 @@ export function EvaluatePage() {
             <CardHeader>
               <CardTitle>Évaluation documentaire</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
-              <p className="text-lg font-medium">
+            <CardContent>
+              <p>
                 Score global : {result.overallScore as number}/10
               </p>
-              <div className="grid grid-cols-2 gap-2">
+              <div>
                 {Object.entries(dimensions).map(([key, value]) => (
-                  <div key={key} className="rounded border p-2 text-sm">
-                    <span className="font-medium">{key}</span> : {value}
+                  <div key={key}>
+                    <span>{key}</span> : {value}
                   </div>
                 ))}
               </div>
-              <p className="text-sm">
+              <p>
                 Verdict documentaire :{" "}
-                <span className="font-medium">{result.verdict as string}</span>
+                <span>{result.verdict as string}</span>
               </p>
             </CardContent>
           </Card>
@@ -209,13 +209,13 @@ export function EvaluatePage() {
             <CardHeader>
               <CardTitle>Évaluation des effets éditoriaux</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
-              <p className="text-lg font-medium">Score éditorial : {editorialScore}/10</p>
-              {editorialSummary && <p className="text-sm">{editorialSummary}</p>}
-              <p className="text-sm">Porte documentaire : {integratedOutcome.gates.documentaryIntegrity}</p>
-              <p className="text-sm">Porte éditoriale : {integratedOutcome.gates.editorialCoherence}</p>
-              <p className="text-sm">
-                Verdict intégré : <span className="font-medium">{integratedOutcome.finalVerdict}</span>
+            <CardContent>
+              <p>Score éditorial : {editorialScore}/10</p>
+              {editorialSummary && <p>{editorialSummary}</p>}
+              <p>Porte documentaire : {integratedOutcome.gates.documentaryIntegrity}</p>
+              <p>Porte éditoriale : {integratedOutcome.gates.editorialCoherence}</p>
+              <p>
+                Verdict intégré : <span>{integratedOutcome.finalVerdict}</span>
               </p>
             </CardContent>
           </Card>
@@ -227,7 +227,7 @@ export function EvaluatePage() {
               <CardTitle>Brief de révision</CardTitle>
             </CardHeader>
             <CardContent>
-              <pre className="rounded bg-muted p-3 text-xs">
+              <pre>
                 {JSON.stringify(brief, null, 2)}
               </pre>
             </CardContent>
@@ -248,13 +248,13 @@ function IntegratedEvaluationHistory({
       <CardHeader>
         <CardTitle>Évaluation intégrée enregistrée</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-5">
+      <CardContent>
         {history.map((entry) => (
-          <section key={entry.id} className="space-y-3 rounded border p-3 text-sm">
-            <p className="font-medium">
+          <section key={entry.id}>
+            <p>
               Version {entry.unitVersion} — enregistrée le {new Date(entry.recordedAt).toLocaleString("fr-FR")}
             </p>
-            <p className={entry.current ? "text-muted-foreground" : "font-medium text-amber-700"}>
+            <p>
               {entry.current
                 ? "Cette évaluation correspond encore à la version et aux décisions auteur actuelles."
                 : "Historique : le texte ou la décision auteur a changé depuis ce jugement."}
@@ -266,19 +266,19 @@ function IntegratedEvaluationHistory({
             </p>
             <p>Verdict intégré archivé : {entry.finalVerdict}</p>
             <div>
-              <p className="font-medium">Brief archivé</p>
-              <pre className="mt-1 overflow-auto rounded bg-muted p-2 text-xs">
+              <p>Brief archivé</p>
+              <pre>
                 {JSON.stringify(entry.brief, null, 2)}
               </pre>
             </div>
-            <div className="space-y-1">
-              <p className="font-medium">Affectations archivées</p>
+            <div>
+              <p>Affectations archivées</p>
               <p>
                 Documentaire : {entry.assignments.documentary.judge.model} ; éditoriale : {entry.assignments.editorial.judge.model}
               </p>
             </div>
-            <div className="space-y-1">
-              <p className="font-medium">Provenance enregistrée</p>
+            <div>
+              <p>Provenance enregistrée</p>
               <p>Plan éditorial : {entry.context.editorialPlanId}</p>
               <p>
                 Décisions auteur : {entry.authorDecisions
@@ -310,10 +310,10 @@ function IntegratedReadiness({
     return <p role="alert">Préparabilité intégrée indisponible : {error}</p>;
   }
   if (!readiness) {
-    return <p className="text-sm text-muted-foreground">Préparation de l’évaluation intégrée…</p>;
+    return <p>Préparation de l’évaluation intégrée…</p>;
   }
   if (readiness.status === "ready") {
-    return <p className="text-sm">Évaluation intégrée prête</p>;
+    return <p>Évaluation intégrée prête</p>;
   }
 
   return (
@@ -322,8 +322,8 @@ function IntegratedReadiness({
         <CardTitle>Évaluation intégrée indisponible</CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-sm">Cette unité reste évaluable documentairement.</p>
-        <ul className="mt-2 list-disc pl-5 text-sm">
+        <p>Cette unité reste évaluable documentairement.</p>
+        <ul>
           {readiness.reasons.map((reason) => (
             <li key={reason.code}>{describeReadinessReason(reason.code)}</li>
           ))}
@@ -361,16 +361,16 @@ function JudgeAssignments({
         <CardTitle>{title}</CardTitle>
       </CardHeader>
       <CardContent>
-        <ul className="space-y-2 text-sm">
+        <ul>
           <li>
-            <span className="font-medium">Juge documentaire</span> — <span>{assignments.documentary.judge.model}</span>
-            <span className="text-muted-foreground">
+            <span>Juge documentaire</span> — <span>{assignments.documentary.judge.model}</span>
+            <span>
               {" "}(id : <span>{assignments.documentary.judge.id}</span>; spécialité : <span>{assignments.documentary.judge.specialty}</span>; raison : <span>{assignments.documentary.rationale}</span>)
             </span>
           </li>
           <li>
-            <span className="font-medium">Juge éditorial</span> — <span>{assignments.editorial.judge.model}</span>
-            <span className="text-muted-foreground">
+            <span>Juge éditorial</span> — <span>{assignments.editorial.judge.model}</span>
+            <span>
               {" "}(id : <span>{assignments.editorial.judge.id}</span>; spécialité : <span>{assignments.editorial.judge.specialty}</span>; raison : <span>{assignments.editorial.rationale}</span>)
             </span>
           </li>

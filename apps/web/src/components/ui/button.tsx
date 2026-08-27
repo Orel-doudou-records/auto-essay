@@ -1,48 +1,141 @@
 import * as React from "react";
-import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "@/lib/utils";
+import * as stylex from "@stylexjs/stylex";
+import { themeVars } from "../../styles/tokens.stylex";
 
-const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
-  {
-    variants: {
-      variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
-        destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
-        secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
-      },
-      size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-9 rounded-md px-3",
-        lg: "h-11 rounded-md px-8",
-        icon: "h-10 w-10",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "default",
-    },
-  }
-);
+export type ButtonVariant = "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+export type ButtonSize = "default" | "sm" | "lg" | "icon";
 
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {}
+export interface ButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "className"> {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  fullWidth?: boolean;
+}
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, ...props }, ref) => {
-    return (
-      <button
-        className={cn(buttonVariants({ variant, size, className }))}
-        ref={ref}
-        {...props}
-      />
-    );
-  }
+  ({ variant = "default", size = "default", fullWidth = false, ...props }, ref) => (
+    <button
+      ref={ref}
+      {...props}
+      {...stylex.props(
+        styles.button,
+        buttonVariantStyles[variant],
+        buttonSizeStyles[size],
+        fullWidth && styles.fullWidth
+      )}
+    />
+  )
 );
 Button.displayName = "Button";
 
-export { Button, buttonVariants };
+const styles = stylex.create({
+  button: {
+    alignItems: "center",
+    appearance: "none",
+    borderColor: "transparent",
+    borderRadius: themeVars.radiusSmall,
+    borderStyle: "solid",
+    borderWidth: "1px",
+    cursor: {
+      default: "pointer",
+      ':disabled': "not-allowed",
+    },
+    display: "inline-flex",
+    fontFamily: themeVars.fontInterface,
+    fontSize: "0.875rem",
+    fontWeight: 600,
+    justifyContent: "center",
+    lineHeight: 1,
+    opacity: {
+      ':disabled': 0.48,
+    },
+    outline: {
+      ':focus-visible': `2px solid ${themeVars.focus}`,
+    },
+    outlineOffset: {
+      ':focus-visible': "2px",
+    },
+    transitionDuration: "160ms",
+    transitionProperty: "background-color, border-color, color, opacity",
+    transitionTimingFunction: "ease",
+    whiteSpace: "nowrap",
+  },
+  default: {
+    backgroundColor: {
+      default: themeVars.accent,
+      ':hover': themeVars.accentHover,
+    },
+    color: themeVars.accentContrast,
+  },
+  destructive: {
+    backgroundColor: {
+      default: themeVars.danger,
+      ':hover': themeVars.dangerHover,
+    },
+    color: themeVars.accentContrast,
+  },
+  outline: {
+    backgroundColor: {
+      default: "transparent",
+      ':hover': themeVars.accentMuted,
+    },
+    borderColor: themeVars.border,
+    color: themeVars.textPrimary,
+  },
+  secondary: {
+    backgroundColor: themeVars.surfaceRaised,
+    color: themeVars.textPrimary,
+  },
+  ghost: {
+    backgroundColor: {
+      default: "transparent",
+      ':hover': themeVars.accentMuted,
+    },
+    color: themeVars.textSecondary,
+  },
+  link: {
+    backgroundColor: "transparent",
+    color: themeVars.accent,
+    padding: 0,
+    textDecoration: {
+      default: "none",
+      ':hover': "underline",
+    },
+  },
+  sizeDefault: {
+    minHeight: "2.5rem",
+    padding: "0.625rem 0.875rem",
+  },
+  sm: {
+    minHeight: "2.125rem",
+    padding: "0.5rem 0.75rem",
+  },
+  lg: {
+    minHeight: "2.75rem",
+    padding: "0.75rem 1.25rem",
+  },
+  icon: {
+    height: "2.5rem",
+    width: "2.5rem",
+  },
+  fullWidth: {
+    width: "100%",
+  },
+});
+
+const buttonVariantStyles = {
+  default: styles.default,
+  destructive: styles.destructive,
+  outline: styles.outline,
+  secondary: styles.secondary,
+  ghost: styles.ghost,
+  link: styles.link,
+};
+
+const buttonSizeStyles = {
+  default: styles.sizeDefault,
+  sm: styles.sm,
+  lg: styles.lg,
+  icon: styles.icon,
+};
+
+export { Button };

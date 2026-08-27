@@ -25,10 +25,10 @@ export function HomePage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-3xl space-y-6">
-        <h1 className="text-2xl font-bold">Projets</h1>
+      <div>
+        <h1>Projets</h1>
 
-        <form onSubmit={handleSubmit} className="flex gap-2">
+        <form onSubmit={handleSubmit}>
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -37,22 +37,21 @@ export function HomePage() {
           <Button type="submit">Nouveau</Button>
         </form>
 
-        {loading && <p className="text-sm text-muted-foreground">Chargement…</p>}
+        {loading && <p>Chargement…</p>}
         {error && (
-          <div className="text-sm text-destructive">
+          <div>
             {error.message}
             <Button variant="ghost" size="sm" onClick={reload}>Réessayer</Button>
           </div>
         )}
 
-        <div className="space-y-3">
+        <div>
           {projects.map((project) => (
             <Card key={project.id}>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg">
+              <CardHeader>
+                <CardTitle>
                   <Link
                     to={`/projects/${project.id}`}
-                    className="hover:underline"
                   >
                     {project.title}
                   </Link>
@@ -61,7 +60,7 @@ export function HomePage() {
                   Mis à jour : {new Date(project.updatedAt).toLocaleString()}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="flex gap-2">
+              <CardContent>
                 <Link to={`/projects/${project.id}/editor`}>
                   <Button variant="outline" size="sm">Éditer</Button>
                 </Link>

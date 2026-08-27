@@ -1,6 +1,7 @@
 import eslint from "@eslint/js";
 import globals from "globals";
 import tseslint from "typescript-eslint";
+import stylexPlugin from "@stylexjs/eslint-plugin";
 
 export default tseslint.config(
   eslint.configs.recommended,
@@ -67,12 +68,17 @@ export default tseslint.config(
         tsconfigRootDir: import.meta.dirname,
       },
     },
+    plugins: {
+      "@stylexjs": stylexPlugin,
+    },
     rules: {
       "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/no-unused-vars": [
         "error",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
       ],
+      "@stylexjs/enforce-extension": ["error", { themeFileExtension: ".stylex.ts" }],
+      "@stylexjs/valid-styles": "error",
       "no-console": "warn",
     },
   },

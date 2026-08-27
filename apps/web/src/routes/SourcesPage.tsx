@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,6 @@ import { useSources } from "@/hooks/useSources";
 export function SourcesPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const { sources, loading, error, importFiles, update, remove } = useSources(projectId);
-  const [dragOver, setDragOver] = useState(false);
 
   const handleFiles = useCallback(
     async (files: FileList | null) => {
@@ -31,34 +30,26 @@ export function SourcesPage() {
 
   return (
     <AppShell projectId={projectId}>
-      <div className="mx-auto max-w-4xl space-y-6">
-        <h1 className="text-2xl font-bold">Sources</h1>
+      <div>
+        <h1>Sources</h1>
 
         <div
-          className={`
-            rounded-lg border-2 border-dashed p-8 text-center transition-colors
-            ${dragOver ? "border-primary bg-primary/5" : "border-muted-foreground/25"}
-          `}
           onDragOver={(e) => {
             e.preventDefault();
-            setDragOver(true);
           }}
-          onDragLeave={() => setDragOver(false)}
           onDrop={(e) => {
             e.preventDefault();
-            setDragOver(false);
             void handleFiles(e.dataTransfer.files);
           }}
         >
-          <p className="text-sm text-muted-foreground">
+          <p>
             Glisse-dépose des fichiers .md ou .bib ici, ou{" "}
-            <label className="cursor-pointer text-primary underline">
+            <label>
               parcours
               <input
                 type="file"
                 accept=".md,.bib"
                 multiple
-                className="hidden"
                 onChange={(e) => handleFiles(e.target.files)}
               />
             </label>
@@ -66,9 +57,9 @@ export function SourcesPage() {
         </div>
 
         {loading && <p>Chargement…</p>}
-        {error && <p className="text-destructive">{error.message}</p>}
+        {error && <p>{error.message}</p>}
 
-        <div className="space-y-4">
+        <div>
           {sources.map((source) => (
             <SourceCard
               key={source.id}
@@ -94,21 +85,21 @@ function SourceCard({
 }) {
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base">{source.title}</CardTitle>
+      <CardHeader>
+        <CardTitle>{source.title}</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="grid grid-cols-2 gap-3 text-sm">
+      <CardContent>
+        <div>
           <div>
-            <span className="text-muted-foreground">Régime : </span>
+            <span>Régime : </span>
             {source.regime}
           </div>
           <div>
-            <span className="text-muted-foreground">Position : </span>
+            <span>Position : </span>
             {typeof source.position === "string" ? source.position : source.position?.perspective}
           </div>
         </div>
-        <div className="space-y-1">
+        <div>
           <Label>Limites épistémiques</Label>
           <Textarea
             value={source.epistemicLimits?.join("\n") ?? ""}
