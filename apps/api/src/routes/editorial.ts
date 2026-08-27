@@ -6,6 +6,7 @@ import {
   projectBookPlan,
   projectBookState,
   projectChapterEditorialState,
+  collectLeafReferences,
   type ChapterOperationEventType,
   type ContentStyleArticulation,
   type EditorialDecision,
@@ -21,6 +22,7 @@ import {
   EditorialWorkspaceBodySchema,
   ModifyProposalBodySchema,
   ReadSectionBodySchema,
+  ReadScopedSectionBodySchema,
   RejectProposalBodySchema,
 } from "../schemas/editorial.js";
 import { DiffractionService } from "../services/diffractionService.js";
@@ -30,6 +32,7 @@ import {
   putWorkspace,
   saveArticulation,
   storeReading,
+  type StoredReading,
   updateArticulation,
 } from "../services/editorialWorkspaceStore.js";
 import { getProject } from "../services/projectStore.js";
@@ -158,41 +161,68 @@ export function editorialRoutes(modelClientFactory: ModelClientFactory): Hono {
     const sectionId = c.req.param("sectionId") as string;
     const body = ReadSectionBodySchema.parse(await c.req.json());
     const context = await loadSectionContext(projectId, sectionId);
-    const workspace = context.workspace;
-    const articulation = body.articulationId
-      ? findArticulation(workspace.articulations, body.articulationId)
-      : undefined;
-
-    if (articulation && articulation.scope.sectionId !== sectionId) {
-      throw new HTTPException(400, { message: "proposal does not belong to this section" });
-    }
-
-    const service = await makeDiffractionService(modelClientFactory);
-    const reading = await service.diffract({
+    const stored = await createStoredAuthorReading({
+      projectId,
+      sectionId,
+      context,
+      modelClientFactory,
       statement: body.statement,
       claimIds: body.claimIds,
       sourceIds: body.sourceIds,
-      bookParts: context.bookParts,
-      bookPlan: context.bookPlan,
-      existingCuts: context.existingCuts,
-      bookBibliography: context.bookBibliography,
+      articulationId: body.articulationId,
+      scope: { kind: "fragment", sectionId },
     });
+    return c.json(toPublicReading(stored));
+  });
 
-    const stored = await storeReading(projectId, {
-      scopeId: sectionId,
-      articulationId: articulation?.id,
-      reading,
+  app.post("/sections/:sectionId/readings/section", async (c) => {
+    const projectId = c.req.param("projectId") as string;
+    const sectionId = c.req.param("sectionId") as string;
+    const body = ReadScopedSectionBodySchema.parse(await c.req.json());
+    const context = await loadSectionContext(projectId, sectionId);
+    const statement = sectionStatement(context);
+    const stored = await createStoredAuthorReading({
+      projectId,
+      sectionId,
+      context,
+      modelClientFactory,
+      statement,
+      articulationId: body.articulationId,
+      scope: { kind: "section", sectionId },
     });
+    return c.json(toPublicReading(stored));
+  });
 
-    if (articulation) {
-      await saveArticulation(projectId, {
-        ...articulation,
-        diffractiveReading: reading,
-        updatedAt: new Date().toISOString(),
-      });
+  app.post("/sections/:sectionId/paragraphs/:unitId/readings", async (c) => {
+    const projectId = c.req.param("projectId") as string;
+    const sectionId = c.req.param("sectionId") as string;
+    const unitId = c.req.param("unitId") as string;
+    const body = ReadScopedSectionBodySchema.parse(await c.req.json());
+    const context = await loadSectionContext(projectId, sectionId);
+    const paragraph = context.paragraphs.find((unit) => unit.id === unitId);
+    if (!paragraph) {
+      throw new HTTPException(404, { message: "paragraph does not belong to this section" });
     }
-
-    return c.json({ reading: stored, executable: false });
+    if (!paragraph.content.trim()) {
+      throw new HTTPException(400, { message: "paragraph has no text to read" });
+    }
+    const stored = await createStoredAuthorReading({
+      projectId,
+      sectionId,
+      context,
+      modelClientFactory,
+      statement: paragraph.content,
+      claimIds: paragraph.claimIds,
+      sourceIds: paragraph.evidencePack.sourceIds,
+      articulationId: body.articulationId,
+      scope: {
+        kind: "paragraph",
+        sectionId,
+        unitId: paragraph.id,
+        unitVersion: paragraph.version,
+      },
+    });
+    return c.json(toPublicReading(stored));
   });
 
   app.post("/proposals/:proposalId/accept", async (c) => {
@@ -229,6 +259,77 @@ export function editorialRoutes(modelClientFactory: ModelClientFactory): Hono {
 }
 
 type SectionContext = Awaited<ReturnType<typeof loadSectionContext>>;
+
+type AuthorReadingScope = NonNullable<StoredReading["scope"]>;
+
+async function createStoredAuthorReading(input: {
+  projectId: string;
+  sectionId: string;
+  context: SectionContext;
+  modelClientFactory: ModelClientFactory;
+  statement: string;
+  claimIds?: string[];
+  sourceIds?: string[];
+  articulationId?: string;
+  scope: AuthorReadingScope;
+}): Promise<StoredReading> {
+  const articulation = input.articulationId
+    ? findArticulation(input.context.workspace.articulations, input.articulationId)
+    : undefined;
+  if (articulation && articulation.scope.sectionId !== input.sectionId) {
+    throw new HTTPException(400, { message: "proposal does not belong to this section" });
+  }
+
+  const service = await makeDiffractionService(input.modelClientFactory);
+  const reading = await service.diffract({
+    statement: input.statement,
+    claimIds: input.claimIds,
+    sourceIds: input.sourceIds,
+    bookParts: input.context.bookParts,
+    bookPlan: input.context.bookPlan,
+    existingCuts: input.context.existingCuts,
+    bookBibliography: input.context.bookBibliography,
+  });
+  const stored = await storeReading(input.projectId, {
+    scopeId: input.sectionId,
+    scope: input.scope,
+    provenance: { triggeredBy: "author" },
+    articulationId: articulation?.id,
+    reading,
+  });
+
+  if (articulation) {
+    await saveArticulation(input.projectId, {
+      ...articulation,
+      diffractiveReading: reading,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+  return stored;
+}
+
+function sectionStatement(context: SectionContext): string {
+  const text = [
+    context.section.text,
+    ...context.paragraphs.map((paragraph) => paragraph.content),
+  ]
+    .map((value) => value?.trim())
+    .filter((value): value is string => Boolean(value))
+    .join("\n\n");
+  if (!text) {
+    throw new HTTPException(400, { message: "section has no text to read" });
+  }
+  return text;
+}
+
+function toPublicReading(stored: StoredReading) {
+  return {
+    reading: stored.reading,
+    executable: false as const,
+    scope: stored.scope ?? { kind: "fragment" as const, sectionId: stored.scopeId },
+    provenance: stored.provenance ?? { triggeredBy: "author" as const },
+  };
+}
 
 async function transitionChapterOperationRoute(
   c: Context,
@@ -334,6 +435,14 @@ async function loadSectionContext(projectId: string, sectionId: string) {
     },
   });
   const bookPlan = projectBookPlan(workspace.manuscript);
+  const mountedUnitIds = new Set(
+    collectLeafReferences(section.children).map((leaf) => leaf.unitId)
+  );
+  const paragraphs = units.filter(
+    (unit) =>
+      unit.granularity === "paragraph" &&
+      (mountedUnitIds.has(unit.id) || unit.contextInPlan?.section === sectionId)
+  );
   const relatedScopeIds = new Set(sectionPath.filter(isNode).map((node) => node.id));
   const relatedDecisions = workspace.decisions.filter(
     (decision) =>
@@ -354,6 +463,7 @@ async function loadSectionContext(projectId: string, sectionId: string) {
     projectId,
     workspace,
     section,
+    paragraphs,
     bookParts,
     bookPlan,
     existingCuts,
@@ -389,6 +499,13 @@ function toPublicContext(context: SectionContext) {
   return {
     projectId: context.projectId,
     section: { id: context.section.id, title: context.section.title },
+    diffraction: {
+      mode: "strict" as const,
+      paragraphs: context.paragraphs.map((paragraph) => ({
+        id: paragraph.id,
+        version: paragraph.version,
+      })),
+    },
     bookParts: context.bookParts.map(({ id, title, status }) => ({ id, title, status })),
     bookPlan: context.bookPlan,
     existingCuts: context.existingCuts,

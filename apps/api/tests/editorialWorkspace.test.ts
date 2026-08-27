@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { mutateWorkspace } from "../src/services/editorialWorkspaceStore.js";
 import { setSources } from "../src/services/sourceStore.js";
-import { updateUnit } from "../src/services/unitStore.js";
+import { createUnit, getUnit, updateUnit } from "../src/services/unitStore.js";
 import { makeTempDataDir, makeTestApp, postJson } from "./helper";
 
 const now = "2026-08-26T12:00:00.000Z";
@@ -150,6 +150,80 @@ describe("editorial workspace routes", () => {
     );
     expect(reading.status).toBe(200);
     await expect(reading.json()).resolves.toMatchObject({ executable: false });
+  });
+
+  it("keeps strict readings explicit across paragraph and section scopes", async () => {
+    const { app, projectId } = await createWorkspace();
+    const paragraph = await createUnit(projectId, {
+      granularity: "paragraph",
+      thesis: "Une thèse locale.",
+      contextInPlan: { section: "section-1" },
+      content: "Un paragraphe situé dans la section réelle.",
+    });
+
+    const context = await app.request(
+      `/api/projects/${projectId}/editorial/sections/section-1/context`
+    );
+    expect(context.status).toBe(200);
+    await expect(context.json()).resolves.toMatchObject({
+      diffraction: {
+        mode: "strict",
+        paragraphs: [
+          {
+            id: paragraph.id,
+            version: paragraph.version,
+          },
+        ],
+      },
+    });
+
+    const sectionReading = await postJson(
+      app,
+      `/api/projects/${projectId}/editorial/sections/section-1/readings/section`,
+      {}
+    );
+    expect(sectionReading.status).toBe(200);
+    expect(await sectionReading.json()).toMatchObject({
+      executable: false,
+      reading: {
+        fragment: {
+          statement:
+            "Texte privé de la section.\n\nUn paragraphe situé dans la section réelle.",
+        },
+      },
+      scope: { kind: "section", sectionId: "section-1" },
+      provenance: { triggeredBy: "author" },
+    });
+
+    const paragraphReading = await postJson(
+      app,
+      `/api/projects/${projectId}/editorial/sections/section-1/paragraphs/${paragraph.id}/readings`,
+      {}
+    );
+    expect(paragraphReading.status).toBe(200);
+    expect(await paragraphReading.json()).toMatchObject({
+      executable: false,
+      reading: {
+        fragment: { statement: "Un paragraphe situé dans la section réelle." },
+      },
+      scope: {
+        kind: "paragraph",
+        sectionId: "section-1",
+        unitId: paragraph.id,
+        unitVersion: paragraph.version,
+      },
+      provenance: { triggeredBy: "author" },
+    });
+
+    expect(await getUnit(projectId, paragraph.id)).toMatchObject({
+      content: "Un paragraphe situé dans la section réelle.",
+      status: "drafting",
+      version: paragraph.version,
+    });
+    const after = await app.request(
+      `/api/projects/${projectId}/editorial/sections/section-1/context`
+    );
+    await expect(after.json()).resolves.toMatchObject({ decisions: [] });
   });
 
   it("prepares a traceable writing context with only active decisions and qualified evidence", async () => {

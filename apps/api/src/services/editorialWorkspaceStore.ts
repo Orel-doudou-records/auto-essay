@@ -17,9 +17,32 @@ import {
 import { HTTPException } from "hono/http-exception";
 import { getDataDir } from "../config.js";
 
+const ReadingScopeSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("fragment"),
+    sectionId: z.string().min(1),
+  }),
+  z.object({
+    kind: z.literal("section"),
+    sectionId: z.string().min(1),
+  }),
+  z.object({
+    kind: z.literal("paragraph"),
+    sectionId: z.string().min(1),
+    unitId: z.string().min(1),
+    unitVersion: z.number().int().min(1),
+  }),
+]);
+
+const ReadingProvenanceSchema = z.object({
+  triggeredBy: z.literal("author"),
+});
+
 const StoredReadingSchema = z.object({
   id: z.string().min(1),
   scopeId: z.string().min(1),
+  scope: ReadingScopeSchema.optional(),
+  provenance: ReadingProvenanceSchema.optional(),
   articulationId: z.string().min(1).optional(),
   reading: DiffractiveReadingSchema,
   createdAt: z.string().datetime(),
