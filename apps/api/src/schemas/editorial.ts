@@ -20,6 +20,10 @@ export const ReadSectionBodySchema = z.object({
   articulationId: z.string().min(1).optional(),
 });
 
+export const ReadScopedSectionBodySchema = z.object({
+  articulationId: z.string().min(1).optional(),
+});
+
 const DecisionCommitmentsSchema = z.object({
   contentCommitments: z.array(z.string().min(1)).min(1),
   formalCommitments: z.array(z.string().min(1)).min(1),
@@ -61,6 +65,7 @@ export const ChapterOperationDetailBodySchema = z.object({
 
 export type EditorialWorkspaceBody = z.infer<typeof EditorialWorkspaceBodySchema>;
 export type ReadSectionBody = z.infer<typeof ReadSectionBodySchema>;
+export type ReadScopedSectionBody = z.infer<typeof ReadScopedSectionBodySchema>;
 export type DecisionCommitmentsBody = z.infer<typeof DecisionCommitmentsSchema>;
 export type CreateWritingDraftUnitBody = z.infer<typeof CreateWritingDraftUnitBodySchema>;
 export type CreateChapterOperationBody = z.infer<typeof CreateChapterOperationBodySchema>;

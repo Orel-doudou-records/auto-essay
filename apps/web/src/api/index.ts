@@ -63,9 +63,24 @@ export async function runDiffractReading(
   return res.json() as Promise<DiffractiveReading>;
 }
 
+export type EditorialReadingScope =
+  | { kind: "fragment" | "section"; sectionId: string }
+  | { kind: "paragraph"; sectionId: string; unitId: string; unitVersion: number };
+
+export interface EditorialReadingResult {
+  reading: DiffractiveReading;
+  executable: false;
+  scope: EditorialReadingScope;
+  provenance: { triggeredBy: "author" };
+}
+
 export interface EditorialSectionContextPayload {
   projectId: string;
   section: { id: string; title: string };
+  diffraction: {
+    mode: "strict";
+    paragraphs: Array<{ id: string; version: number }>;
+  };
   bookParts: Array<{ id: string; title: string; status: string }>;
   bookPlan: BookPlanInput[];
   existingCuts: Array<{ scope: string; verdict: string; cut: string }>;
@@ -279,14 +294,46 @@ export async function runEditorialSectionReading(
   projectId: string,
   sectionId: string,
   payload: { statement: string; articulationId?: string }
-): Promise<{ reading: DiffractiveReading; executable: false }> {
+): Promise<EditorialReadingResult> {
   const res = await fetch(`${API}/projects/${projectId}/editorial/sections/${sectionId}/readings`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json() as Promise<{ reading: DiffractiveReading; executable: false }>;
+  return res.json() as Promise<EditorialReadingResult>;
+}
+
+export async function runEditorialSectionScopeReading(
+  projectId: string,
+  sectionId: string,
+  payload: { articulationId?: string }
+): Promise<EditorialReadingResult> {
+  const res = await fetch(`${API}/projects/${projectId}/editorial/sections/${sectionId}/readings/section`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<EditorialReadingResult>;
+}
+
+export async function runEditorialParagraphReading(
+  projectId: string,
+  sectionId: string,
+  unitId: string,
+  payload: { articulationId?: string }
+): Promise<EditorialReadingResult> {
+  const res = await fetch(
+    `${API}/projects/${projectId}/editorial/sections/${sectionId}/paragraphs/${unitId}/readings`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<EditorialReadingResult>;
 }
 
 type EditorialDecisionPayload = {

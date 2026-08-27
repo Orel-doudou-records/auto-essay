@@ -14,7 +14,10 @@ import {
   fetchEditorialWritingContext,
   modifyEditorialProposal,
   rejectEditorialProposal,
+  runEditorialParagraphReading,
   runEditorialSectionReading,
+  runEditorialSectionScopeReading,
+  type EditorialReadingScope,
   type EditorialSectionContextPayload,
   type EditorialWritingContextPayload,
 } from "@/api";
@@ -57,6 +60,7 @@ export function AuthorWorkshopPage() {
   const [statement, setStatement] = useState("");
   const [proposalId, setProposalId] = useState("");
   const [readingProposalId, setReadingProposalId] = useState<string | null>(null);
+  const [readingScope, setReadingScope] = useState<EditorialReadingScope | null>(null);
   const [reading, setReading] = useState<DiffractiveReading | null>(null);
   const [readingLoading, setReadingLoading] = useState(false);
   const [readingError, setReadingError] = useState<string | null>(null);
@@ -92,6 +96,7 @@ export function AuthorWorkshopPage() {
     if (!preserveReading) {
       setReading(null);
       setReadingProposalId(null);
+      setReadingScope(null);
     }
   }
 
@@ -134,6 +139,48 @@ export function AuthorWorkshopPage() {
       });
       setReading(result.reading);
       setReadingProposalId(proposalId || null);
+      setReadingScope(result.scope);
+    } catch (error) {
+      setReadingError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setReadingLoading(false);
+    }
+  }
+
+  async function runSectionScopeReading() {
+    if (!projectId || !context || readingLoading) return;
+    setReadingLoading(true);
+    setReadingError(null);
+    setReading(null);
+    setDecisionMessage(null);
+    try {
+      const result = await runEditorialSectionScopeReading(projectId, context.section.id, {});
+      setReading(result.reading);
+      setReadingProposalId(null);
+      setReadingScope(result.scope);
+    } catch (error) {
+      setReadingError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setReadingLoading(false);
+    }
+  }
+
+  async function runParagraphScopeReading(unitId: string) {
+    if (!projectId || !context || readingLoading) return;
+    setReadingLoading(true);
+    setReadingError(null);
+    setReading(null);
+    setDecisionMessage(null);
+    try {
+      const result = await runEditorialParagraphReading(
+        projectId,
+        context.section.id,
+        unitId,
+        {}
+      );
+      setReading(result.reading);
+      setReadingProposalId(null);
+      setReadingScope(result.scope);
     } catch (error) {
       setReadingError(error instanceof Error ? error.message : String(error));
     } finally {
@@ -375,6 +422,32 @@ export function AuthorWorkshopPage() {
               )}
             </WorkshopCard>
 
+            <WorkshopCard title="Lectures strictes">
+              <div className="space-y-3">
+                <p className="text-muted-foreground">
+                  Mode strict : choisissez explicitement la portée de la lecture. Ces lectures restent non exécutables.
+                </p>
+                <Button onClick={() => void runSectionScopeReading()} disabled={readingLoading}>
+                  {readingLoading ? "Lecture en cours…" : "Lire la section"}
+                </Button>
+                {context.diffraction.paragraphs.length === 0 ? (
+                  <p className="text-muted-foreground">Aucun paragraphe rédigé dans cette section.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {context.diffraction.paragraphs.map((paragraph) => (
+                      <div key={paragraph.id} className="flex flex-wrap items-center justify-between gap-2 rounded bg-muted/60 px-3 py-2">
+                        <span className="text-muted-foreground">{paragraph.id}, version {paragraph.version}</span>
+                        <Button variant="outline" onClick={() => void runParagraphScopeReading(paragraph.id)} disabled={readingLoading}>
+                          Lire le paragraphe {paragraph.id}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {readingError && <p className="text-sm text-rose-600">Lecture indisponible : {readingError}</p>}
+              </div>
+            </WorkshopCard>
+
             <WorkshopCard title="Fragment à diffracter">
               <div className="space-y-3">
                 {context.proposals.length > 0 && (
@@ -397,6 +470,7 @@ export function AuthorWorkshopPage() {
               <ReadingResult
                 reading={reading}
                 proposal={readingProposal}
+                scope={readingScope}
                 authorAction={authorAction}
                 contentCommitments={contentCommitments}
                 formalCommitments={formalCommitments}
@@ -455,11 +529,12 @@ function WritingContextResult({
 }
 
 function ReadingResult({
-  reading, proposal, authorAction, contentCommitments, formalCommitments, authorNote, loading, error,
+  reading, proposal, scope, authorAction, contentCommitments, formalCommitments, authorNote, loading, error,
   onAuthorAction, onContentCommitments, onFormalCommitments, onAuthorNote, onSubmit,
 }: {
   reading: DiffractiveReading;
   proposal?: EditorialSectionContextPayload["proposals"][number];
+  scope: EditorialReadingScope | null;
   authorAction: AuthorAction;
   contentCommitments: string;
   formalCommitments: string;
@@ -482,6 +557,7 @@ function ReadingResult({
       <div className="flex flex-wrap items-center gap-3">
         <span className={`rounded-full px-3 py-1 text-sm font-semibold ${VERDICT_STYLES[reading.verdict] ?? "bg-slate-100 text-slate-800"}`}>{VERDICT_LABELS[reading.verdict] ?? reading.verdict}</span>
         <span className="text-sm text-muted-foreground">{reading.verdictDetail}</span>
+        {scope && <span className="rounded border border-dashed px-2 py-1 text-xs text-muted-foreground">{readingScopeLabel(scope)}</span>}
         <span className="rounded border border-dashed px-2 py-1 text-xs text-muted-foreground">Proposition non exécutable avant acte auteur</span>
       </div>
 
@@ -538,6 +614,14 @@ function ReadingResult({
       </WorkshopCard>
     </div>
   );
+}
+
+function readingScopeLabel(scope: EditorialReadingScope): string {
+  if (scope.kind === "section") return "Lecture de section";
+  if (scope.kind === "paragraph") {
+    return `Lecture de paragraphe — ${scope.unitId}, version ${scope.unitVersion}`;
+  }
+  return "Lecture de fragment";
 }
 
 function splitLines(value: string): string[] {

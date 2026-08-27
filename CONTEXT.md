@@ -10,6 +10,13 @@ l'implémentation.
   existants — ce n'est pas un objet canonique autonome.
 - **Lecture diffractive** (`DiffractiveReading`) : trace de raisonnement en
   quatre passes qui confronte un fragment au livre. Jamais exécutable.
+- **Mode diffractif strict** : régime par défaut d’une section dans lequel
+  l’auteur déclenche lui-même chaque lecture, sans automatisme ni effet sur le
+  manuscrit.
+- **Portée de lecture diffractive** : objet explicitement choisi par l’auteur :
+  un fragment, un paragraphe situé dans sa section, ou la section comme
+  chantier. Elle qualifie la provenance d’une lecture sans en modifier le
+  verdict.
 - **Verdict** : décision forcée issue de la lecture diffractive. Cinq valeurs,
   sans « ça dépend » : `integrate_now`, `adapt_differently`, `incubate`,
   `archive`, `discard`.

@@ -10,7 +10,9 @@ import {
   generateUnit,
   modifyEditorialProposal,
   rejectEditorialProposal,
+  runEditorialParagraphReading,
   runEditorialSectionReading,
+  runEditorialSectionScopeReading,
 } from "@/api";
 
 vi.mock("@/api", () => ({
@@ -19,6 +21,8 @@ vi.mock("@/api", () => ({
   createEditorialWritingDraftUnit: vi.fn(),
   generateUnit: vi.fn(),
   runEditorialSectionReading: vi.fn(),
+  runEditorialSectionScopeReading: vi.fn(),
+  runEditorialParagraphReading: vi.fn(),
   acceptEditorialProposal: vi.fn(),
   modifyEditorialProposal: vi.fn(),
   rejectEditorialProposal: vi.fn(),
@@ -29,6 +33,8 @@ const fetchWritingContext = vi.mocked(fetchEditorialWritingContext);
 const createWritingDraftUnit = vi.mocked(createEditorialWritingDraftUnit);
 const generateDraftUnit = vi.mocked(generateUnit);
 const runReading = vi.mocked(runEditorialSectionReading);
+const runSectionScopeReading = vi.mocked(runEditorialSectionScopeReading);
+const runParagraphReading = vi.mocked(runEditorialParagraphReading);
 const acceptProposal = vi.mocked(acceptEditorialProposal);
 const modifyProposal = vi.mocked(modifyEditorialProposal);
 const rejectProposal = vi.mocked(rejectEditorialProposal);
@@ -36,6 +42,16 @@ const rejectProposal = vi.mocked(rejectEditorialProposal);
 const context = {
   projectId: "project-1",
   section: { id: "section-1", title: "Section réelle" },
+  diffraction: {
+    mode: "strict" as const,
+    paragraphs: [
+      {
+        id: "paragraph-1",
+        version: 2,
+        content: "Un paragraphe réel de la section.",
+      },
+    ],
+  },
   bookParts: [{ id: "section-1", title: "Section réelle", status: "drafting" }],
   bookPlan: [],
   existingCuts: [],
@@ -101,7 +117,12 @@ describe("AuthorWorkshopPage", () => {
 
   it("loads a real section, exposes qualification, and renders a non-executable reading", async () => {
     fetchContext.mockResolvedValue(context);
-    runReading.mockResolvedValue({ reading, executable: false });
+    runReading.mockResolvedValue({
+      reading,
+      executable: false,
+      scope: { kind: "fragment", sectionId: "section-1" },
+      provenance: { triggeredBy: "author" },
+    });
     renderPage();
 
     fireEvent.change(screen.getByLabelText("ID de section"), { target: { value: "section-1" } });
@@ -128,6 +149,56 @@ describe("AuthorWorkshopPage", () => {
         articulationId: "proposal-1",
       });
     });
+  });
+
+  it("lets the author explicitly read a section or one of its paragraphs in strict mode", async () => {
+    fetchContext.mockResolvedValue(context);
+    runSectionScopeReading.mockResolvedValue({
+      reading,
+      executable: false,
+      scope: { kind: "section", sectionId: "section-1" },
+      provenance: { triggeredBy: "author" },
+    });
+    runParagraphReading.mockResolvedValue({
+      reading,
+      executable: false,
+      scope: {
+        kind: "paragraph",
+        sectionId: "section-1",
+        unitId: "paragraph-1",
+        unitVersion: 2,
+      },
+      provenance: { triggeredBy: "author" },
+    });
+    renderPage();
+
+    fireEvent.change(screen.getByLabelText("ID de section"), { target: { value: "section-1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Charger l’atelier" }));
+    await screen.findByRole("heading", { name: "Section réelle" });
+
+    expect(runSectionScopeReading).not.toHaveBeenCalled();
+    expect(runParagraphReading).not.toHaveBeenCalled();
+    expect(generateDraftUnit).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Lire la section" }));
+    await waitFor(() => {
+      expect(runSectionScopeReading).toHaveBeenCalledWith("project-1", "section-1", {});
+    });
+    expect(await screen.findByText("Lecture de section")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Lire le paragraphe paragraph-1" }));
+    await waitFor(() => {
+      expect(runParagraphReading).toHaveBeenCalledWith(
+        "project-1",
+        "section-1",
+        "paragraph-1",
+        {}
+      );
+    });
+    expect(await screen.findByText("Lecture de paragraphe — paragraph-1, version 2")).toBeInTheDocument();
+    expect(acceptProposal).not.toHaveBeenCalled();
+    expect(modifyProposal).not.toHaveBeenCalled();
+    expect(rejectProposal).not.toHaveBeenCalled();
   });
 
   it("prepares an active decision into a traceable empty draft unit without generation", async () => {
@@ -214,7 +285,12 @@ describe("AuthorWorkshopPage", () => {
         }],
         existingCuts: [{ scope: "section-1", verdict: "integrate_now", cut: "Conserver la tension" }],
       });
-    runReading.mockResolvedValue({ reading, executable: false });
+    runReading.mockResolvedValue({
+      reading,
+      executable: false,
+      scope: { kind: "fragment", sectionId: "section-1" },
+      provenance: { triggeredBy: "author" },
+    });
     acceptProposal.mockResolvedValue();
     renderPage();
 
@@ -239,7 +315,12 @@ describe("AuthorWorkshopPage", () => {
 
   it("requires a note before submitting an adaptation, then persists the adapted act", async () => {
     fetchContext.mockResolvedValue(context);
-    runReading.mockResolvedValue({ reading, executable: false });
+    runReading.mockResolvedValue({
+      reading,
+      executable: false,
+      scope: { kind: "fragment", sectionId: "section-1" },
+      provenance: { triggeredBy: "author" },
+    });
     modifyProposal.mockResolvedValue();
     renderPage();
 
@@ -266,7 +347,12 @@ describe("AuthorWorkshopPage", () => {
 
   it("archives a rejected candidate without presenting a new active cut", async () => {
     fetchContext.mockResolvedValue(context);
-    runReading.mockResolvedValue({ reading, executable: false });
+    runReading.mockResolvedValue({
+      reading,
+      executable: false,
+      scope: { kind: "fragment", sectionId: "section-1" },
+      provenance: { triggeredBy: "author" },
+    });
     rejectProposal.mockResolvedValue();
     renderPage();
 
