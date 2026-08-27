@@ -22,6 +22,23 @@ export const JudgeRoutingPolicySchema = z.object({
 });
 export type JudgeRoutingPolicy = z.infer<typeof JudgeRoutingPolicySchema>;
 
+export const DEFAULT_JUDGE_ROUTING_POLICY: JudgeRoutingPolicy = {
+  judges: [
+    {
+      id: "judge-documentary",
+      role: "judge",
+      model: "judge-model",
+      specialties: ["documentary_evaluation"],
+    },
+    {
+      id: "judge-editorial",
+      role: "judge",
+      model: "editorial-judge-model",
+      specialties: ["editorial_effect_evaluation"],
+    },
+  ],
+};
+
 export const JudgeAssignmentSchema = z.object({
   workType: JudgeWorkTypeSchema,
   judge: z.object({
