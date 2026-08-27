@@ -4,6 +4,7 @@ import {
   ContentStyleArticulationSchema,
   ManuscriptSchema,
   SourceProfileSchema,
+  DiffractiveReadingModeSchema,
 } from "@auto-essay/core";
 
 export const EditorialWorkspaceBodySchema = z.object({
@@ -22,6 +23,10 @@ export const ReadSectionBodySchema = z.object({
 
 export const ReadScopedSectionBodySchema = z.object({
   articulationId: z.string().min(1).optional(),
+});
+
+export const UpdateDiffractiveReadingModeBodySchema = z.object({
+  mode: DiffractiveReadingModeSchema,
 });
 
 const DecisionCommitmentsSchema = z.object({
@@ -66,6 +71,9 @@ export const ChapterOperationDetailBodySchema = z.object({
 export type EditorialWorkspaceBody = z.infer<typeof EditorialWorkspaceBodySchema>;
 export type ReadSectionBody = z.infer<typeof ReadSectionBodySchema>;
 export type ReadScopedSectionBody = z.infer<typeof ReadScopedSectionBodySchema>;
+export type UpdateDiffractiveReadingModeBody = z.infer<
+  typeof UpdateDiffractiveReadingModeBodySchema
+>;
 export type DecisionCommitmentsBody = z.infer<typeof DecisionCommitmentsSchema>;
 export type CreateWritingDraftUnitBody = z.infer<typeof CreateWritingDraftUnitBodySchema>;
 export type CreateChapterOperationBody = z.infer<typeof CreateChapterOperationBodySchema>;

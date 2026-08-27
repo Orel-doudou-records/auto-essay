@@ -1,6 +1,7 @@
 import { Hono, type Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import {
+  createAutomaticDiffractiveReading,
   createEditorialDecisionService,
   projectBibliography,
   projectBookPlan,
@@ -24,17 +25,25 @@ import {
   ReadSectionBodySchema,
   ReadScopedSectionBodySchema,
   RejectProposalBodySchema,
+  UpdateDiffractiveReadingModeBodySchema,
 } from "../schemas/editorial.js";
 import { DiffractionService } from "../services/diffractionService.js";
 import {
   acceptDecision,
+  getDiffractiveReadingMode,
   getWorkspace,
   putWorkspace,
   saveArticulation,
+  setDiffractiveReadingMode,
   storeReading,
   type StoredReading,
   updateArticulation,
 } from "../services/editorialWorkspaceStore.js";
+import {
+  listAutomaticDiffractiveReadings,
+  storeAutomaticDiffractiveReading,
+} from "../services/automaticDiffractiveReadingStore.js";
+import { createAutomaticDiffractiveReadingWorker } from "../services/automaticDiffractiveReadingWorker.js";
 import { getProject } from "../services/projectStore.js";
 import { listSources } from "../services/sourceStore.js";
 import { createUnit, listUnits, updateUnit } from "../services/unitStore.js";
@@ -49,6 +58,7 @@ import {
 
 export function editorialRoutes(modelClientFactory: ModelClientFactory): Hono {
   const app = new Hono();
+  const automaticReadingWorker = createAutomaticDiffractiveReadingWorker(modelClientFactory);
 
   app.put("/workspace", async (c) => {
     const projectId = c.req.param("projectId") as string;
@@ -65,6 +75,30 @@ export function editorialRoutes(modelClientFactory: ModelClientFactory): Hono {
     const projectId = c.req.param("projectId") as string;
     const context = await loadSectionContext(projectId, c.req.param("sectionId") as string);
     return c.json(toPublicContext(context));
+  });
+
+  app.put("/sections/:sectionId/diffraction-mode", async (c) => {
+    const projectId = c.req.param("projectId") as string;
+    const sectionId = c.req.param("sectionId") as string;
+    const body = UpdateDiffractiveReadingModeBodySchema.parse(await c.req.json());
+    const context = await loadSectionContext(projectId, sectionId);
+    const previousMode = getDiffractiveReadingMode(context.workspace, sectionId);
+    const mode = await setDiffractiveReadingMode(projectId, sectionId, body.mode);
+
+    if (mode === "strict" || previousMode === "automatic") {
+      return c.json({ mode });
+    }
+
+    const request = createAutomaticDiffractiveReading({
+      projectId,
+      sectionId,
+      readingInput: toAutomaticReadingInput(context),
+    });
+    await storeAutomaticDiffractiveReading(projectId, request);
+    queueMicrotask(() => {
+      void automaticReadingWorker.process(projectId, request.id);
+    });
+    return c.json({ mode, request: toPublicAutomaticReading(request) });
   });
 
   app.get("/chapters/:chapterId/workspace", async (c) => {
@@ -322,6 +356,32 @@ function sectionStatement(context: SectionContext): string {
   return text;
 }
 
+function toAutomaticReadingInput(context: SectionContext) {
+  return {
+    statement: sectionStatement(context),
+    claimIds: [],
+    sourceIds: [],
+    bookParts: context.bookParts,
+    bookPlan: context.bookPlan,
+    existingCuts: context.existingCuts,
+    bookBibliography: context.bookBibliography,
+  };
+}
+
+function toPublicAutomaticReading(
+  request: Awaited<ReturnType<typeof listAutomaticDiffractiveReadings>>[number]
+) {
+  return {
+    id: request.id,
+    sectionId: request.sectionId,
+    requestedBy: request.requestedBy,
+    status: request.status,
+    reading: request.reading,
+    failure: request.failure,
+    createdAt: request.createdAt,
+  };
+}
+
 function toPublicReading(stored: StoredReading) {
   return {
     reading: stored.reading,
@@ -423,7 +483,11 @@ async function loadSectionContext(projectId: string, sectionId: string) {
     throw new HTTPException(404, { message: "manuscript section not found" });
   }
 
-  const [sources, units] = await Promise.all([listSources(projectId), listUnits(projectId)]);
+  const [sources, units, automaticReadings] = await Promise.all([
+    listSources(projectId),
+    listUnits(projectId),
+    listAutomaticDiffractiveReadings(projectId, sectionId),
+  ]);
   const unitById = new Map(units.map((unit) => [unit.id, unit]));
   const bookParts = projectBookState(workspace.manuscript, {
     resolveLeaf: (leaf) => {
@@ -464,6 +528,7 @@ async function loadSectionContext(projectId: string, sectionId: string) {
     workspace,
     section,
     paragraphs,
+    automaticReadings,
     bookParts,
     bookPlan,
     existingCuts,
@@ -496,15 +561,18 @@ async function loadWritingContext(projectId: string, sectionId: string, decision
 }
 
 function toPublicContext(context: SectionContext) {
+  const mode = getDiffractiveReadingMode(context.workspace, context.section.id);
   return {
     projectId: context.projectId,
     section: { id: context.section.id, title: context.section.title },
     diffraction: {
-      mode: "strict" as const,
+      mode,
       paragraphs: context.paragraphs.map((paragraph) => ({
         id: paragraph.id,
         version: paragraph.version,
+        mode,
       })),
+      automaticReadings: context.automaticReadings.map(toPublicAutomaticReading),
     },
     bookParts: context.bookParts.map(({ id, title, status }) => ({ id, title, status })),
     bookPlan: context.bookPlan,

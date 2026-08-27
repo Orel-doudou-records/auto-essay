@@ -17,6 +17,8 @@ import {
   runEditorialParagraphReading,
   runEditorialSectionReading,
   runEditorialSectionScopeReading,
+  setEditorialSectionDiffractionMode,
+  type AutomaticDiffractiveReadingPayload,
   type EditorialReadingScope,
   type EditorialSectionContextPayload,
   type EditorialWritingContextPayload,
@@ -64,6 +66,8 @@ export function AuthorWorkshopPage() {
   const [reading, setReading] = useState<DiffractiveReading | null>(null);
   const [readingLoading, setReadingLoading] = useState(false);
   const [readingError, setReadingError] = useState<string | null>(null);
+  const [modeLoading, setModeLoading] = useState(false);
+  const [modeError, setModeError] = useState<string | null>(null);
   const [authorAction, setAuthorAction] = useState<AuthorAction>(null);
   const [contentCommitments, setContentCommitments] = useState("");
   const [formalCommitments, setFormalCommitments] = useState("");
@@ -93,6 +97,7 @@ export function AuthorWorkshopPage() {
     setWritingError(null);
     setDraftMessage(null);
     setCreatedDraftUnitId(null);
+    setModeError(null);
     if (!preserveReading) {
       setReading(null);
       setReadingProposalId(null);
@@ -124,6 +129,33 @@ export function AuthorWorkshopPage() {
     setAuthorAction(null);
     setAuthorNote("");
     setDecisionError(null);
+  }
+
+  async function setDiffractiveReadingMode(mode: "strict" | "automatic") {
+    if (!projectId || !context || modeLoading) return;
+    setModeLoading(true);
+    setModeError(null);
+    try {
+      const result = await setEditorialSectionDiffractionMode(projectId, context.section.id, mode);
+      setContext((current) => {
+        if (!current) return current;
+        const automaticReadings = result.request
+          ? [result.request, ...current.diffraction.automaticReadings]
+          : current.diffraction.automaticReadings;
+        return {
+          ...current,
+          diffraction: {
+            ...current.diffraction,
+            mode: result.mode,
+            automaticReadings,
+          },
+        };
+      });
+    } catch (error) {
+      setModeError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setModeLoading(false);
+    }
   }
 
   async function runReading() {
@@ -422,31 +454,62 @@ export function AuthorWorkshopPage() {
               )}
             </WorkshopCard>
 
-            <WorkshopCard title="Lectures strictes">
+            <WorkshopCard title="Mode de diffraction">
               <div className="space-y-3">
-                <p className="text-muted-foreground">
-                  Mode strict : choisissez explicitement la portée de la lecture. Ces lectures restent non exécutables.
+                <p className="font-medium">
+                  {context.diffraction.mode === "automatic" ? "Mode automatique" : "Mode strict"}
                 </p>
-                <Button onClick={() => void runSectionScopeReading()} disabled={readingLoading}>
-                  {readingLoading ? "Lecture en cours…" : "Lire la section"}
+                <p className="text-muted-foreground">
+                  {context.diffraction.mode === "automatic"
+                    ? "Les lectures de section sont demandées automatiquement ; aucun texte ni aucune décision ne sont modifiés."
+                    : "Chaque lecture est déclenchée explicitement par l’auteur."}
+                </p>
+                <Button
+                  variant={context.diffraction.mode === "automatic" ? "outline" : "default"}
+                  onClick={() => void setDiffractiveReadingMode(
+                    context.diffraction.mode === "automatic" ? "strict" : "automatic"
+                  )}
+                  disabled={modeLoading}
+                >
+                  {modeLoading
+                    ? "Mise à jour…"
+                    : context.diffraction.mode === "automatic"
+                      ? "Suspendre l’automatisme"
+                      : "Activer les lectures automatiques"}
                 </Button>
-                {context.diffraction.paragraphs.length === 0 ? (
-                  <p className="text-muted-foreground">Aucun paragraphe rédigé dans cette section.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {context.diffraction.paragraphs.map((paragraph) => (
-                      <div key={paragraph.id} className="flex flex-wrap items-center justify-between gap-2 rounded bg-muted/60 px-3 py-2">
-                        <span className="text-muted-foreground">{paragraph.id}, version {paragraph.version}</span>
-                        <Button variant="outline" onClick={() => void runParagraphScopeReading(paragraph.id)} disabled={readingLoading}>
-                          Lire le paragraphe {paragraph.id}
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {readingError && <p className="text-sm text-rose-600">Lecture indisponible : {readingError}</p>}
+                {modeError && <p className="text-sm text-rose-600">Mode indisponible : {modeError}</p>}
               </div>
             </WorkshopCard>
+
+            {context.diffraction.mode === "strict" && (
+              <WorkshopCard title="Lectures strictes">
+                <div className="space-y-3">
+                  <p className="text-muted-foreground">
+                    Choisissez explicitement la portée de la lecture. Ces lectures restent non exécutables.
+                  </p>
+                  <Button onClick={() => void runSectionScopeReading()} disabled={readingLoading}>
+                    {readingLoading ? "Lecture en cours…" : "Lire la section"}
+                  </Button>
+                  {context.diffraction.paragraphs.length === 0 ? (
+                    <p className="text-muted-foreground">Aucun paragraphe rédigé dans cette section.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {context.diffraction.paragraphs.map((paragraph) => (
+                        <div key={paragraph.id} className="flex flex-wrap items-center justify-between gap-2 rounded bg-muted/60 px-3 py-2">
+                          <span className="text-muted-foreground">{paragraph.id}, version {paragraph.version}</span>
+                          <Button variant="outline" onClick={() => void runParagraphScopeReading(paragraph.id)} disabled={readingLoading}>
+                            Lire le paragraphe {paragraph.id}
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {readingError && <p className="text-sm text-rose-600">Lecture indisponible : {readingError}</p>}
+                </div>
+              </WorkshopCard>
+            )}
+
+            <AutomaticReadingReviewBox readings={context.diffraction.automaticReadings} />
 
             <WorkshopCard title="Fragment à diffracter">
               <div className="space-y-3">
@@ -492,6 +555,35 @@ export function AuthorWorkshopPage() {
         )}
       </div>
     </AppShell>
+  );
+}
+
+function AutomaticReadingReviewBox({
+  readings,
+}: {
+  readings: AutomaticDiffractiveReadingPayload[];
+}) {
+  return (
+    <WorkshopCard title="Boîte de revue automatique">
+      {readings.length === 0 ? (
+        <p className="text-muted-foreground">Aucune lecture automatique enregistrée pour cette section.</p>
+      ) : (
+        <div className="space-y-3">
+          <p className="text-muted-foreground">Aucune proposition n’est choisie automatiquement.</p>
+          {readings.map((request) => (
+            <div key={request.id} className="space-y-1 rounded bg-muted/60 px-3 py-2">
+              <p className="font-medium">{automaticReadingStatusLabel(request.status)}</p>
+              {request.reading && (
+                <p className="text-muted-foreground">
+                  {VERDICT_LABELS[request.reading.verdict] ?? request.reading.verdict} — {request.reading.verdictDetail}
+                </p>
+              )}
+              {request.failure && <p className="text-rose-600">Lecture indisponible : {request.failure}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+    </WorkshopCard>
   );
 }
 
@@ -614,6 +706,15 @@ function ReadingResult({
       </WorkshopCard>
     </div>
   );
+}
+
+function automaticReadingStatusLabel(
+  status: AutomaticDiffractiveReadingPayload["status"]
+): string {
+  if (status === "pending") return "Lecture automatique en attente";
+  if (status === "running") return "Lecture automatique en cours";
+  if (status === "completed") return "Lecture automatique terminée";
+  return "Lecture automatique échouée";
 }
 
 function readingScopeLabel(scope: EditorialReadingScope): string {

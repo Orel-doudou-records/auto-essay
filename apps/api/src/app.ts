@@ -14,6 +14,8 @@ import { editorialRoutes } from "./routes/editorial.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { createModelClientFactory, type ModelClientFactory } from "./llm/client.js";
 import { DEFAULT_JUDGE_ROUTING_POLICY, type JudgeRoutingPolicy } from "@auto-essay/core";
+import { listProjects } from "./services/projectStore.js";
+import { createAutomaticDiffractiveReadingWorker } from "./services/automaticDiffractiveReadingWorker.js";
 
 export interface AppOptions {
   modelClientFactory?: ModelClientFactory;
@@ -24,6 +26,13 @@ export function createApp(options: AppOptions = {}): Hono {
   const app = new Hono();
   const modelClientFactory = options.modelClientFactory ?? createModelClientFactory({ provider: "mock" });
   const judgeRoutingPolicy = options.judgeRoutingPolicy ?? DEFAULT_JUDGE_ROUTING_POLICY;
+  const automaticReadingWorker = createAutomaticDiffractiveReadingWorker(modelClientFactory);
+
+  queueMicrotask(() => {
+    void listProjects().then((projects) =>
+      Promise.all(projects.map((project) => automaticReadingWorker.resumePending(project.id)))
+    );
+  });
 
   app.use(logger());
   app.use(cors({ origin: "*" }));

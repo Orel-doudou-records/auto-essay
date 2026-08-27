@@ -13,6 +13,7 @@ import {
   runEditorialParagraphReading,
   runEditorialSectionReading,
   runEditorialSectionScopeReading,
+  setEditorialSectionDiffractionMode,
 } from "@/api";
 
 vi.mock("@/api", () => ({
@@ -23,6 +24,7 @@ vi.mock("@/api", () => ({
   runEditorialSectionReading: vi.fn(),
   runEditorialSectionScopeReading: vi.fn(),
   runEditorialParagraphReading: vi.fn(),
+  setEditorialSectionDiffractionMode: vi.fn(),
   acceptEditorialProposal: vi.fn(),
   modifyEditorialProposal: vi.fn(),
   rejectEditorialProposal: vi.fn(),
@@ -35,6 +37,7 @@ const generateDraftUnit = vi.mocked(generateUnit);
 const runReading = vi.mocked(runEditorialSectionReading);
 const runSectionScopeReading = vi.mocked(runEditorialSectionScopeReading);
 const runParagraphReading = vi.mocked(runEditorialParagraphReading);
+const setDiffractionMode = vi.mocked(setEditorialSectionDiffractionMode);
 const acceptProposal = vi.mocked(acceptEditorialProposal);
 const modifyProposal = vi.mocked(modifyEditorialProposal);
 const rejectProposal = vi.mocked(rejectEditorialProposal);
@@ -48,9 +51,11 @@ const context = {
       {
         id: "paragraph-1",
         version: 2,
+        mode: "strict" as const,
         content: "Un paragraphe réel de la section.",
       },
     ],
+    automaticReadings: [],
   },
   bookParts: [{ id: "section-1", title: "Section réelle", status: "drafting" }],
   bookPlan: [],
@@ -199,6 +204,74 @@ describe("AuthorWorkshopPage", () => {
     expect(acceptProposal).not.toHaveBeenCalled();
     expect(modifyProposal).not.toHaveBeenCalled();
     expect(rejectProposal).not.toHaveBeenCalled();
+  });
+
+  it("activates automatic readings explicitly and shows their durable review state without an implicit editorial act", async () => {
+    fetchContext.mockResolvedValue(context);
+    setDiffractionMode.mockResolvedValue({
+      mode: "automatic",
+      request: {
+        id: "automatic-reading-1",
+        sectionId: "section-1",
+        requestedBy: "author",
+        status: "pending",
+        createdAt: "2026-08-27T09:00:00.000Z",
+      },
+    });
+    renderPage();
+
+    fireEvent.change(screen.getByLabelText("ID de section"), { target: { value: "section-1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Charger l’atelier" }));
+    await screen.findByRole("heading", { name: "Section réelle" });
+
+    expect(setDiffractionMode).not.toHaveBeenCalled();
+    expect(runReading).not.toHaveBeenCalled();
+    expect(runSectionScopeReading).not.toHaveBeenCalled();
+    expect(runParagraphReading).not.toHaveBeenCalled();
+    expect(generateDraftUnit).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Activer les lectures automatiques" }));
+    await waitFor(() => {
+      expect(setDiffractionMode).toHaveBeenCalledWith("project-1", "section-1", "automatic");
+    });
+    expect(await screen.findByText("Mode automatique")).toBeInTheDocument();
+    expect(screen.getByText("Lecture automatique en attente")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Suspendre l’automatisme" })).toBeEnabled();
+    expect(acceptProposal).not.toHaveBeenCalled();
+    expect(modifyProposal).not.toHaveBeenCalled();
+    expect(rejectProposal).not.toHaveBeenCalled();
+  });
+
+  it("renders a completed automatic reading in the review box without choosing a proposal", async () => {
+    fetchContext.mockResolvedValue({
+      ...context,
+      diffraction: {
+        ...context.diffraction,
+        mode: "automatic" as const,
+        automaticReadings: [
+          {
+            id: "automatic-reading-1",
+            sectionId: "section-1",
+            requestedBy: "author" as const,
+            status: "completed" as const,
+            createdAt: "2026-08-27T09:00:00.000Z",
+            reading,
+          },
+        ],
+      },
+    });
+    renderPage();
+
+    fireEvent.change(screen.getByLabelText("ID de section"), { target: { value: "section-1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Charger l’atelier" }));
+
+    expect(await screen.findByText("Lecture automatique terminée")).toBeInTheDocument();
+    expect(screen.getByText(/Intégrer maintenant/)).toBeInTheDocument();
+    expect(screen.getByText("Aucune proposition n’est choisie automatiquement.")).toBeInTheDocument();
+    expect(runReading).not.toHaveBeenCalled();
+    expect(runSectionScopeReading).not.toHaveBeenCalled();
+    expect(runParagraphReading).not.toHaveBeenCalled();
+    expect(generateDraftUnit).not.toHaveBeenCalled();
   });
 
   it("prepares an active decision into a traceable empty draft unit without generation", async () => {

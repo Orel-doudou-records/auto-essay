@@ -13,6 +13,14 @@ l'implémentation.
 - **Mode diffractif strict** : régime par défaut d’une section dans lequel
   l’auteur déclenche lui-même chaque lecture, sans automatisme ni effet sur le
   manuscrit.
+- **Mode diffractif automatique** : régime activé et suspendu explicitement par
+  l’auteur pour une section. Son activation dépose une demande durable de
+  lecture du chantier courant ; le worker ne peut y enregistrer qu’une lecture
+  ou un échec, jamais une décision, une proposition ou une écriture.
+- **Demande de lecture automatique** : instantané durable de la matière à lire,
+  de son état (`pending`, `running`, `completed` ou `failed`) et, une fois
+  terminé, de sa lecture. C’est une entrée de boîte de revue, pas une
+  instruction éditoriale.
 - **Portée de lecture diffractive** : objet explicitement choisi par l’auteur :
   un fragment, un paragraphe situé dans sa section, ou la section comme
   chantier. Elle qualifie la provenance d’une lecture sans en modifier le
