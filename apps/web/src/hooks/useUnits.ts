@@ -4,6 +4,7 @@ import {
   updateUnit,
   generateUnit,
   reviseUnitChat,
+  evaluateIntegratedUnit,
   evaluateUnit,
   verifyUnit,
 } from "@/api";
@@ -81,6 +82,14 @@ export function useUnits(projectId: string | undefined) {
     [projectId]
   );
 
+  const evaluateIntegrated = useCallback(
+    async (unitId: string) => {
+      if (!projectId) return;
+      return evaluateIntegratedUnit(projectId, unitId);
+    },
+    [projectId]
+  );
+
   const verify = useCallback(
     async (unitId: string) => {
       if (!projectId) return;
@@ -101,6 +110,7 @@ export function useUnits(projectId: string | undefined) {
     generate,
     reviseChat,
     evaluate,
+    evaluateIntegrated,
     verify,
   };
 }

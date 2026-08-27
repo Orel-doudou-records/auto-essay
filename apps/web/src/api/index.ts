@@ -497,6 +497,40 @@ export async function fetchEvaluationJudgeAssignments(
   return data.assignments as EvaluationJudgeAssignmentsPayload;
 }
 
+export type IntegratedEvaluationReadinessPayload =
+  | { status: "ready" }
+  | { status: "unavailable"; reasons: Array<{ code: string }> };
+
+export async function fetchIntegratedEvaluationReadiness(
+  projectId: string,
+  unitId: string
+): Promise<IntegratedEvaluationReadinessPayload> {
+  const res = await fetch(`${API}/projects/${projectId}/units/${unitId}/evaluate/readiness`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = (await res.json()) as IntegratedEvaluationReadinessPayload;
+  return data.status === "ready"
+    ? { status: "ready" }
+    : { status: "unavailable", reasons: data.reasons };
+}
+
+export async function evaluateIntegratedUnit(
+  projectId: string,
+  unitId: string
+): Promise<{
+  evaluation: Record<string, unknown>;
+  editorialEvaluation: Record<string, unknown>;
+  gates: { documentaryIntegrity: string; editorialCoherence: string };
+  finalVerdict: string;
+  brief: Record<string, unknown>;
+  assignments: EvaluationJudgeAssignmentsPayload;
+}> {
+  const res = await fetch(`${API}/projects/${projectId}/units/${unitId}/evaluate/integrated`, {
+    method: "POST",
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
 export async function evaluateUnit(
   projectId: string,
   unitId: string
