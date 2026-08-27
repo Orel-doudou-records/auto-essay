@@ -42,6 +42,14 @@ l'implémentation.
 - **Statut d'assemblage** : statut d'une position dans le livre (arbre),
   distinct du statut de rédaction de l'unité — une unité rédigée peut être
   montée dans un chapitre ébauche.
+- **Contexte d’évaluation intégrée** : provenance canonique qui relie une
+  version d’unité à une décision auteur active, à ses projections spécialisées
+  et aux déclarations de transformation du Writer. Il permet un jugement
+  éditorial, sans jamais devenir une décision éditoriale.
+- **Préparabilité d’évaluation intégrée** : état de lecture d’une unité qui
+  indique si son contexte canonique est complet et encore valide. Une unité
+  non préparée ou devenue incohérente reste évaluable documentairement, mais ne
+  peut pas recevoir un jugement éditorial intégré.
 
 ## Frontière
 

@@ -39,7 +39,7 @@ export async function createUnit(
 export async function updateUnit(
   projectId: string,
   unitId: string,
-  patch: Partial<Pick<DraftUnit, "content" | "status" | "targetWordCount" | "thesis" | "contextInPlan" | "evidencePack" | "version">>
+  patch: Partial<Pick<DraftUnit, "content" | "status" | "targetWordCount" | "thesis" | "contextInPlan" | "evidencePack" | "editorialPlanId" | "transformationTraceIds" | "version">>
 ): Promise<DraftUnit | undefined> {
   const units = await listUnits(projectId);
   const idx = units.findIndex((u) => u.id === unitId);

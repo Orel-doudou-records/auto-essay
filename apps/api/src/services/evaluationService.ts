@@ -1,4 +1,5 @@
 import {
+  assessIntegratedEvaluationReadiness,
   DEFAULT_JUDGE_ROUTING_POLICY,
   EssayEvaluator,
   RevisionBriefGenerator,
@@ -9,6 +10,8 @@ import {
 import type { ModelClientFactory } from "../llm/client.js";
 import { StructuredClientAdapter } from "../llm/structuredAdapter.js";
 import { getUnit, updateUnit } from "./unitStore.js";
+import { getWorkspace } from "./editorialWorkspaceStore.js";
+import { getIntegratedEvaluationContext } from "./integratedEvaluationContextStore.js";
 import { listSources } from "./sourceStore.js";
 
 export function selectEvaluationJudgeAssignments(
@@ -18,6 +21,26 @@ export function selectEvaluationJudgeAssignments(
     documentary: selectJudgeAssignment(judgeRoutingPolicy, "documentary_evaluation"),
     editorial: selectJudgeAssignment(judgeRoutingPolicy, "editorial_effect_evaluation"),
   };
+}
+
+export async function getIntegratedEvaluationReadiness(
+  projectId: string,
+  unitId: string
+) {
+  const unit = await getUnit(projectId, unitId);
+  if (!unit) throw new Error("unit not found");
+
+  const context = await getIntegratedEvaluationContext(projectId, unitId);
+  if (!context) {
+    return assessIntegratedEvaluationReadiness({ unit, decisions: [] });
+  }
+
+  const workspace = await getWorkspace(projectId);
+  return assessIntegratedEvaluationReadiness({
+    unit,
+    decisions: workspace.decisions,
+    context,
+  });
 }
 
 export async function evaluateUnit(

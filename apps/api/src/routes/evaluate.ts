@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import {
   evaluateUnit,
+  getIntegratedEvaluationReadiness,
   markUnitVerified,
   selectEvaluationJudgeAssignments,
 } from "../services/evaluationService.js";
@@ -22,6 +23,12 @@ export function evaluateRoutes(
         message: error instanceof Error ? error.message : "invalid judge routing policy",
       });
     }
+  });
+
+  app.get("/readiness", async (c) => {
+    const projectId = c.req.param("projectId") as string;
+    const unitId = c.req.param("unitId") as string;
+    return c.json(await getIntegratedEvaluationReadiness(projectId, unitId));
   });
 
   app.post("/", async (c) => {

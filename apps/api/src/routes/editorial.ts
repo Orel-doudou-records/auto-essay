@@ -34,8 +34,10 @@ import {
 } from "../services/editorialWorkspaceStore.js";
 import { getProject } from "../services/projectStore.js";
 import { listSources } from "../services/sourceStore.js";
-import { createUnit, listUnits } from "../services/unitStore.js";
+import { createUnit, listUnits, updateUnit } from "../services/unitStore.js";
 import { prepareWritingContext } from "../services/writingContextService.js";
+import { prepareIntegratedEvaluationContext } from "../services/integratedEvaluationPreparationService.js";
+import { saveIntegratedEvaluationContext } from "../services/integratedEvaluationContextStore.js";
 import {
   createStoredChapterOperation,
   getChapterOperation,
@@ -135,8 +137,20 @@ export function editorialRoutes(modelClientFactory: ModelClientFactory): Hono {
       appliedDecisionIds: [decision.id],
       appliedArticulationIds: [decision.articulationId],
     });
+    const workspace = await getWorkspace(projectId);
+    const articulation = findArticulation(workspace.articulations, decision.articulationId);
+    const evaluationContext = prepareIntegratedEvaluationContext({
+      unit,
+      decision,
+      articulation,
+    });
+    const preparedUnit = await updateUnit(projectId, unit.id, {
+      editorialPlanId: evaluationContext.editorialPlanId,
+    });
+    if (!preparedUnit) throw new Error("unit not found");
+    await saveIntegratedEvaluationContext(projectId, evaluationContext);
 
-    return c.json({ unit, generated: false }, 201);
+    return c.json({ unit: preparedUnit, generated: false }, 201);
   });
 
   app.post("/sections/:sectionId/readings", async (c) => {
