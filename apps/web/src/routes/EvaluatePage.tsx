@@ -1,9 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useUnits } from "@/hooks/useUnits";
+import {
+  fetchEvaluationJudgeAssignments,
+  type EvaluationJudgeAssignmentsPayload,
+} from "@/api";
 
 export function EvaluatePage() {
   const { projectId, unitId } = useParams<{ projectId: string; unitId: string }>();
@@ -11,8 +15,28 @@ export function EvaluatePage() {
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
   const [brief, setBrief] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(false);
+  const [assignments, setAssignments] = useState<EvaluationJudgeAssignmentsPayload>();
+  const [usedAssignments, setUsedAssignments] = useState<EvaluationJudgeAssignmentsPayload>();
+  const [assignmentError, setAssignmentError] = useState<string>();
 
   const unit = units.find((u) => u.id === unitId);
+
+  useEffect(() => {
+    if (!projectId || !unitId || !unit) return;
+    let active = true;
+    fetchEvaluationJudgeAssignments(projectId, unitId)
+      .then((nextAssignments) => {
+        if (active) setAssignments(nextAssignments);
+      })
+      .catch((reason) => {
+        if (active) {
+          setAssignmentError(reason instanceof Error ? reason.message : "Erreur inconnue");
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [projectId, unitId, unit]);
 
   async function handleEvaluate() {
     if (!unitId) return;
@@ -22,6 +46,7 @@ export function EvaluatePage() {
       if (data) {
         setResult(data.evaluation);
         setBrief(data.brief);
+        setUsedAssignments(data.assignments);
       }
     } finally {
       setLoading(false);
@@ -47,6 +72,11 @@ export function EvaluatePage() {
           </Link>
         </div>
 
+        {assignments && <JudgeAssignments assignments={assignments} title="Juges affectés" />}
+        {assignmentError && (
+          <p role="alert">Affectations de juge indisponibles : {assignmentError}</p>
+        )}
+
         <Card>
           <CardHeader>
             <CardTitle>{unit.thesis || unit.contextInPlan?.section}</CardTitle>
@@ -65,6 +95,13 @@ export function EvaluatePage() {
             </div>
           </CardContent>
         </Card>
+
+        {usedAssignments && (
+          <JudgeAssignments
+            assignments={usedAssignments}
+            title="Affectations associées à cette évaluation"
+          />
+        )}
 
         {result && (
           <Card>
@@ -107,5 +144,37 @@ export function EvaluatePage() {
         )}
       </div>
     </AppShell>
+  );
+}
+
+function JudgeAssignments({
+  assignments,
+  title,
+}: {
+  assignments: EvaluationJudgeAssignmentsPayload;
+  title: string;
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ul className="space-y-2 text-sm">
+          <li>
+            <span className="font-medium">Juge documentaire</span> — <span>{assignments.documentary.judge.model}</span>
+            <span className="text-muted-foreground">
+              {" "}(id : <span>{assignments.documentary.judge.id}</span>; spécialité : <span>{assignments.documentary.judge.specialty}</span>; raison : <span>{assignments.documentary.rationale}</span>)
+            </span>
+          </li>
+          <li>
+            <span className="font-medium">Juge éditorial</span> — <span>{assignments.editorial.judge.model}</span>
+            <span className="text-muted-foreground">
+              {" "}(id : <span>{assignments.editorial.judge.id}</span>; spécialité : <span>{assignments.editorial.judge.specialty}</span>; raison : <span>{assignments.editorial.rationale}</span>)
+            </span>
+          </li>
+        </ul>
+      </CardContent>
+    </Card>
   );
 }
