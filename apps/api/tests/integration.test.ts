@@ -60,7 +60,9 @@ describe("integration flow", () => {
     );
     expect(reviseRes.status).toBe(200);
     const reviseBody = await reviseRes.json();
-    expect(reviseBody.after.length).toBeGreaterThan(0);
+    expect(reviseBody.proposal.content.length).toBeGreaterThan(0);
+    expect(reviseBody.proposal.unitId).toBe(unit.id);
+    expect(reviseBody.proposal.sourceVersion).toBe(generatedUnit.version);
 
     const evalRes = await app.request(
       `/api/projects/${project.id}/units/${unit.id}/evaluate`,

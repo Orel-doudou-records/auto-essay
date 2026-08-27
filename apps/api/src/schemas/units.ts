@@ -12,4 +12,5 @@ export const UpdateUnitBodySchema = z.object({
   status: DraftUnitStatusSchema.optional(),
   targetWordCount: z.number().int().min(1).optional(),
   thesis: z.string().optional(),
+  version: z.number().int().nonnegative().optional(),
 });

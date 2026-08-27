@@ -5,6 +5,7 @@ import type {
   EssayProject,
   Source,
   DraftUnit,
+  RevisionProposal,
   JudgeAssignment,
   IntegratedEvaluationHistoryEntry,
 } from "@auto-essay/core";
@@ -544,7 +545,7 @@ export async function createUnit(
 export async function updateUnit(
   projectId: string,
   unitId: string,
-  patch: Partial<Pick<DraftUnit, "content" | "status" | "targetWordCount" | "thesis">>
+  patch: Partial<Pick<DraftUnit, "content" | "status" | "targetWordCount" | "thesis" | "version">>
 ): Promise<DraftUnit> {
   const res = await fetch(`${API}/projects/${projectId}/units/${unitId}`, {
     method: "PATCH",
@@ -569,7 +570,7 @@ export async function reviseUnitChat(
   projectId: string,
   unitId: string,
   instruction: string
-): Promise<{ before: string; after: string; unit: DraftUnit }> {
+): Promise<{ proposal: RevisionProposal }> {
   const res = await fetch(`${API}/projects/${projectId}/units/${unitId}/revise-chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

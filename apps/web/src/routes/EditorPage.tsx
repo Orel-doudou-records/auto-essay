@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import * as stylex from "@stylexjs/stylex";
-import type { DraftUnit } from "@auto-essay/core";
+import type { DraftUnit, RevisionProposal } from "@auto-essay/core";
 import { exportProject } from "@/api";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
@@ -97,6 +97,12 @@ export function EditorPage() {
     } catch {
       if (isCurrentSave()) setSaveStatus("error");
     }
+  }
+
+  async function applyRevisionProposal(proposal: RevisionProposal, content: string) {
+    if (!selectedUnit || selectedUnit.id !== proposal.unitId || selectedUnit.version !== proposal.sourceVersion) return;
+    const applied = await update(proposal.unitId, { content, version: selectedUnit.version + 1 });
+    if (applied) selectUnit(applied);
   }
 
   async function handleGenerate() {
@@ -210,8 +216,9 @@ export function EditorPage() {
               <ChatPanel
                 projectId={projectId ?? ""}
                 unit={selectedUnit}
+                manuscript={draftContent}
                 onGenerate={() => void handleGenerate()}
-                onRevise={selectUnit}
+                onApplyProposal={(proposal, content) => void applyRevisionProposal(proposal, content)}
                 onReviseChat={reviseChat}
               />
             </aside>
@@ -281,22 +288,21 @@ function SaveIndicator({ status }: { status: SaveStatus }) {
 function ChatPanel({
   projectId,
   unit,
+  manuscript,
   onGenerate,
-  onRevise,
+  onApplyProposal,
   onReviseChat,
 }: {
   projectId: string;
   unit: DraftUnit;
+  manuscript: string;
   onGenerate: () => void;
-  onRevise: (unit: DraftUnit) => void;
-  onReviseChat: (unitId: string, instruction: string) => Promise<{
-    before: string;
-    after: string;
-    unit: DraftUnit;
-  } | undefined>;
+  onApplyProposal: (proposal: RevisionProposal, content: string) => void;
+  onReviseChat: (unitId: string, instruction: string) => Promise<{ proposal: RevisionProposal } | undefined>;
 }) {
   const [instruction, setInstruction] = useState("");
-  const [after, setAfter] = useState("");
+  const [proposal, setProposal] = useState<RevisionProposal | null>(null);
+  const [proposedContent, setProposedContent] = useState("");
   const [busy, setBusy] = useState(false);
 
   async function handleSubmit(event: React.FormEvent) {
@@ -306,17 +312,21 @@ function ChatPanel({
     try {
       const result = await onReviseChat(unit.id, instruction);
       if (result) {
-        setAfter(result.after);
-        onRevise(result.unit);
+        setProposal(result.proposal);
+        setProposedContent(result.proposal.content);
       }
     } finally {
       setBusy(false);
     }
   }
 
-  async function accept() {
-    await onReviseChat(unit.id, "Applique la révision.");
-    setAfter("");
+  const isStale = proposal !== null && (proposal.unitId !== unit.id || manuscript !== proposal.before);
+
+  function applyProposal() {
+    if (!proposal || isStale) return;
+    onApplyProposal(proposal, proposedContent);
+    setProposal(null);
+    setProposedContent("");
   }
 
   return (
@@ -330,6 +340,7 @@ function ChatPanel({
       </Button>
       <form {...stylex.props(styles.reviewForm)} onSubmit={handleSubmit}>
         <Textarea
+          aria-label="Instruction de révision"
           value={instruction}
           onChange={(event) => setInstruction(event.target.value)}
           placeholder="Instruction de révision…"
@@ -340,13 +351,18 @@ function ChatPanel({
         </Button>
       </form>
 
-      {after && (
+      {proposal && (
         <section {...stylex.props(styles.reviewResult)} aria-label="Proposition de révision">
-          <p {...stylex.props(styles.resultTitle)}>Résultat</p>
-          <p {...stylex.props(styles.resultText)}>{after}</p>
+          <p {...stylex.props(styles.resultTitle)}>{isStale ? "Proposition périmée" : "Proposition de révision"}</p>
+          <p {...stylex.props(styles.resultText)}>{isStale ? "Le manuscrit a changé depuis cette proposition. Elle reste consultable, mais ne peut pas être appliquée." : "Le manuscrit ne change qu’après votre application explicite."}</p>
+          <Textarea aria-label="Texte proposé" value={proposedContent} onChange={(event) => setProposedContent(event.target.value)} rows={6} disabled={isStale} />
+          <details>
+            <summary>Comparer avec le texte de départ</summary>
+            <p {...stylex.props(styles.resultText)}>{proposal.before}</p>
+          </details>
           <div {...stylex.props(styles.resultActions)}>
-            <Button size="sm" variant="outline" onClick={() => void accept()}>Accepter</Button>
-            <Button size="sm" variant="ghost" onClick={() => setAfter("")}>Rejeter</Button>
+            <Button size="sm" variant="outline" onClick={applyProposal} disabled={isStale}>Appliquer la proposition</Button>
+            <Button size="sm" variant="ghost" onClick={() => { setProposal(null); setProposedContent(""); }}>Écarter la proposition</Button>
           </div>
         </section>
       )}

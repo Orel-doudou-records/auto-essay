@@ -28,8 +28,9 @@ export * from "./editorialEffectEvaluation";
 // État du pipeline
 export * from "./pipelineState";
 
-// Révision et briefs
+// Révision, briefs et propositions explicites
 export * from "./revision";
+export * from "./revisionProposal";
 
 // Observations stylistiques relationnelles
 export * from "./styleObservation";

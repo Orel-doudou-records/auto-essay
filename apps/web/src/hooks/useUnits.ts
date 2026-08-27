@@ -45,7 +45,7 @@ export function useUnits(projectId: string | undefined) {
   );
 
   const update = useCallback(
-    async (unitId: string, patch: Partial<Pick<DraftUnit, "content" | "status" | "targetWordCount" | "thesis">>) => {
+    async (unitId: string, patch: Partial<Pick<DraftUnit, "content" | "status" | "targetWordCount" | "thesis" | "version">>) => {
       if (!projectId) return;
       const updated = await updateUnit(projectId, unitId, patch);
       setUnits((prev) => prev.map((u) => (u.id === unitId ? updated : u)));
@@ -67,9 +67,7 @@ export function useUnits(projectId: string | undefined) {
   const reviseChat = useCallback(
     async (unitId: string, instruction: string) => {
       if (!projectId) return;
-      const result = await reviseUnitChat(projectId, unitId, instruction);
-      setUnits((prev) => prev.map((u) => (u.id === unitId ? result.unit : u)));
-      return result;
+      return reviseUnitChat(projectId, unitId, instruction);
     },
     [projectId]
   );
