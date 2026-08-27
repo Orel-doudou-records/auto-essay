@@ -48,6 +48,7 @@ describe("EditorPage", () => {
       generate: vi.fn(),
       reviseChat: vi.fn(),
       evaluate: vi.fn(),
+      evaluateIntegrated: vi.fn(),
       verify: vi.fn(),
     });
   });
