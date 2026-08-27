@@ -34,6 +34,10 @@ l'implémentation.
 - **Lecture automatique historique** : résultat ou demande attaché à un
   instantané qui ne correspond plus au chantier courant. Il reste consultable
   comme trace et ne peut produire aucun effet éditorial.
+- **Statut de revue d’une lecture automatique** : appréciation explicite de
+  l’auteur sur la place d’une trace dans sa boîte de revue : nouvelle,
+  conservée ou archivée. Il ne modifie ni la lecture, ni son verdict, ni le
+  manuscrit, ni une décision éditoriale.
 - **Verdict** : décision forcée issue de la lecture diffractive. Cinq valeurs,
   sans « ça dépend » : `integrate_now`, `adapt_differently`, `incubate`,
   `archive`, `discard`.

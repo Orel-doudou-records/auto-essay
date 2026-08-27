@@ -326,6 +326,75 @@ describe("editorial workspace routes", () => {
     expect(modelFactoryCalls).toBe(1);
   });
 
+  it("lets the author keep then archive an automatic reading without changing editorial content", async () => {
+    let modelFactoryCalls = 0;
+    const factory = async () => {
+      modelFactoryCalls += 1;
+      return {
+        complete: async () => makeReadingJson(),
+        completeStream: async () => undefined,
+      };
+    };
+    const { app, projectId } = await createWorkspace(factory);
+
+    await app.request(`/api/projects/${projectId}/editorial/sections/section-1/diffraction-mode`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: "automatic" }),
+    });
+    let readingId = "";
+    await vi.waitFor(async () => {
+      const context = await app.request(
+        `/api/projects/${projectId}/editorial/sections/section-1/context`
+      );
+      const body = (await context.json()) as {
+        diffraction: { automaticReadings: Array<{ id: string; status: string; reviewStatus: string }> };
+      };
+      const [automaticReading] = body.diffraction.automaticReadings;
+      expect(automaticReading).toMatchObject({ status: "completed", reviewStatus: "new" });
+      readingId = automaticReading!.id;
+    });
+    const workspaceBeforeReview = structuredClone(await getWorkspace(projectId));
+
+    const kept = await postJson(
+      app,
+      `/api/projects/${projectId}/editorial/sections/section-1/automatic-readings/${readingId}/review`,
+      { disposition: "kept" }
+    );
+    expect(kept.status).toBe(200);
+    await expect(kept.json()).resolves.toMatchObject({
+      automaticReading: {
+        id: readingId,
+        reviewStatus: "kept",
+        reading: { fragment: { statement: "Texte privé de la section." } },
+      },
+    });
+
+    const archived = await postJson(
+      app,
+      `/api/projects/${projectId}/editorial/sections/section-1/automatic-readings/${readingId}/review`,
+      { disposition: "archived" }
+    );
+    expect(archived.status).toBe(200);
+    await expect(archived.json()).resolves.toMatchObject({
+      automaticReading: {
+        id: readingId,
+        reviewStatus: "archived",
+        reading: { fragment: { statement: "Texte privé de la section." } },
+      },
+    });
+
+    const contextAfterReview = await app.request(
+      `/api/projects/${projectId}/editorial/sections/section-1/context`
+    );
+    await expect(contextAfterReview.json()).resolves.toMatchObject({
+      diffraction: { automaticReadings: [{ id: readingId, reviewStatus: "archived" }] },
+      decisions: [],
+    });
+    expect(await getWorkspace(projectId)).toEqual(workspaceBeforeReview);
+    expect(modelFactoryCalls).toBe(1);
+  });
+
   it("requeues an automatic reading on a text change and preserves the previous result as historical", async () => {
     let modelFactoryCalls = 0;
     const factory = async () => {

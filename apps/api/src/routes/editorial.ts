@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import {
   createEditorialDecisionService,
   projectBibliography,
+  setAutomaticDiffractiveReadingReviewStatus,
   projectBookPlan,
   projectBookState,
   projectChapterEditorialState,
@@ -24,6 +25,7 @@ import {
   ReadSectionBodySchema,
   ReadScopedSectionBodySchema,
   RejectProposalBodySchema,
+  ReviewAutomaticDiffractiveReadingBodySchema,
   UpdateDiffractiveReadingModeBodySchema,
 } from "../schemas/editorial.js";
 import { DiffractionService } from "../services/diffractionService.js";
@@ -38,7 +40,11 @@ import {
   type StoredReading,
   updateArticulation,
 } from "../services/editorialWorkspaceStore.js";
-import { listAutomaticDiffractiveReadings } from "../services/automaticDiffractiveReadingStore.js";
+import {
+  getAutomaticDiffractiveReading,
+  listAutomaticDiffractiveReadings,
+  updateAutomaticDiffractiveReading,
+} from "../services/automaticDiffractiveReadingStore.js";
 import {
   enqueueAutomaticDiffractiveReading,
   enqueueAutomaticDiffractiveReadingsForProject,
@@ -119,6 +125,36 @@ export function editorialRoutes(modelClientFactory: ModelClientFactory): Hono {
     return c.json({
       mode,
       ...(request ? { request: toPublicAutomaticReading(request) } : {}),
+    });
+  });
+
+  app.post("/sections/:sectionId/automatic-readings/:readingId/review", async (c) => {
+    const projectId = c.req.param("projectId") as string;
+    const sectionId = c.req.param("sectionId") as string;
+    const body = ReviewAutomaticDiffractiveReadingBodySchema.parse(await c.req.json());
+    const existing = await getAutomaticDiffractiveReading(projectId, c.req.param("readingId") as string);
+    if (!existing || existing.sectionId !== sectionId) {
+      return c.json({ error: "automatic reading not found" }, 404);
+    }
+    const automaticReading = await updateAutomaticDiffractiveReading(
+      projectId,
+      existing.id,
+      (current) => setAutomaticDiffractiveReadingReviewStatus(current, body.disposition)
+    );
+    if (!automaticReading) return c.json({ error: "automatic reading not found" }, 404);
+    const currentFingerprint = await getAutomaticDiffractiveReadingFingerprint(projectId, sectionId).catch(
+      (error) => {
+        if (error instanceof HTTPException && error.status === 400) return undefined;
+        throw error;
+      }
+    );
+    return c.json({
+      automaticReading: toPublicAutomaticReading(
+        automaticReading,
+        automaticReading.status === "superseded" ||
+          !currentFingerprint ||
+          automaticReading.input.fingerprint !== currentFingerprint
+      ),
     });
   });
 
@@ -404,6 +440,7 @@ function toPublicAutomaticReading(
     requestedBy: request.requestedBy,
     trigger: request.trigger,
     status: request.status,
+    reviewStatus: request.reviewStatus,
     historical,
     reading: request.reading,
     failure: request.failure,

@@ -4,6 +4,7 @@ import {
   createAutomaticDiffractiveReading,
   failAutomaticDiffractiveReading,
   startAutomaticDiffractiveReading,
+  setAutomaticDiffractiveReadingReviewStatus,
 } from "../src/domain/automaticDiffractiveReading";
 import { createDiffractiveReading } from "../src/domain/diffractiveReading";
 
@@ -54,6 +55,37 @@ describe("automatic diffractive reading", () => {
       reading,
       updatedAt: "2026-08-27T09:02:00.000Z",
     });
+  });
+
+  it("records an author review disposition without changing the reading or its input", () => {
+    const pending = createAutomaticDiffractiveReading({
+      projectId: "project-1",
+      sectionId: "section-1",
+      readingInput,
+      trigger: "activation",
+      createdAt: "2026-08-27T09:00:00.000Z",
+    });
+    const completed = completeAutomaticDiffractiveReading(
+      startAutomaticDiffractiveReading(pending, "2026-08-27T09:01:00.000Z"),
+      reading,
+      "2026-08-27T09:02:00.000Z"
+    );
+
+    const archived = setAutomaticDiffractiveReadingReviewStatus(
+      completed,
+      "archived",
+      "2026-08-27T09:03:00.000Z"
+    );
+
+    expect(archived).toMatchObject({
+      reviewStatus: "archived",
+      status: "completed",
+      input: readingInput,
+      reading,
+      updatedAt: "2026-08-27T09:03:00.000Z",
+    });
+    expect(archived).not.toHaveProperty("decisionId");
+    expect(archived).not.toHaveProperty("articulationId");
   });
 
   it("records a worker failure without creating a reading or editorial instruction", () => {
