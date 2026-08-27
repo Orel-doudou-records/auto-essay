@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import * as stylex from "@stylexjs/stylex";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useUnits } from "@/hooks/useUnits";
+import { workshopStyles } from "../styles/workshopStyles";
 import {
   fetchEvaluationJudgeAssignments,
   fetchIntegratedEvaluationHistory,
@@ -121,22 +123,25 @@ export function EvaluatePage() {
 
   return (
     <AppShell projectId={projectId}>
-      <div>
-        <div>
-          <h1>Évaluation</h1>
+      <div {...stylex.props(workshopStyles.page)}>
+        <header {...stylex.props(workshopStyles.sectionHeader)}>
+          <div {...stylex.props(workshopStyles.compactStack)}>
+            <p {...stylex.props(workshopStyles.eyebrow)}>Revue</p>
+            <h1 {...stylex.props(workshopStyles.title)}>Évaluation</h1>
+          </div>
           <Link to={`/projects/${projectId}/editor`}>
             <Button variant="outline" size="sm">Retour à l'éditeur</Button>
           </Link>
-        </div>
+        </header>
 
         {assignments && <JudgeAssignments assignments={assignments} title="Juges affectés" />}
         {assignmentError && (
-          <p role="alert">Affectations de juge indisponibles : {assignmentError}</p>
+          <p role="alert" {...stylex.props(workshopStyles.alert)}>Affectations de juge indisponibles : {assignmentError}</p>
         )}
 
         <IntegratedReadiness readiness={readiness} error={readinessError} />
         {historyError && (
-          <p role="alert">Historique des évaluations intégrées indisponible : {historyError}</p>
+          <p role="alert" {...stylex.props(workshopStyles.alert)}>Historique des évaluations intégrées indisponible : {historyError}</p>
         )}
         {history.length > 0 && <IntegratedEvaluationHistory history={history} />}
 
@@ -148,7 +153,7 @@ export function EvaluatePage() {
             <p>
               Statut : {unit.status} — Version {unit.version}
             </p>
-            <div>
+            <div {...stylex.props(workshopStyles.actionRow)}>
               <Button
                 onClick={handleDocumentaryEvaluate}
                 disabled={loadingAction !== null}
