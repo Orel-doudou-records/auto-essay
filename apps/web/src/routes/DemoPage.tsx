@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import * as stylex from "@stylexjs/stylex";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { workshopStyles } from "../styles/workshopStyles";
 import {
   fetchDemoContext,
   runDiffractReading,
@@ -26,12 +28,16 @@ const VERDICT_LABELS: Record<string, string> = {
 
 function PassCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-      </CardHeader>
-      <CardContent>{children}</CardContent>
-    </Card>
+    <div {...stylex.props(workshopStyles.cardFrame)}>
+      <Card>
+        <CardHeader>
+          <CardTitle>{title}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div {...stylex.props(workshopStyles.stack)}>{children}</div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
@@ -75,18 +81,19 @@ export function DemoPage() {
 
   return (
     <AppShell>
-      <div>
-        <div>
-          <h1>Lecture diffractive — démo</h1>
-          <p>
+      <div {...stylex.props(workshopStyles.page)}>
+        <header {...stylex.props(workshopStyles.intro)}>
+          <p {...stylex.props(workshopStyles.eyebrow)}>Démonstration</p>
+          <h1 {...stylex.props(workshopStyles.title)}>Lecture diffractive</h1>
+          <p {...stylex.props(workshopStyles.copy)}>
             {demo
               ? `${demo.title} — ${demo.chapter.title}. Bibliothèque graphifiée : ${demo.sourcesCount} sources, graphe de ${demo.graphSummary.nodes} nœuds / ${demo.graphSummary.links} arêtes.`
               : "Chargement du contexte de démonstration…"}
           </p>
-        </div>
+        </header>
 
         {contextError && (
-          <p>
+          <p {...stylex.props(workshopStyles.alert)}>
             Contexte indisponible : {contextError} (l'API doit être lancée depuis
             apps/api avec le .env renseigné).
           </p>
@@ -97,6 +104,7 @@ export function DemoPage() {
             <CardTitle>Fragment à diffracter</CardTitle>
           </CardHeader>
           <CardContent>
+            <div {...stylex.props(workshopStyles.stack)}>
             <Textarea
               value={statement}
               onChange={(e) => setStatement(e.target.value)}
@@ -104,7 +112,7 @@ export function DemoPage() {
               rows={3}
             />
             {demo && demo.suggestedFragments.length > 0 && (
-              <div>
+              <div {...stylex.props(workshopStyles.actionRow)}>
                 {demo.suggestedFragments.map((f) => (
                   <Button
                     key={f.label}
@@ -120,11 +128,12 @@ export function DemoPage() {
                 ))}
               </div>
             )}
-            <div>
+            <div {...stylex.props(workshopStyles.actionRow)}>
               <Button onClick={() => void handleRun()} disabled={loading || !demo}>
                 {loading ? "Lecture en cours…" : "Lire (4 passes + verdict)"}
               </Button>
-              {error && <p>{error}</p>}
+              {error && <p {...stylex.props(workshopStyles.alert)}>{error}</p>}
+            </div>
             </div>
           </CardContent>
         </Card>

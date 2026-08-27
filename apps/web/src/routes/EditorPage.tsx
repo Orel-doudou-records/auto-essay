@@ -370,8 +370,14 @@ const styles = stylex.create({
     borderBottomStyle: "solid",
     borderBottomWidth: "1px",
     display: "flex",
+    flexWrap: "wrap",
+    gap: "0.5rem",
     justifyContent: "space-between",
     minHeight: "3.5rem",
+    padding: {
+      default: "0",
+      "@media (max-width: 48rem)": "0.5rem 0.75rem",
+    },
   },
   toolbarCluster: {
     alignItems: "center",
@@ -397,8 +403,40 @@ const styles = stylex.create({
     borderRightStyle: "solid",
     borderRightWidth: "1px",
     flexShrink: 0,
+    backgroundColor: {
+      default: "transparent",
+      "@media (max-width: 48rem)": themeVars.surface,
+    },
+    bottom: {
+      default: "auto",
+      "@media (max-width: 48rem)": 0,
+    },
+    boxShadow: {
+      default: "none",
+      "@media (max-width: 48rem)": themeVars.shadow,
+    },
+    left: {
+      default: "auto",
+      "@media (max-width: 48rem)": 0,
+    },
+    overflowY: {
+      default: "visible",
+      "@media (max-width: 48rem)": "auto",
+    },
     padding: "1.25rem 1rem",
-    width: "16rem",
+    position: {
+      default: "static",
+      "@media (max-width: 48rem)": "fixed",
+    },
+    top: {
+      default: "auto",
+      "@media (max-width: 48rem)": "4.5rem",
+    },
+    width: {
+      default: "16rem",
+      "@media (max-width: 48rem)": "min(18rem, 88vw)",
+    },
+    zIndex: 10,
   },
   panelHeader: {
     alignItems: "baseline",
@@ -469,7 +507,10 @@ const styles = stylex.create({
     flex: "1",
     justifyContent: "center",
     minWidth: 0,
-    padding: "2.5rem clamp(1rem, 6vw, 6rem)",
+    padding: {
+      default: "2.5rem clamp(1rem, 6vw, 6rem)",
+      "@media (max-width: 48rem)": "1.5rem 1rem 2.5rem",
+    },
   },
   emptyState: {
     alignSelf: "center",
@@ -503,7 +544,10 @@ const styles = stylex.create({
     display: "flex",
     flexDirection: "column",
     maxWidth: "48rem",
-    minHeight: "min(44rem, calc(100vh - 12rem))",
+    minHeight: {
+      default: "min(44rem, calc(100vh - 12rem))",
+      "@media (max-width: 48rem)": "calc(100vh - 11rem)",
+    },
     width: "100%",
   },
   manuscriptHeader: {
@@ -559,10 +603,42 @@ const styles = stylex.create({
   inspectorPanel: {
     borderLeftColor: themeVars.border,
     borderLeftStyle: "solid",
+    backgroundColor: {
+      default: "transparent",
+      "@media (max-width: 48rem)": themeVars.surface,
+    },
     borderLeftWidth: "1px",
+    bottom: {
+      default: "auto",
+      "@media (max-width: 48rem)": 0,
+    },
+    boxShadow: {
+      default: "none",
+      "@media (max-width: 48rem)": themeVars.shadow,
+    },
     flexShrink: 0,
+    overflowY: {
+      default: "visible",
+      "@media (max-width: 48rem)": "auto",
+    },
     padding: "1.5rem 1.25rem",
-    width: "20rem",
+    position: {
+      default: "static",
+      "@media (max-width: 48rem)": "fixed",
+    },
+    right: {
+      default: "auto",
+      "@media (max-width: 48rem)": 0,
+    },
+    top: {
+      default: "auto",
+      "@media (max-width: 48rem)": "4.5rem",
+    },
+    width: {
+      default: "20rem",
+      "@media (max-width: 48rem)": "min(22rem, 88vw)",
+    },
+    zIndex: 10,
   },
   inspectorContent: {
     display: "flex",
