@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { mutateWorkspace } from "../src/services/editorialWorkspaceStore.js";
 import { setSources } from "../src/services/sourceStore.js";
+import { updateUnit } from "../src/services/unitStore.js";
 import { makeTempDataDir, makeTestApp, postJson } from "./helper";
 
 const now = "2026-08-26T12:00:00.000Z";
@@ -383,6 +384,190 @@ describe("editorial workspace routes", () => {
         ],
       },
     });
+  });
+
+  it("runs the two assigned judges without letting editorial success override a documentary failure", async () => {
+    const modelCalls: string[] = [];
+    const appFactory = async () => ({
+      complete: async (_system: string, user: string) => {
+        modelCalls.push(user);
+        if (user.includes("Tu travailles en mode PARAGRAPHE")) {
+          const directive = user.match(/- \[([^\]]+)\][\s\S]*?decision=([^;]+); articulation=([^\n]+)/);
+          if (!directive) throw new Error("expected writer directive in generation prompt");
+          return JSON.stringify({
+            plan_3_sentences: ["Première.", "Deuxième.", "Troisième."],
+            paragraph: "La transition est ralentie pour distinguer les archives sans les réduire.",
+            claims: [],
+            confidence_assessment: "medium",
+            applied_directives: [
+              {
+                directiveId: directive[1],
+                decisionId: directive[2],
+                articulationId: directive[3],
+                declaration: "La transition est ralentie.",
+                excerpt: "La transition est ralentie",
+              },
+            ],
+          });
+        }
+        if (user.includes("évaluateur critique")) {
+          return JSON.stringify({
+            overallScore: 8,
+            dimensions: {
+              claimSupport: 5,
+              citationIntegrity: 8,
+              counterargumentQuality: 8,
+              transitionClarity: 8,
+              scopeControl: 8,
+              voiceConsistency: 8,
+            },
+            weaknesses: [],
+            strongClaims: [],
+            weakClaims: [],
+            aiPatternsDetected: [],
+            overclaimRisks: [],
+            top3Revisions: [],
+            newClaimEntries: [],
+            evidenceGaps: [],
+            citationGaps: [],
+            verdict: "keep",
+          });
+        }
+        if (user.includes("juge éditorial indépendant")) {
+          const criteria = user.match(/## Critères canoniques\n```json\n([\s\S]*?)\n```/);
+          const traces = user.match(/## Déclarations du writer à vérifier\n```json\n([\s\S]*?)\n```/);
+          if (!criteria || !traces) throw new Error("expected canonical editorial context");
+          const [criterion] = JSON.parse(criteria[1]) as Array<{
+            id: string;
+            decisionId: string;
+            articulationId: string;
+            directiveIds: string[];
+          }>;
+          const [trace] = JSON.parse(traces[1]) as Array<{ id: string }>;
+          return JSON.stringify({
+            criterionResults: [
+              {
+                criterionId: criterion.id,
+                decisionId: criterion.decisionId,
+                articulationId: criterion.articulationId,
+                directiveIds: criterion.directiveIds,
+                traceIds: [trace.id],
+                status: "effective",
+                contentScore: 8,
+                formScore: 8,
+                contentFindings: ["La distinction reste visible."],
+                formFindings: ["Le ralentissement est perceptible."],
+                evidence: [{ excerpt: "La transition est ralentie" }],
+                unintendedEffects: [],
+              },
+            ],
+            contentFormCoherence: 8,
+            overallEditorialScore: 8,
+            summary: "Les effets attendus sont présents.",
+          });
+        }
+        return makeReadingJson();
+      },
+      completeStream: async () => undefined,
+    });
+    const { app, projectId } = await createWorkspace(appFactory);
+    const modified = await postJson(
+      app,
+      `/api/projects/${projectId}/editorial/proposals/proposal-1/modify`,
+      {
+        contentCommitments: ["Conserver la tension"],
+        formalCommitments: ["Ralentir le rythme"],
+        validationNote: "Je prépare cette décision pour les deux juges.",
+      }
+    );
+    const { decision } = (await modified.json()) as { decision: { id: string } };
+    const created = await postJson(
+      app,
+      `/api/projects/${projectId}/editorial/sections/section-1/draft-units`,
+      { decisionId: decision.id }
+    );
+    const { unit } = (await created.json()) as { unit: { id: string } };
+    await app.request(`/api/projects/${projectId}/units/${unit.id}/generate`, { method: "POST" });
+    modelCalls.length = 0;
+
+    const evaluated = await app.request(
+      `/api/projects/${projectId}/units/${unit.id}/evaluate/integrated`,
+      { method: "POST" }
+    );
+
+    expect(evaluated.status).toBe(200);
+    await expect(evaluated.json()).resolves.toMatchObject({
+      evaluation: { evaluatorModel: "judge-model" },
+      editorialEvaluation: { evaluatorModel: "editorial-judge-model" },
+      gates: { documentaryIntegrity: "fail", editorialCoherence: "pass" },
+      finalVerdict: "revise",
+      assignments: {
+        documentary: { workType: "documentary_evaluation" },
+        editorial: { workType: "editorial_effect_evaluation" },
+      },
+      brief: { targetUnitId: unit.id },
+    });
+    expect(modelCalls).toHaveLength(2);
+    expect(modelCalls[0]).toContain("évaluateur critique");
+    expect(modelCalls[1]).toContain("juge éditorial indépendant");
+  });
+
+  it("rejects stale or revoked prepared contexts before obtaining a model client", async () => {
+    let modelFactoryCalls = 0;
+    const appFactory = async () => {
+      modelFactoryCalls += 1;
+      return {
+        complete: async () => makeReadingJson(),
+        completeStream: async () => undefined,
+      };
+    };
+    const { app, projectId } = await createWorkspace(appFactory);
+    const modified = await postJson(
+      app,
+      `/api/projects/${projectId}/editorial/proposals/proposal-1/modify`,
+      {
+        contentCommitments: ["Conserver la tension"],
+        formalCommitments: ["Ralentir le rythme"],
+        validationNote: "Je prépare une unité avant contrôle intégré.",
+      }
+    );
+    const { decision } = (await modified.json()) as { decision: { id: string } };
+    const created = await postJson(
+      app,
+      `/api/projects/${projectId}/editorial/sections/section-1/draft-units`,
+      { decisionId: decision.id }
+    );
+    const { unit } = (await created.json()) as { unit: { id: string } };
+    const staleUnit = await updateUnit(projectId, unit.id, { version: 3 });
+    expect(staleUnit?.version).toBe(3);
+
+    const stale = await app.request(
+      `/api/projects/${projectId}/units/${unit.id}/evaluate/integrated`,
+      { method: "POST" }
+    );
+    expect(stale.status).toBe(400);
+    await expect(stale.json()).resolves.toMatchObject({
+      message: "integrated evaluation unavailable: context_mismatch",
+    });
+
+    const restoredUnit = await updateUnit(projectId, unit.id, { version: 1 });
+    expect(restoredUnit?.version).toBe(1);
+
+    await mutateWorkspace(projectId, (workspace) => {
+      const activeDecision = workspace.decisions.find((item) => item.id === decision.id);
+      if (!activeDecision) throw new Error("expected active decision fixture");
+      activeDecision.status = "revoked";
+      activeDecision.updatedAt = now;
+    });
+    const revoked = await app.request(
+      `/api/projects/${projectId}/units/${unit.id}/evaluate/integrated`,
+      { method: "POST" }
+    );
+    expect(revoked.status).toBe(400);
+    await expect(revoked.json()).resolves.toMatchObject({
+      message: "integrated evaluation unavailable: missing_active_decision",
+    });
+    expect(modelFactoryCalls).toBe(0);
   });
 
   it("requires an author note for adaptation and archives a rejection without an active cut", async () => {
