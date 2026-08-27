@@ -37,7 +37,7 @@ export function AppShell({ projectId, children }: AppShellProps) {
       ]
     : [];
 
-  const links = [{ to: "/", label: "Projets" }, { to: "/demo", label: "Démo" }, ...projectLinks];
+  const links = [{ to: "/", label: "Projets" }, { to: "/espace", label: "Espace" }, { to: "/demo", label: "Démo" }, ...projectLinks];
   const nextTheme = theme === "light" ? "dark" : "light";
 
   function toggleTheme() {
