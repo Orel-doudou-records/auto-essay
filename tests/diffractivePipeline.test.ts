@@ -45,10 +45,6 @@ function candidateArticulation() {
   });
 }
 
-const commitments = {
-  contentCommitments: ["engagement"],
-  formalCommitments: ["engagement formel"],
-};
 
 describe("DiffractivePipeline", () => {
   it("diffracts a fragment into a reading", async () => {
@@ -79,38 +75,7 @@ describe("DiffractivePipeline", () => {
     expect(articulation.diffractiveReading).toBeUndefined();
   });
 
-  it("accepts a candidate and derives the cut from the reading", async () => {
-    const generateJson = vi.fn(async () => readingOutput());
-    const pipeline = createDiffractivePipeline({ generateJson });
-    const articulation = candidateArticulation();
-    const reading = await pipeline.diffract({ statement: "s" });
-    const enriched = pipeline.attachReading(articulation, reading);
 
-    const result = pipeline.accept(enriched, commitments);
-
-    expect(result.articulation.status).toBe("accepted");
-    expect(result.articulation.diffractiveReading?.id).toBe(reading.id);
-    expect(result.decision.cut?.cut).toBe("LA COUPE");
-    expect(result.event.action).toBe("accepted");
-  });
-
-  it("runs the full fragment pipeline end-to-end", async () => {
-    const generateJson = vi.fn(async () => readingOutput());
-    const pipeline = createDiffractivePipeline({ generateJson });
-
-    const result = await pipeline.runFragment(
-      { statement: "position" },
-      candidateArticulation(),
-      commitments,
-      { book: "livre" }
-    );
-
-    expect(generateJson).toHaveBeenCalledTimes(1);
-    expect(result.reading.verdict).toBe("integrate_now");
-    expect(result.articulation.status).toBe("accepted");
-    expect(result.decision.cut?.cut).toBe("LA COUPE");
-    expect(result.event.action).toBe("accepted");
-  });
 
   it("passes bookBibliography from the context into the prompt", async () => {
     const generateJson = vi.fn(async () => readingOutput());

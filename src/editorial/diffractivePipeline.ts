@@ -12,12 +12,6 @@ import {
   type DiffractiveReader,
   type ExistingCutInput,
 } from "./diffractiveReader";
-import {
-  createEditorialDecisionService,
-  type DecisionCommitmentsInput,
-  type DecisionCreationResult,
-  type EditorialDecisionService,
-} from "./editorialDecisionService";
 
 /**
  * Fragment posé dans le livre, à diffracter puis à faire décider.
@@ -40,30 +34,24 @@ export interface DiffractiveContext {
   tensions?: Array<{ label: string; description: string }>;
 }
 
-export type FragmentDecisionResult = DecisionCreationResult & {
-  reading: DiffractiveReading;
-};
-
 /**
- * Pipeline permanent du « moteur de pensée » : relie la lecture diffractive
- * à la décision éditoriale, sans jamais court-circuiter la validation auteur.
+ * Pipeline de lecture du « moteur de pensée ». Il diffracte un fragment et
+ * peut attacher cette trace de raisonnement à une articulation candidate.
+ * Il ne crée jamais de décision éditoriale.
  *
  *   fragment + livre → DiffractiveReader → DiffractiveReading
- *   → attaché à une ContentStyleArticulation (trace de raisonnement)
- *   → acceptée par l'auteur via EditorialDecisionService → EditorialDecision
- *     (la coupe `cut` est dérivée de `diffractiveReading.pass4`).
+ *   → attachée à une ContentStyleArticulation (trace de raisonnement)
  *
- * Le `ArticulationResolver` (relations → articulations) reste en amont et hors
+ * L’`ArticulationResolver` (relations → articulations) reste en amont et hors
  * de cette classe : le pipeline consomme une articulation candidate déjà
- * résolue, il ne la fabrique pas.
+ * résolue, il ne la fabrique pas. La décision appartient au service de
+ * gouvernance et aux actes explicites de l’auteur.
  */
 export class DiffractivePipeline {
   private readonly reader: DiffractiveReader;
-  private readonly governance: EditorialDecisionService;
 
   constructor(client: StructuredModelClient) {
     this.reader = createDiffractiveReader(client);
-    this.governance = createEditorialDecisionService();
   }
 
   /** 1. Diffracte un fragment dans le livre → lecture diffractive. */
@@ -97,26 +85,7 @@ export class DiffractivePipeline {
     });
   }
 
-  /** 3. L'auteur accepte une articulation candidate → décision (cut dérivé). */
-  accept(
-    articulation: ContentStyleArticulation,
-    commitments: DecisionCommitmentsInput
-  ): DecisionCreationResult {
-    return this.governance.accept(articulation, commitments);
-  }
 
-  /** Chemin complet, en un appel : diffracte, attache, accepte. */
-  async runFragment(
-    fragment: DiffractivePipelineFragment,
-    articulation: ContentStyleArticulation,
-    commitments: DecisionCommitmentsInput,
-    context: DiffractiveContext = {}
-  ): Promise<FragmentDecisionResult> {
-    const reading = await this.diffract(fragment, context);
-    const enriched = this.attachReading(articulation, reading);
-    const decision = this.accept(enriched, commitments);
-    return { ...decision, reading };
-  }
 }
 
 export function createDiffractivePipeline(
