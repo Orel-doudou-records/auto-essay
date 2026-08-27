@@ -1,3 +1,4 @@
+import { cliOutput } from "../observability/cliOutput.js";
 import { readFileSync } from "node:fs";
 import { z } from "zod";
 import {
@@ -88,6 +89,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((error: unknown) => {
-  console.error(error instanceof Error ? error.message : String(error));
+  cliOutput.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;
 });
