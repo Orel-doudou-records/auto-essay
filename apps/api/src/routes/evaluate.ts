@@ -3,6 +3,7 @@ import { HTTPException } from "hono/http-exception";
 import {
   evaluateIntegratedUnit,
   evaluateUnit,
+  getIntegratedEvaluationHistory,
   getIntegratedEvaluationReadiness,
   markUnitVerified,
   selectEvaluationJudgeAssignments,
@@ -30,6 +31,14 @@ export function evaluateRoutes(
     const projectId = c.req.param("projectId") as string;
     const unitId = c.req.param("unitId") as string;
     return c.json(await getIntegratedEvaluationReadiness(projectId, unitId));
+  });
+
+  app.get("/integrated/history", async (c) => {
+    const projectId = c.req.param("projectId") as string;
+    const unitId = c.req.param("unitId") as string;
+    return c.json({
+      history: await getIntegratedEvaluationHistory(projectId, unitId),
+    });
   });
 
   app.post("/integrated", async (c) => {

@@ -6,8 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useUnits } from "@/hooks/useUnits";
 import {
   fetchEvaluationJudgeAssignments,
+  fetchIntegratedEvaluationHistory,
   fetchIntegratedEvaluationReadiness,
   type EvaluationJudgeAssignmentsPayload,
+  type IntegratedEvaluationHistoryEntryPayload,
   type IntegratedEvaluationReadinessPayload,
 } from "@/api";
 
@@ -30,6 +32,8 @@ export function EvaluatePage() {
   const [assignmentError, setAssignmentError] = useState<string>();
   const [readiness, setReadiness] = useState<IntegratedEvaluationReadinessPayload>();
   const [readinessError, setReadinessError] = useState<string>();
+  const [history, setHistory] = useState<IntegratedEvaluationHistoryEntryPayload[]>([]);
+  const [historyError, setHistoryError] = useState<string>();
 
   const unit = units.find((u) => u.id === unitId);
 
@@ -52,6 +56,15 @@ export function EvaluatePage() {
       .catch((reason) => {
         if (active) {
           setReadinessError(reason instanceof Error ? reason.message : "Erreur inconnue");
+        }
+      });
+    fetchIntegratedEvaluationHistory(projectId, unitId)
+      .then((nextHistory) => {
+        if (active) setHistory(nextHistory);
+      })
+      .catch((reason) => {
+        if (active) {
+          setHistoryError(reason instanceof Error ? reason.message : "Erreur inconnue");
         }
       });
     return () => {
@@ -122,6 +135,10 @@ export function EvaluatePage() {
         )}
 
         <IntegratedReadiness readiness={readiness} error={readinessError} />
+        {historyError && (
+          <p role="alert">Historique des évaluations intégrées indisponible : {historyError}</p>
+        )}
+        {history.length > 0 && <IntegratedEvaluationHistory history={history} />}
 
         <Card>
           <CardHeader>
@@ -218,6 +235,67 @@ export function EvaluatePage() {
         )}
       </div>
     </AppShell>
+  );
+}
+
+function IntegratedEvaluationHistory({
+  history,
+}: {
+  history: IntegratedEvaluationHistoryEntryPayload[];
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Évaluation intégrée enregistrée</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        {history.map((entry) => (
+          <section key={entry.id} className="space-y-3 rounded border p-3 text-sm">
+            <p className="font-medium">
+              Version {entry.unitVersion} — enregistrée le {new Date(entry.recordedAt).toLocaleString("fr-FR")}
+            </p>
+            <p className={entry.current ? "text-muted-foreground" : "font-medium text-amber-700"}>
+              {entry.current
+                ? "Cette évaluation correspond encore à la version et aux décisions auteur actuelles."
+                : "Historique : le texte ou la décision auteur a changé depuis ce jugement."}
+            </p>
+            <p>Évaluation documentaire archivée : {entry.evaluation.overallScore}/10</p>
+            <p>Évaluation éditoriale archivée : {entry.editorialEvaluation.overallEditorialScore}/10</p>
+            <p>
+              Portes archivées : documentaire {entry.gates.documentaryIntegrity} ; éditoriale {entry.gates.editorialCoherence}
+            </p>
+            <p>Verdict intégré archivé : {entry.finalVerdict}</p>
+            <div>
+              <p className="font-medium">Brief archivé</p>
+              <pre className="mt-1 overflow-auto rounded bg-muted p-2 text-xs">
+                {JSON.stringify(entry.brief, null, 2)}
+              </pre>
+            </div>
+            <div className="space-y-1">
+              <p className="font-medium">Affectations archivées</p>
+              <p>
+                Documentaire : {entry.assignments.documentary.judge.model} ; éditoriale : {entry.assignments.editorial.judge.model}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <p className="font-medium">Provenance enregistrée</p>
+              <p>Plan éditorial : {entry.context.editorialPlanId}</p>
+              <p>
+                Décisions auteur : {entry.authorDecisions
+                  .map((decision) => `${decision.id} (v${decision.version}, ${decision.status})`)
+                  .join(", ")}
+              </p>
+              <p>
+                Projections : Writer {entry.context.writerProjection.id} ; Evaluator {entry.context.evaluatorProjection.id}
+              </p>
+              <p>
+                Traces Writer : {entry.context.transformationTraces.map((trace) => trace.id).join(", ") || "aucune"}
+              </p>
+            </div>
+          </section>
+        ))}
+      </CardContent>
+    </Card>
   );
 }
 

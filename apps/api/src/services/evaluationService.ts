@@ -1,5 +1,6 @@
 import {
   assessIntegratedEvaluationReadiness,
+  createIntegratedEvaluationHistoryEntry,
   DEFAULT_JUDGE_ROUTING_POLICY,
   EssayEvaluator,
   RevisionBriefGenerator,
@@ -12,6 +13,10 @@ import { StructuredClientAdapter } from "../llm/structuredAdapter.js";
 import { getUnit, updateUnit } from "./unitStore.js";
 import { getWorkspace } from "./editorialWorkspaceStore.js";
 import { getIntegratedEvaluationContext } from "./integratedEvaluationContextStore.js";
+import {
+  appendIntegratedEvaluationHistory,
+  listIntegratedEvaluationHistory,
+} from "./integratedEvaluationHistoryStore.js";
 import { listSources } from "./sourceStore.js";
 
 export function selectEvaluationJudgeAssignments(
@@ -83,19 +88,80 @@ export async function evaluateIntegratedUnit(
     editorialProjection: readiness.context.evaluatorProjection,
     transformationTraces: readiness.context.transformationTraces,
   });
+  const editorialEvaluation = integratedEvaluation.editorial;
+  const editorialCoherence = integratedEvaluation.gates.editorialCoherence;
+  if (!editorialEvaluation || editorialCoherence === "not_assessed") {
+    throw new Error("integrated evaluation requires both judge results");
+  }
+
   const brief = new RevisionBriefGenerator().generateBrief(
     integratedEvaluation.essay,
     unit
   );
+  const authorDecisions = workspace?.decisions.filter((decision) =>
+    readiness.context.decisionIds.includes(decision.id)
+  ) ?? [];
+
+  await appendIntegratedEvaluationHistory(
+    projectId,
+    createIntegratedEvaluationHistoryEntry({
+      id: crypto.randomUUID(),
+      recordedAt: new Date().toISOString(),
+      unitId: unit.id,
+      unitVersion: unit.version,
+      evaluation: integratedEvaluation.essay,
+      editorialEvaluation,
+      gates: {
+        documentaryIntegrity: integratedEvaluation.gates.documentaryIntegrity,
+        editorialCoherence,
+      },
+      finalVerdict: integratedEvaluation.finalVerdict,
+      brief,
+      assignments,
+      context: readiness.context,
+      authorDecisions,
+    })
+  );
 
   return {
     evaluation: integratedEvaluation.essay,
-    editorialEvaluation: integratedEvaluation.editorial,
-    gates: integratedEvaluation.gates,
+    editorialEvaluation,
+    gates: {
+      documentaryIntegrity: integratedEvaluation.gates.documentaryIntegrity,
+      editorialCoherence,
+    },
     finalVerdict: integratedEvaluation.finalVerdict,
     brief,
     assignments,
   };
+}
+
+export async function getIntegratedEvaluationHistory(
+  projectId: string,
+  unitId: string
+) {
+  const unit = await getUnit(projectId, unitId);
+  if (!unit) throw new Error("unit not found");
+
+  const history = await listIntegratedEvaluationHistory(projectId, unitId);
+  if (history.length === 0) return [];
+
+  const workspace = await getWorkspace(projectId);
+  return history.map((entry) => ({
+    ...entry,
+    current:
+      entry.unitVersion === unit.version &&
+      entry.authorDecisions.every((recordedDecision) => {
+        const currentDecision = workspace.decisions.find(
+          (decision) => decision.id === recordedDecision.id
+        );
+        return (
+          currentDecision?.status === "active" &&
+          currentDecision.version === recordedDecision.version &&
+          currentDecision.updatedAt === recordedDecision.updatedAt
+        );
+      }),
+  }));
 }
 
 export async function evaluateUnit(
