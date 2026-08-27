@@ -5,6 +5,7 @@ import type {
   EssayProject,
   Source,
   DraftUnit,
+  JudgeAssignment,
 } from "@auto-essay/core";
 
 const API = "/api";
@@ -479,10 +480,31 @@ export async function reviseUnitChat(
   return res.json();
 }
 
+export type { JudgeAssignment } from "@auto-essay/core";
+
+export interface EvaluationJudgeAssignmentsPayload {
+  documentary: JudgeAssignment;
+  editorial: JudgeAssignment;
+}
+
+export async function fetchEvaluationJudgeAssignments(
+  projectId: string,
+  unitId: string
+): Promise<EvaluationJudgeAssignmentsPayload> {
+  const res = await fetch(`${API}/projects/${projectId}/units/${unitId}/evaluate/judges`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = await res.json();
+  return data.assignments as EvaluationJudgeAssignmentsPayload;
+}
+
 export async function evaluateUnit(
   projectId: string,
   unitId: string
-): Promise<{ evaluation: Record<string, unknown>; brief: Record<string, unknown> }> {
+): Promise<{
+  evaluation: Record<string, unknown>;
+  brief: Record<string, unknown>;
+  assignments: EvaluationJudgeAssignmentsPayload;
+}> {
   const res = await fetch(`${API}/projects/${projectId}/units/${unitId}/evaluate`, {
     method: "POST",
   });
