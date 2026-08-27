@@ -1,14 +1,32 @@
-import { EssayEvaluator, RevisionBriefGenerator, type DraftUnit } from "@auto-essay/core";
+import {
+  DEFAULT_JUDGE_ROUTING_POLICY,
+  EssayEvaluator,
+  RevisionBriefGenerator,
+  selectJudgeAssignment,
+  type DraftUnit,
+  type JudgeRoutingPolicy,
+} from "@auto-essay/core";
 import type { ModelClientFactory } from "../llm/client.js";
 import { StructuredClientAdapter } from "../llm/structuredAdapter.js";
 import { getUnit, updateUnit } from "./unitStore.js";
 import { listSources } from "./sourceStore.js";
 
+export function selectEvaluationJudgeAssignments(
+  judgeRoutingPolicy: JudgeRoutingPolicy = DEFAULT_JUDGE_ROUTING_POLICY
+) {
+  return {
+    documentary: selectJudgeAssignment(judgeRoutingPolicy, "documentary_evaluation"),
+    editorial: selectJudgeAssignment(judgeRoutingPolicy, "editorial_effect_evaluation"),
+  };
+}
+
 export async function evaluateUnit(
   projectId: string,
   unitId: string,
-  modelClientFactory: ModelClientFactory
+  modelClientFactory: ModelClientFactory,
+  judgeRoutingPolicy: JudgeRoutingPolicy = DEFAULT_JUDGE_ROUTING_POLICY
 ) {
+  const assignments = selectEvaluationJudgeAssignments(judgeRoutingPolicy);
   const unit = await getUnit(projectId, unitId);
   if (!unit) throw new Error("unit not found");
 
@@ -16,7 +34,11 @@ export async function evaluateUnit(
   const client = await modelClientFactory();
   const structured = new StructuredClientAdapter(client);
 
-  const evaluator = new EssayEvaluator(structured, "judge-model");
+  const evaluator = new EssayEvaluator(
+    structured,
+    assignments.documentary.judge.model,
+    judgeRoutingPolicy
+  );
   const evaluation = await evaluator.evaluate({
     unit,
     sources,
@@ -26,7 +48,7 @@ export async function evaluateUnit(
   const briefGenerator = new RevisionBriefGenerator();
   const brief = briefGenerator.generateBrief(evaluation, unit);
 
-  return { evaluation, brief };
+  return { evaluation, brief, assignments };
 }
 
 export async function markUnitVerified(

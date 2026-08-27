@@ -13,14 +13,17 @@ import { demoRoutes } from "./routes/demo.js";
 import { editorialRoutes } from "./routes/editorial.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { createModelClientFactory, type ModelClientFactory } from "./llm/client.js";
+import { DEFAULT_JUDGE_ROUTING_POLICY, type JudgeRoutingPolicy } from "@auto-essay/core";
 
 export interface AppOptions {
   modelClientFactory?: ModelClientFactory;
+  judgeRoutingPolicy?: JudgeRoutingPolicy;
 }
 
 export function createApp(options: AppOptions = {}): Hono {
   const app = new Hono();
   const modelClientFactory = options.modelClientFactory ?? createModelClientFactory({ provider: "mock" });
+  const judgeRoutingPolicy = options.judgeRoutingPolicy ?? DEFAULT_JUDGE_ROUTING_POLICY;
 
   app.use(logger());
   app.use(cors({ origin: "*" }));
@@ -32,7 +35,10 @@ export function createApp(options: AppOptions = {}): Hono {
   app.route("/api/projects/:projectId/units", unitsRoutes());
   app.route("/api/projects/:projectId/units/:unitId/generate", generateRoutes(modelClientFactory));
   app.route("/api/projects/:projectId/units/:unitId/revise-chat", reviseChatRoutes(modelClientFactory));
-  app.route("/api/projects/:projectId/units/:unitId/evaluate", evaluateRoutes(modelClientFactory));
+  app.route(
+    "/api/projects/:projectId/units/:unitId/evaluate",
+    evaluateRoutes(modelClientFactory, judgeRoutingPolicy)
+  );
   app.route("/api/projects/:projectId/export", exportRoutes());
   app.route("/api/projects/:projectId/editorial", editorialRoutes(modelClientFactory));
   app.route("/api/diffract", diffractRoutes(modelClientFactory));

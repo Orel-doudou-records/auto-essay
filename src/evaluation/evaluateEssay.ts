@@ -16,6 +16,11 @@ import {
 } from "../domain/editorialEffectEvaluation";
 import { passesMechanicalChecks } from "./mechanicalChecks";
 import { EditorialEffectEvaluator } from "./editorialEffectEvaluator";
+import {
+  DEFAULT_JUDGE_ROUTING_POLICY,
+  selectJudgeAssignment,
+  type JudgeRoutingPolicy,
+} from "../domain/judgeRouting";
 
 /**
  * Interface pour un client de modèle structuré
@@ -52,9 +57,16 @@ export class EssayEvaluator {
   private client: StructuredModelClient;
   private judgeModel: string;
 
-  constructor(client: StructuredModelClient, judgeModel: string = "judge-model") {
+  private readonly judgeRoutingPolicy: JudgeRoutingPolicy;
+
+  constructor(
+    client: StructuredModelClient,
+    judgeModel: string = "judge-model",
+    judgeRoutingPolicy: JudgeRoutingPolicy = DEFAULT_JUDGE_ROUTING_POLICY
+  ) {
     this.client = client;
     this.judgeModel = judgeModel;
+    this.judgeRoutingPolicy = judgeRoutingPolicy;
   }
 
   /**
@@ -129,9 +141,13 @@ export class EssayEvaluator {
       return createIntegratedEvaluation(essay);
     }
 
+    const editorialAssignment = selectJudgeAssignment(
+      this.judgeRoutingPolicy,
+      "editorial_effect_evaluation"
+    );
     const editorial = await new EditorialEffectEvaluator(
       this.client,
-      `${this.judgeModel}:editorial`
+      editorialAssignment.judge.model
     ).evaluate({
       unit: context.unit,
       projection: context.editorialProjection,

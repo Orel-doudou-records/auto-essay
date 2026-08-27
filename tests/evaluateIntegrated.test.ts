@@ -248,3 +248,42 @@ describe("EssayEvaluator integrated mode", () => {
     expect(integrated.finalVerdict).toBe("revise");
   });
 });
+
+
+describe("EssayEvaluator judge routing", () => {
+  it("uses the editorial judge selected by policy for an integrated evaluation", async () => {
+    const fixture = context();
+    const client = new SequenceClient([essayOutput(), editorialOutput()]);
+    const judgeRoutingPolicy = {
+      judges: [
+        {
+          id: "judge-documentary",
+          role: "judge" as const,
+          model: "documentary-specialist",
+          specialties: ["documentary_evaluation" as const],
+        },
+        {
+          id: "judge-editorial",
+          role: "judge" as const,
+          model: "editorial-specialist",
+          specialties: ["editorial_effect_evaluation" as const],
+        },
+      ],
+    };
+
+    const integrated = await new EssayEvaluator(
+      client,
+      "documentary-specialist",
+      judgeRoutingPolicy
+    ).evaluateIntegrated({
+      unit: fixture.unit,
+      sources: [fixture.source],
+      claims: [fixture.claim],
+      editorialProjection: fixture.editorialProjection,
+      transformationTraces: [],
+    });
+
+    expect(integrated.essay.evaluatorModel).toBe("documentary-specialist");
+    expect(integrated.editorial?.evaluatorModel).toBe("editorial-specialist");
+  });
+});
