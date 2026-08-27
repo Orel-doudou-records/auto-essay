@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import * as stylex from "@stylexjs/stylex";
-import { themeVars } from "../styles/tokens.stylex";
+import { workshopStyles } from "../styles/workshopStyles";
 import { fetchChapterEditorialWorkspace, type ChapterEditorialWorkspacePayload } from "@/api";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
@@ -33,41 +33,49 @@ export function ChapterWorkshopPage() {
 
   return (
     <AppShell projectId={projectId}>
-      <div>
-        <header>
-          <h1>Atelier de chapitre</h1>
-          <p>
+      <div {...stylex.props(workshopStyles.page)}>
+        <header {...stylex.props(workshopStyles.intro)}>
+          <p {...stylex.props(workshopStyles.eyebrow)}>Manuscrit</p>
+          <h1 {...stylex.props(workshopStyles.title)}>Atelier de chapitre</h1>
+          <p {...stylex.props(workshopStyles.copy)}>
             Consultez l’état éditorial du chapitre, puis choisissez explicitement la section ou l’unité à poursuivre.
           </p>
         </header>
 
-        <Card>
-          <CardContent>
-            <div>
-              <Label htmlFor="chapter-id">ID du chapitre</Label>
-              <Input
+        <div {...stylex.props(workshopStyles.cardFrame)}>
+          <Card>
+            <CardContent>
+              <div {...stylex.props(workshopStyles.formRow)}>
+                <div {...stylex.props(workshopStyles.field)}>
+                  <Label htmlFor="chapter-id">ID du chapitre</Label>
+                  <Input
                 id="chapter-id"
                 value={chapterId}
                 onChange={(event) => setChapterId(event.target.value)}
                 placeholder="chapter-1"
-              />
-            </div>
-            <Button type="button" onClick={loadChapter} disabled={!chapterId.trim() || loading}>
-              {loading ? "Chargement…" : "Charger le chapitre"}
-            </Button>
-          </CardContent>
-        </Card>
+                  />
+                </div>
+                <Button type="button" onClick={loadChapter} disabled={!chapterId.trim() || loading}>
+                  {loading ? "Chargement…" : "Charger le chapitre"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-        {error && <p role="alert">Erreur : {error}</p>}
+        {error && <p role="alert" {...stylex.props(workshopStyles.alert)}>Erreur : {error}</p>}
 
         {workspace && (
-          <section aria-label="État du chapitre">
-            <div>
-              <h1>{workspace.chapter.title}</h1>
-              <p>
+          <section {...stylex.props(workshopStyles.stack)} aria-label="État du chapitre">
+            <header {...stylex.props(workshopStyles.sectionHeader)}>
+              <div {...stylex.props(workshopStyles.compactStack)}>
+                <p {...stylex.props(workshopStyles.eyebrow)}>Chapitre</p>
+                <h2 {...stylex.props(workshopStyles.sectionTitle)}>{workspace.chapter.title}</h2>
+              </div>
+              <p {...stylex.props(workshopStyles.status)}>
                 Statut de rédaction : {workspace.chapter.writingStatus}
               </p>
-            </div>
+            </header>
 
             <ChapterOperationPanel projectId={projectId ?? ""} chapterId={workspace.chapter.id} />
 
@@ -78,9 +86,9 @@ export function ChapterWorkshopPage() {
                 </CardContent>
               </Card>
             ) : (
-              <ol>
+              <ol {...stylex.props(workshopStyles.list)}>
                 {workspace.sections.map((section) => (
-                  <li key={section.id}>
+                  <li key={section.id} {...stylex.props(workshopStyles.listItem)}>
                     <Card>
                       <CardHeader>
                         <CardTitle>
@@ -97,7 +105,7 @@ export function ChapterWorkshopPage() {
                             : `${section.decisions.length} décision${section.decisions.length > 1 ? "s" : ""} active${section.decisions.length > 1 ? "s" : ""}`}
                         </p>
 
-                        <div>
+                        <div {...stylex.props(workshopStyles.compactStack)}>
                           <h3>Sources distribuées</h3>
                           {section.sources.length === 0 ? (
                             <p>Aucune source distribuée.</p>
@@ -113,16 +121,16 @@ export function ChapterWorkshopPage() {
                           )}
                         </div>
 
-                        <div>
+                        <div {...stylex.props(workshopStyles.actionRow)}>
                           <Link
-                            {...stylex.props(styles.actionLink)}
+                            {...stylex.props(workshopStyles.actionLink)}
                             to={section.transitions.workshop.href}
                           >
                             Ouvrir l’atelier de section
                           </Link>
                           {section.transitions.preparedUnits.map((unit) => (
                             <Link
-                              {...stylex.props(styles.actionLink)}
+                              {...stylex.props(workshopStyles.actionLink)}
                               key={unit.unitId}
                               to={unit.href}
                             >
@@ -142,21 +150,3 @@ export function ChapterWorkshopPage() {
     </AppShell>
   );
 }
-
-const styles = stylex.create({
-  actionLink: {
-    backgroundColor: {
-      default: "transparent",
-      ':hover': themeVars.accentMuted,
-    },
-    borderColor: themeVars.border,
-    borderRadius: themeVars.radiusSmall,
-    borderStyle: "solid",
-    borderWidth: "1px",
-    color: themeVars.textPrimary,
-    fontSize: "0.875rem",
-    fontWeight: 600,
-    padding: "0.625rem 0.875rem",
-    textDecoration: "none",
-  },
-});
