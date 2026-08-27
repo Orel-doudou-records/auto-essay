@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { ContentStyleArticulationSchema } from "@auto-essay/core";
 
 const ConceptsSchema = z.array(
   z.object({
@@ -115,31 +114,4 @@ export const DiffractBatchBodySchema = z.object({
   bookBibliography: BookBibliographySchema.optional(),
   concepts: ConceptsSchema.optional(),
   tensions: TensionsSchema.optional(),
-});
-
-export const DiffractivePipelineBodySchema = z.object({
-  fragment: z.object({
-    statement: z.string().min(1),
-    claimIds: z.array(z.string().min(1)).optional(),
-    sourceIds: z.array(z.string().min(1)).optional(),
-  }),
-  articulation: ContentStyleArticulationSchema,
-  commitments: z.object({
-    contentCommitments: z.array(z.string().min(1)).min(1),
-    formalCommitments: z.array(z.string().min(1)).min(1),
-    invariants: z.array(z.string().min(1)).optional(),
-    prohibitedShortcuts: z.array(z.string().min(1)).optional(),
-    validationNote: z.string().min(1).optional(),
-  }),
-  context: z
-    .object({
-      book: z.string().optional(),
-      bookParts: BookPartsSchema.optional(),
-      bookPlan: BookPlanSchema.optional(),
-      existingCuts: ExistingCutsSchema.optional(),
-      bookBibliography: BookBibliographySchema.optional(),
-      concepts: ConceptsSchema.optional(),
-      tensions: TensionsSchema.optional(),
-    })
-    .optional(),
 });

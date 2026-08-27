@@ -4,13 +4,10 @@ import {
   type BookBibliographyInput,
   type BookPartInput,
   type BookPlanInput,
-  type ContentStyleArticulation,
-  type DecisionCommitmentsInput,
   type DiffractiveBatchFragment,
   type DiffractiveBatchResult,
   type DiffractiveReading,
   type ExistingCutInput,
-  type FragmentDecisionResult,
   type StructuredModelClient,
 } from "@auto-essay/core";
 
@@ -48,16 +45,9 @@ export interface DiffractBatchInput {
   tensions?: Array<{ label: string; description: string }>;
 }
 
-export interface DiffractivePipelineInput {
-  fragment: DiffractiveBatchFragment;
-  articulation: ContentStyleArticulation;
-  commitments: DecisionCommitmentsInput;
-  context?: DiffractContext;
-}
-
 /**
- * Façade applicative : expose le moteur de pensée (diffract simple, par lot,
- * et pipeline complet) derrière un client structuré injecté.
+ * Façade applicative : expose des lectures diffractives simples et par lot
+ * derrière un client structuré injecté.
  */
 export class DiffractionService {
   private readonly pipeline: ReturnType<typeof createDiffractivePipeline>;
@@ -100,18 +90,4 @@ export class DiffractionService {
     });
   }
 
-  async runPipeline(
-    input: DiffractivePipelineInput
-  ): Promise<FragmentDecisionResult> {
-    return this.pipeline.runFragment(
-      {
-        statement: input.fragment.statement,
-        claimIds: input.fragment.claimIds,
-        sourceIds: input.fragment.sourceIds,
-      },
-      input.articulation,
-      input.commitments,
-      input.context ?? {}
-    );
-  }
 }

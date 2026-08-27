@@ -5,7 +5,6 @@ import { DiffractionService } from "../services/diffractionService.js";
 import {
   DiffractBatchBodySchema,
   DiffractBodySchema,
-  DiffractivePipelineBodySchema,
 } from "../schemas/diffract.js";
 
 export function diffractRoutes(modelClientFactory: ModelClientFactory): Hono {
@@ -25,12 +24,6 @@ export function diffractRoutes(modelClientFactory: ModelClientFactory): Hono {
     return c.json(result);
   });
 
-  app.post("/pipeline", async (c) => {
-    const body = DiffractivePipelineBodySchema.parse(await c.req.json());
-    const service = await makeService(modelClientFactory);
-    const result = await service.runPipeline(body);
-    return c.json(result);
-  });
 
   return app;
 }

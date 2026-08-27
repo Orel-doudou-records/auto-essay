@@ -64,23 +64,4 @@ describe("DiffractionService", () => {
     expect(result.failures).toHaveLength(0);
   });
 
-  it("runs the full pipeline and derives the cut", async () => {
-    const service = new DiffractionService({
-      generateJson: async () => readingOutput(),
-    });
-
-    const result = await service.runPipeline({
-      fragment: { statement: "position" },
-      articulation: candidateArticulation(),
-      commitments: {
-        contentCommitments: ["engagement"],
-        formalCommitments: ["engagement formel"],
-      },
-      context: { book: "livre" },
-    });
-
-    expect(result.reading.verdict).toBe("integrate_now");
-    expect(result.articulation.status).toBe("accepted");
-    expect(result.decision.cut?.cut).toBe("COUPE");
-  });
 });
