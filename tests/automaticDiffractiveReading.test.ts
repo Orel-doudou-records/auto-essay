@@ -8,6 +8,7 @@ import {
 import { createDiffractiveReading } from "../src/domain/diffractiveReading";
 
 const readingInput = {
+  fingerprint: "fingerprint-1",
   statement: "Texte de section à lire.",
   claimIds: [],
   sourceIds: [],
@@ -31,6 +32,7 @@ describe("automatic diffractive reading", () => {
       projectId: "project-1",
       sectionId: "section-1",
       readingInput,
+      trigger: "activation",
       createdAt: "2026-08-27T09:00:00.000Z",
     });
     expect(pending).toMatchObject({
@@ -59,6 +61,7 @@ describe("automatic diffractive reading", () => {
       projectId: "project-1",
       sectionId: "section-1",
       readingInput,
+      trigger: "activation",
       createdAt: "2026-08-27T09:00:00.000Z",
     });
 

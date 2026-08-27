@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { mutateWorkspace } from "../src/services/editorialWorkspaceStore.js";
+import { getWorkspace, mutateWorkspace } from "../src/services/editorialWorkspaceStore.js";
 import { setSources } from "../src/services/sourceStore.js";
 import { createUnit, getUnit, updateUnit } from "../src/services/unitStore.js";
 import { makeTempDataDir, makeTestApp, postJson } from "./helper";
@@ -324,6 +324,366 @@ describe("editorial workspace routes", () => {
       decisions: [],
     });
     expect(modelFactoryCalls).toBe(1);
+  });
+
+  it("requeues an automatic reading on a text change and preserves the previous result as historical", async () => {
+    let modelFactoryCalls = 0;
+    const factory = async () => {
+      modelFactoryCalls += 1;
+      return {
+        complete: async () => makeReadingJson(),
+        completeStream: async () => undefined,
+      };
+    };
+    const { app, projectId } = await createWorkspace(factory);
+    const paragraph = await createUnit(projectId, {
+      granularity: "paragraph",
+      contextInPlan: { section: "section-1" },
+      content: "Version initiale du paragraphe.",
+    });
+
+    await app.request(`/api/projects/${projectId}/editorial/sections/section-1/diffraction-mode`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: "automatic" }),
+    });
+    await vi.waitFor(async () => {
+      const context = await app.request(
+        `/api/projects/${projectId}/editorial/sections/section-1/context`
+      );
+      await expect(context.json()).resolves.toMatchObject({
+        diffraction: { automaticReadings: [{ status: "completed", historical: false }] },
+      });
+    });
+
+    const updated = await app.request(`/api/projects/${projectId}/units/${paragraph.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: "Version révisée du paragraphe." }),
+    });
+    expect(updated.status).toBe(200);
+
+    await vi.waitFor(async () => {
+      const context = await app.request(
+        `/api/projects/${projectId}/editorial/sections/section-1/context`
+      );
+      await expect(context.json()).resolves.toMatchObject({
+        diffraction: {
+          automaticReadings: [
+            {
+              trigger: "text_changed",
+              status: "completed",
+              historical: false,
+              reading: {
+                fragment: {
+                  statement: "Texte privé de la section.\n\nVersion révisée du paragraphe.",
+                },
+              },
+            },
+            { status: "completed", historical: true },
+          ],
+        },
+        decisions: [],
+      });
+    });
+    expect(modelFactoryCalls).toBe(2);
+  });
+
+  it("keeps completed readings consultable as historical when the section becomes empty", async () => {
+    let modelFactoryCalls = 0;
+    const factory = async () => {
+      modelFactoryCalls += 1;
+      return {
+        complete: async () => makeReadingJson(),
+        completeStream: async () => undefined,
+      };
+    };
+    const { app, projectId } = await createWorkspace(factory);
+
+    await app.request(`/api/projects/${projectId}/editorial/sections/section-1/diffraction-mode`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: "automatic" }),
+    });
+    await vi.waitFor(async () => {
+      const context = await app.request(
+        `/api/projects/${projectId}/editorial/sections/section-1/context`
+      );
+      await expect(context.json()).resolves.toMatchObject({
+        diffraction: { automaticReadings: [{ status: "completed", historical: false }] },
+      });
+    });
+
+    const emptiedWorkspace = structuredClone(await getWorkspace(projectId));
+    const emptiedNode = emptiedWorkspace.manuscript.tree[0];
+    if (!emptiedNode || emptiedNode.kind !== "node") throw new Error("expected section fixture");
+    emptiedNode.text = "";
+    const emptied = await app.request(`/api/projects/${projectId}/editorial/workspace`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(emptiedWorkspace),
+    });
+    expect(emptied.status).toBe(200);
+
+    const context = await app.request(`/api/projects/${projectId}/editorial/sections/section-1/context`);
+    expect(context.status).toBe(200);
+    await expect(context.json()).resolves.toMatchObject({
+      diffraction: { automaticReadings: [{ status: "completed", historical: true }] },
+    });
+    expect(modelFactoryCalls).toBe(1);
+  });
+
+  it("coalesces a burst into one pending reading and supersedes obsolete pending requests", async () => {
+    let modelFactoryCalls = 0;
+    const factory = async () => {
+      modelFactoryCalls += 1;
+      return {
+        complete: async () => makeReadingJson(),
+        completeStream: async () => undefined,
+      };
+    };
+    const { app, projectId } = await createWorkspace(factory);
+    const paragraph = await createUnit(projectId, {
+      granularity: "paragraph",
+      contextInPlan: { section: "section-1" },
+      content: "Version de départ de la rafale.",
+    });
+
+    vi.useFakeTimers();
+    try {
+      const automatic = await app.request(
+        `/api/projects/${projectId}/editorial/sections/section-1/diffraction-mode`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mode: "automatic" }),
+        }
+      );
+      expect(automatic.status).toBe(200);
+
+      const firstChange = await app.request(`/api/projects/${projectId}/units/${paragraph.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: "Première version de la rafale." }),
+      });
+      expect(firstChange.status).toBe(200);
+      const secondChange = await app.request(`/api/projects/${projectId}/units/${paragraph.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: "Dernière version de la rafale." }),
+      });
+      expect(secondChange.status).toBe(200);
+
+      const context = await app.request(
+        `/api/projects/${projectId}/editorial/sections/section-1/context`
+      );
+      const body = (await context.json()) as {
+        diffraction: {
+          automaticReadings: Array<{ status: string; trigger: string; historical: boolean }>;
+        };
+      };
+      expect(body.diffraction.automaticReadings).toEqual([
+        expect.objectContaining({ status: "pending", trigger: "text_changed", historical: false }),
+        expect.objectContaining({ status: "superseded", trigger: "activation", historical: true }),
+        expect.objectContaining({ status: "superseded", trigger: "text_changed", historical: true }),
+      ]);
+      expect(modelFactoryCalls).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not duplicate a reading when a source mutation leaves the qualified context unchanged", async () => {
+    let modelFactoryCalls = 0;
+    const factory = async () => {
+      modelFactoryCalls += 1;
+      return {
+        complete: async () => makeReadingJson(),
+        completeStream: async () => undefined,
+      };
+    };
+    const { app, projectId } = await createWorkspace(factory);
+
+    await app.request(`/api/projects/${projectId}/editorial/sections/section-1/diffraction-mode`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: "automatic" }),
+    });
+    await vi.waitFor(async () => {
+      const context = await app.request(
+        `/api/projects/${projectId}/editorial/sections/section-1/context`
+      );
+      await expect(context.json()).resolves.toMatchObject({
+        diffraction: { automaticReadings: [{ status: "completed", historical: false }] },
+      });
+    });
+
+    const unchangedContext = structuredClone(await getWorkspace(projectId));
+    unchangedContext.distribution[1]!.rationale = "Piste reformulée, mais toujours non qualifiée.";
+    const response = await app.request(`/api/projects/${projectId}/editorial/workspace`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(unchangedContext),
+    });
+    expect(response.status).toBe(200);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const context = await app.request(`/api/projects/${projectId}/editorial/sections/section-1/context`);
+    await expect(context.json()).resolves.toMatchObject({
+      diffraction: { automaticReadings: [{ status: "completed", historical: false }] },
+    });
+    expect(modelFactoryCalls).toBe(1);
+  });
+
+  it("triggers readings for plan, qualified sources and author decisions only while automatic mode is enabled", async () => {
+    let modelFactoryCalls = 0;
+    const factory = async () => {
+      modelFactoryCalls += 1;
+      return {
+        complete: async () => makeReadingJson(),
+        completeStream: async () => undefined,
+      };
+    };
+    const { app, projectId } = await createWorkspace(factory);
+    const paragraph = await createUnit(projectId, {
+      granularity: "paragraph",
+      contextInPlan: { section: "section-1" },
+      content: "Paragraphe couvert par les quatre déclencheurs.",
+    });
+
+    const automatic = await app.request(
+      `/api/projects/${projectId}/editorial/sections/section-1/diffraction-mode`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "automatic" }),
+      }
+    );
+    expect(automatic.status).toBe(200);
+    await vi.waitFor(async () => {
+      const context = await app.request(
+        `/api/projects/${projectId}/editorial/sections/section-1/context`
+      );
+      await expect(context.json()).resolves.toMatchObject({
+        diffraction: { automaticReadings: [{ trigger: "activation", status: "completed" }] },
+      });
+    });
+
+    const planWorkspace = structuredClone(await getWorkspace(projectId));
+    const planNode = planWorkspace.manuscript.tree[0];
+    if (!planNode || planNode.kind !== "node") throw new Error("expected section fixture");
+    planNode.plan[0]!.subject = "Déplacer le fragment après la mémoire.";
+    const changedPlan = await app.request(`/api/projects/${projectId}/editorial/workspace`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(planWorkspace),
+    });
+    expect(changedPlan.status).toBe(200);
+    await vi.waitFor(async () => {
+      const context = await app.request(
+        `/api/projects/${projectId}/editorial/sections/section-1/context`
+      );
+      const body = (await context.json()) as {
+        diffraction: { automaticReadings: Array<{ trigger: string; status: string; historical: boolean }> };
+      };
+      expect(body.diffraction.automaticReadings).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ trigger: "plan_changed", status: "completed", historical: false }),
+        ])
+      );
+    });
+
+    const sourcesWorkspace = structuredClone(await getWorkspace(projectId));
+    sourcesWorkspace.profiles[0]!.concepts = ["archive", "contrepoint"];
+    sourcesWorkspace.profiles[0]!.abstract =
+      "Un extrait qualifié révisé qui accompagne le contexte bibliographique lu.";
+    const changedSources = await app.request(`/api/projects/${projectId}/editorial/workspace`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(sourcesWorkspace),
+    });
+    expect(changedSources.status).toBe(200);
+    await vi.waitFor(async () => {
+      const context = await app.request(
+        `/api/projects/${projectId}/editorial/sections/section-1/context`
+      );
+      const body = (await context.json()) as {
+        diffraction: { automaticReadings: Array<{ trigger: string; status: string; historical: boolean }> };
+      };
+      expect(body.diffraction.automaticReadings).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ trigger: "sources_changed", status: "completed", historical: false }),
+        ])
+      );
+    });
+
+    const accepted = await postJson(
+      app,
+      `/api/projects/${projectId}/editorial/proposals/proposal-1/accept`,
+      {
+        contentCommitments: ["Conserver la tension"],
+        formalCommitments: ["Ralentir le rythme"],
+        validationNote: "L’auteur valide explicitement cette coupe.",
+      }
+    );
+    expect(accepted.status).toBe(201);
+    await vi.waitFor(async () => {
+      const context = await app.request(
+        `/api/projects/${projectId}/editorial/sections/section-1/context`
+      );
+      const body = (await context.json()) as {
+        diffraction: { automaticReadings: Array<Record<string, unknown>> };
+        decisions: Array<{ status: string }>;
+      };
+      expect(body.diffraction.automaticReadings).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            trigger: "decision_changed",
+            status: "completed",
+            historical: false,
+            fingerprint: expect.any(String),
+            scope: expect.objectContaining({ kind: "section", sectionId: "section-1" }),
+          }),
+        ])
+      );
+      expect(body.decisions).toEqual(expect.arrayContaining([expect.objectContaining({ status: "active" })]));
+    });
+    expect(modelFactoryCalls).toBe(4);
+
+    const strict = await app.request(
+      `/api/projects/${projectId}/editorial/sections/section-1/diffraction-mode`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "strict" }),
+      }
+    );
+    expect(strict.status).toBe(200);
+    const changedTextInStrictMode = await app.request(`/api/projects/${projectId}/units/${paragraph.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content: "Une mutation qui demeure strictement sans relance." }),
+    });
+    expect(changedTextInStrictMode.status).toBe(200);
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+    const finalContext = await app.request(
+      `/api/projects/${projectId}/editorial/sections/section-1/context`
+    );
+    const finalBody = (await finalContext.json()) as {
+      diffraction: { mode: string; automaticReadings: Array<{ trigger: string; historical: boolean }> };
+      decisions: Array<{ status: string }>;
+    };
+    expect(finalBody.diffraction.mode).toBe("strict");
+    expect(finalBody.diffraction.automaticReadings.map((reading) => reading.trigger).sort()).toEqual([
+      "activation",
+      "decision_changed",
+      "plan_changed",
+      "sources_changed",
+    ]);
+    expect(finalBody.diffraction.automaticReadings.every((reading) => reading.historical)).toBe(true);
+    expect(finalBody.decisions).toEqual(expect.arrayContaining([expect.objectContaining({ status: "active" })]));
+    expect(modelFactoryCalls).toBe(4);
   });
 
   it("prepares a traceable writing context with only active decisions and qualified evidence", async () => {

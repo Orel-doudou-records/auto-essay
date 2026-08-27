@@ -10,9 +10,21 @@ export const AutomaticDiffractiveReadingStatusSchema = z.enum([
   "running",
   "completed",
   "failed",
+  "superseded",
 ]);
 export type AutomaticDiffractiveReadingStatus = z.infer<
   typeof AutomaticDiffractiveReadingStatusSchema
+>;
+
+export const AutomaticDiffractiveReadingTriggerSchema = z.enum([
+  "activation",
+  "text_changed",
+  "plan_changed",
+  "decision_changed",
+  "sources_changed",
+]);
+export type AutomaticDiffractiveReadingTrigger = z.infer<
+  typeof AutomaticDiffractiveReadingTriggerSchema
 >;
 
 const BookPartSnapshotSchema = z.object({
@@ -67,6 +79,7 @@ const BibliographySnapshotSchema = z.object({
  * un contexte qui aurait pu évoluer entre l’activation et le traitement.
  */
 export const AutomaticDiffractiveReadingInputSchema = z.object({
+  fingerprint: z.string().min(1),
   statement: z.string().min(1),
   claimIds: z.array(z.string().min(1)).default([]),
   sourceIds: z.array(z.string().min(1)).default([]),
@@ -90,6 +103,7 @@ export const AutomaticDiffractiveReadingSchema = z
     projectId: z.string().min(1),
     sectionId: z.string().min(1),
     requestedBy: z.literal("author"),
+    trigger: AutomaticDiffractiveReadingTriggerSchema,
     status: AutomaticDiffractiveReadingStatusSchema,
     input: AutomaticDiffractiveReadingInputSchema,
     reading: DiffractiveReadingSchema.optional(),
@@ -128,6 +142,7 @@ export function createAutomaticDiffractiveReading(input: {
   projectId: string;
   sectionId: string;
   readingInput: AutomaticDiffractiveReadingInput;
+  trigger: AutomaticDiffractiveReadingTrigger;
   createdAt?: string;
 }): AutomaticDiffractiveReading {
   const createdAt = input.createdAt ?? new Date().toISOString();
@@ -136,6 +151,7 @@ export function createAutomaticDiffractiveReading(input: {
     projectId: input.projectId,
     sectionId: input.sectionId,
     requestedBy: "author",
+    trigger: input.trigger,
     status: "pending",
     input: input.readingInput,
     createdAt,
@@ -169,6 +185,20 @@ export function completeAutomaticDiffractiveReading(
     ...request,
     status: "completed",
     reading,
+    updatedAt: occurredAt,
+  });
+}
+
+export function supersedeAutomaticDiffractiveReading(
+  request: AutomaticDiffractiveReading,
+  occurredAt = new Date().toISOString()
+): AutomaticDiffractiveReading {
+  if (request.status !== "pending") {
+    throw new Error(`cannot supersede automatic reading from ${request.status}`);
+  }
+  return AutomaticDiffractiveReadingSchema.parse({
+    ...request,
+    status: "superseded",
     updatedAt: occurredAt,
   });
 }

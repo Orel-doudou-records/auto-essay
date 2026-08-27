@@ -41,7 +41,7 @@ export function createApp(options: AppOptions = {}): Hono {
 
   app.route("/api/projects", projectsRoutes());
   app.route("/api/projects/:projectId/sources", sourcesRoutes());
-  app.route("/api/projects/:projectId/units", unitsRoutes());
+  app.route("/api/projects/:projectId/units", unitsRoutes(modelClientFactory));
   app.route("/api/projects/:projectId/units/:unitId/generate", generateRoutes(modelClientFactory));
   app.route("/api/projects/:projectId/units/:unitId/revise-chat", reviseChatRoutes(modelClientFactory));
   app.route(
