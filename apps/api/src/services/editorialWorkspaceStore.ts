@@ -6,6 +6,7 @@ import {
   BibliographyDistributionEntrySchema,
   ContentStyleArticulationSchema,
   DiffractiveReadingSchema,
+  DiffractiveReadingModeSchema,
   EditorialDecisionSchema,
   EditorialGovernanceEventSchema,
   ManuscriptSchema,
@@ -50,6 +51,11 @@ const StoredReadingSchema = z.object({
 
 export type StoredReading = z.infer<typeof StoredReadingSchema>;
 
+const DiffractiveReadingSettingSchema = z.object({
+  sectionId: z.string().min(1),
+  mode: DiffractiveReadingModeSchema,
+});
+
 export const EditorialWorkspaceSchema = z.object({
   manuscript: ManuscriptSchema,
   distribution: z.array(BibliographyDistributionEntrySchema).default([]),
@@ -57,6 +63,7 @@ export const EditorialWorkspaceSchema = z.object({
   articulations: z.array(ContentStyleArticulationSchema).default([]),
   decisions: z.array(EditorialDecisionSchema).default([]),
   readings: z.array(StoredReadingSchema).default([]),
+  diffractionSettings: z.array(DiffractiveReadingSettingSchema).default([]),
   events: z.array(EditorialGovernanceEventSchema).default([]),
 });
 
@@ -76,6 +83,7 @@ export async function putWorkspace(
     ...input,
     decisions: current?.decisions ?? [],
     readings: current?.readings ?? [],
+    diffractionSettings: current?.diffractionSettings ?? [],
     events: current?.events ?? [],
   });
   await writeWorkspace(projectId, workspace);
@@ -88,6 +96,29 @@ export async function getWorkspace(projectId: string): Promise<EditorialWorkspac
     throw new HTTPException(404, { message: "editorial workspace not found" });
   }
   return workspace;
+}
+
+export function getDiffractiveReadingMode(
+  workspace: EditorialWorkspace,
+  sectionId: string
+): z.infer<typeof DiffractiveReadingModeSchema> {
+  return workspace.diffractionSettings.find((setting) => setting.sectionId === sectionId)?.mode ?? "strict";
+}
+
+export async function setDiffractiveReadingMode(
+  projectId: string,
+  sectionId: string,
+  mode: z.infer<typeof DiffractiveReadingModeSchema>
+): Promise<z.infer<typeof DiffractiveReadingModeSchema>> {
+  return mutateWorkspace(projectId, (workspace) => {
+    const index = workspace.diffractionSettings.findIndex((setting) => setting.sectionId === sectionId);
+    if (index < 0) {
+      workspace.diffractionSettings.push({ sectionId, mode });
+    } else {
+      workspace.diffractionSettings[index] = { sectionId, mode };
+    }
+    return mode;
+  });
 }
 
 export async function storeReading(

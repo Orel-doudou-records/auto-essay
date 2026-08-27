@@ -74,12 +74,23 @@ export interface EditorialReadingResult {
   provenance: { triggeredBy: "author" };
 }
 
+export interface AutomaticDiffractiveReadingPayload {
+  id: string;
+  sectionId: string;
+  requestedBy: "author";
+  status: "pending" | "running" | "completed" | "failed";
+  reading?: DiffractiveReading;
+  failure?: string;
+  createdAt: string;
+}
+
 export interface EditorialSectionContextPayload {
   projectId: string;
   section: { id: string; title: string };
   diffraction: {
-    mode: "strict";
-    paragraphs: Array<{ id: string; version: number }>;
+    mode: "strict" | "automatic";
+    paragraphs: Array<{ id: string; version: number; mode: "strict" | "automatic" }>;
+    automaticReadings: AutomaticDiffractiveReadingPayload[];
   };
   bookParts: Array<{ id: string; title: string; status: string }>;
   bookPlan: BookPlanInput[];
@@ -288,6 +299,23 @@ export async function createEditorialWritingDraftUnit(
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json() as Promise<{ unit: Pick<DraftUnit, "id" | "content" | "targetWordCount">; generated: false }>;
+}
+
+export async function setEditorialSectionDiffractionMode(
+  projectId: string,
+  sectionId: string,
+  mode: "strict" | "automatic"
+): Promise<{ mode: "strict" | "automatic"; request?: AutomaticDiffractiveReadingPayload }> {
+  const res = await fetch(`${API}/projects/${projectId}/editorial/sections/${sectionId}/diffraction-mode`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ mode }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<{
+    mode: "strict" | "automatic";
+    request?: AutomaticDiffractiveReadingPayload;
+  }>;
 }
 
 export async function runEditorialSectionReading(

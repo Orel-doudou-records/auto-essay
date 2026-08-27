@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { mutateWorkspace } from "../src/services/editorialWorkspaceStore.js";
 import { setSources } from "../src/services/sourceStore.js";
 import { createUnit, getUnit, updateUnit } from "../src/services/unitStore.js";
@@ -172,6 +172,7 @@ describe("editorial workspace routes", () => {
           {
             id: paragraph.id,
             version: paragraph.version,
+            mode: "strict",
           },
         ],
       },
@@ -224,6 +225,105 @@ describe("editorial workspace routes", () => {
       `/api/projects/${projectId}/editorial/sections/section-1/context`
     );
     await expect(after.json()).resolves.toMatchObject({ decisions: [] });
+  });
+
+  it("persists and processes the first automatic section reading without editorial side effects", async () => {
+    let modelFactoryCalls = 0;
+    const factory = async () => {
+      modelFactoryCalls += 1;
+      return {
+        complete: async () => makeReadingJson(),
+        completeStream: async () => undefined,
+      };
+    };
+    const { app, projectId } = await createWorkspace(factory);
+    const paragraph = await createUnit(projectId, {
+      granularity: "paragraph",
+      contextInPlan: { section: "section-1" },
+      content: "Un paragraphe inchangé par la lecture automatique.",
+    });
+
+    expect(modelFactoryCalls).toBe(0);
+    const activation = await app.request(
+      `/api/projects/${projectId}/editorial/sections/section-1/diffraction-mode`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "automatic" }),
+      }
+    );
+    expect(activation.status).toBe(200);
+    await expect(activation.json()).resolves.toMatchObject({
+      mode: "automatic",
+      request: {
+        sectionId: "section-1",
+        requestedBy: "author",
+        status: "pending",
+      },
+    });
+
+    const repeatedActivation = await app.request(
+      `/api/projects/${projectId}/editorial/sections/section-1/diffraction-mode`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "automatic" }),
+      }
+    );
+    expect(repeatedActivation.status).toBe(200);
+    await expect(repeatedActivation.json()).resolves.toEqual({ mode: "automatic" });
+
+    await vi.waitFor(async () => {
+      const context = await app.request(
+        `/api/projects/${projectId}/editorial/sections/section-1/context`
+      );
+      await expect(context.json()).resolves.toMatchObject({
+        diffraction: {
+          mode: "automatic",
+          paragraphs: [{ id: paragraph.id, mode: "automatic" }],
+          automaticReadings: [
+            {
+              sectionId: "section-1",
+              requestedBy: "author",
+              status: "completed",
+              reading: {
+                fragment: {
+                  statement:
+                    "Texte privé de la section.\n\nUn paragraphe inchangé par la lecture automatique.",
+                },
+              },
+            },
+          ],
+        },
+      });
+    });
+    expect(modelFactoryCalls).toBe(1);
+    expect(await getUnit(projectId, paragraph.id)).toMatchObject({
+      content: "Un paragraphe inchangé par la lecture automatique.",
+      status: "drafting",
+      version: paragraph.version,
+    });
+
+    const suspension = await app.request(
+      `/api/projects/${projectId}/editorial/sections/section-1/diffraction-mode`,
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "strict" }),
+      }
+    );
+    expect(suspension.status).toBe(200);
+    const contextAfterSuspension = await app.request(
+      `/api/projects/${projectId}/editorial/sections/section-1/context`
+    );
+    await expect(contextAfterSuspension.json()).resolves.toMatchObject({
+      diffraction: {
+        mode: "strict",
+        automaticReadings: [{ status: "completed" }],
+      },
+      decisions: [],
+    });
+    expect(modelFactoryCalls).toBe(1);
   });
 
   it("prepares a traceable writing context with only active decisions and qualified evidence", async () => {
