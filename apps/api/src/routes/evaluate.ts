@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import {
+  evaluateIntegratedUnit,
   evaluateUnit,
   getIntegratedEvaluationReadiness,
   markUnitVerified,
@@ -29,6 +30,24 @@ export function evaluateRoutes(
     const projectId = c.req.param("projectId") as string;
     const unitId = c.req.param("unitId") as string;
     return c.json(await getIntegratedEvaluationReadiness(projectId, unitId));
+  });
+
+  app.post("/integrated", async (c) => {
+    const projectId = c.req.param("projectId") as string;
+    const unitId = c.req.param("unitId") as string;
+    try {
+      return c.json(
+        await evaluateIntegratedUnit(projectId, unitId, modelClientFactory, judgeRoutingPolicy)
+      );
+    } catch (error) {
+      if (error instanceof Error && error.message.startsWith("integrated evaluation unavailable:")) {
+        throw new HTTPException(400, { message: error.message });
+      }
+      if (error instanceof Error && error.message.includes("judge")) {
+        throw new HTTPException(400, { message: error.message });
+      }
+      throw error;
+    }
   });
 
   app.post("/", async (c) => {

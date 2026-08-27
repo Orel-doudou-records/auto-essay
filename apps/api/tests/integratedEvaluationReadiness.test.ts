@@ -29,4 +29,31 @@ describe("integrated evaluation readiness route", () => {
     });
     expect(modelFactoryCalls).toBe(0);
   });
+
+  it("rejects an explicit integrated evaluation without a ready context before obtaining a model client", async () => {
+    let modelFactoryCalls = 0;
+    const app = makeTestApp(makeTempDataDir(), {
+      modelClientFactory: async () => {
+        modelFactoryCalls += 1;
+        return new MockClient();
+      },
+    });
+    const { project } = (await (
+      await postJson(app, "/api/projects", { title: "Refus intégré" })
+    ).json()) as { project: { id: string } };
+    const { unit } = (await (
+      await postJson(app, `/api/projects/${project.id}/units`, { section: "Section libre" })
+    ).json()) as { unit: { id: string } };
+
+    const evaluated = await app.request(
+      `/api/projects/${project.id}/units/${unit.id}/evaluate/integrated`,
+      { method: "POST" }
+    );
+
+    expect(evaluated.status).toBe(400);
+    await expect(evaluated.json()).resolves.toMatchObject({
+      message: "integrated evaluation unavailable: missing_context",
+    });
+    expect(modelFactoryCalls).toBe(0);
+  });
 });

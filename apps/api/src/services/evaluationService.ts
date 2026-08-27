@@ -43,6 +43,61 @@ export async function getIntegratedEvaluationReadiness(
   });
 }
 
+export async function evaluateIntegratedUnit(
+  projectId: string,
+  unitId: string,
+  modelClientFactory: ModelClientFactory,
+  judgeRoutingPolicy: JudgeRoutingPolicy = DEFAULT_JUDGE_ROUTING_POLICY
+) {
+  const unit = await getUnit(projectId, unitId);
+  if (!unit) throw new Error("unit not found");
+
+  const context = await getIntegratedEvaluationContext(projectId, unitId);
+  const workspace = context ? await getWorkspace(projectId) : undefined;
+  const readiness = assessIntegratedEvaluationReadiness({
+    unit,
+    decisions: workspace?.decisions ?? [],
+    context,
+  });
+  if (readiness.status !== "ready") {
+    throw new Error(
+      `integrated evaluation unavailable: ${readiness.reasons
+        .map((reason) => reason.code)
+        .join(", ")}`
+    );
+  }
+
+  const assignments = selectEvaluationJudgeAssignments(judgeRoutingPolicy);
+  const sources = await listSources(projectId);
+  const client = await modelClientFactory();
+  const structured = new StructuredClientAdapter(client);
+  const evaluator = new EssayEvaluator(
+    structured,
+    assignments.documentary.judge.model,
+    judgeRoutingPolicy
+  );
+  const integratedEvaluation = await evaluator.evaluateIntegrated({
+    unit,
+    sources,
+    claims: [],
+    editorialProjection: readiness.context.evaluatorProjection,
+    transformationTraces: readiness.context.transformationTraces,
+  });
+  const brief = new RevisionBriefGenerator().generateBrief(
+    integratedEvaluation.essay,
+    unit
+  );
+
+  return {
+    evaluation: integratedEvaluation.essay,
+    editorialEvaluation: integratedEvaluation.editorial,
+    gates: integratedEvaluation.gates,
+    finalVerdict: integratedEvaluation.finalVerdict,
+    brief,
+    assignments,
+  };
+}
+
 export async function evaluateUnit(
   projectId: string,
   unitId: string,
