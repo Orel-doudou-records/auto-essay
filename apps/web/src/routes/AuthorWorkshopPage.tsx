@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import * as stylex from "@stylexjs/stylex";
 import type { DiffractiveReading } from "@auto-essay/core";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { workshopStyles } from "../styles/workshopStyles";
 import {
   acceptEditorialProposal,
   createEditorialWritingDraftUnit,
@@ -37,12 +39,16 @@ type AuthorAction = "adapt" | "reject" | null;
 
 function WorkshopCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-      </CardHeader>
-      <CardContent>{children}</CardContent>
-    </Card>
+    <div {...stylex.props(workshopStyles.cardFrame)}>
+      <Card>
+        <CardHeader>
+          <CardTitle>{title}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div {...stylex.props(workshopStyles.stack)}>{children}</div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
@@ -332,18 +338,18 @@ export function AuthorWorkshopPage() {
 
   return (
     <AppShell projectId={projectId}>
-      <div>
-        <div>
-          <p>Atelier de décision auteur</p>
-          <h1>Lecture située sur un projet réel</h1>
-          <p>
+      <div {...stylex.props(workshopStyles.page)}>
+        <header {...stylex.props(workshopStyles.intro)}>
+          <p {...stylex.props(workshopStyles.eyebrow)}>Atelier auteur</p>
+          <h1 {...stylex.props(workshopStyles.title)}>Lecture située sur un projet réel</h1>
+          <p {...stylex.props(workshopStyles.copy)}>
             La lecture décrit une proposition et ses conséquences. L’auteur peut la valider, l’adapter ou la refuser ; aucun acte n’est appliqué par défaut.
           </p>
-        </div>
+        </header>
 
         <WorkshopCard title="Portée de travail">
-          <div>
-            <div>
+          <div {...stylex.props(workshopStyles.formRow)}>
+            <div {...stylex.props(workshopStyles.field)}>
               <Label htmlFor="sectionId">ID de section</Label>
               <Input
                 id="sectionId"
@@ -361,20 +367,21 @@ export function AuthorWorkshopPage() {
 
         {context && (
           <>
-            <div>
-              <div>
-                <h2>{context.section.title}</h2>
-                <p>Scope : {context.section.id}</p>
+            <header {...stylex.props(workshopStyles.sectionHeader)}>
+              <div {...stylex.props(workshopStyles.compactStack)}>
+                <p {...stylex.props(workshopStyles.eyebrow)}>Section</p>
+                <h2 {...stylex.props(workshopStyles.sectionTitle)}>{context.section.title}</h2>
+                <p {...stylex.props(workshopStyles.meta)}>Portée : {context.section.id}</p>
               </div>
-              <p>
+              <p {...stylex.props(workshopStyles.status)}>
                 {context.decisions.length} décision{context.decisions.length > 1 ? "s" : ""} active
                 {context.decisions.length > 1 ? "s" : ""}
               </p>
-            </div>
+            </header>
 
-            {decisionMessage && <p>{decisionMessage}</p>}
+            {decisionMessage && <p {...stylex.props(workshopStyles.status)}>{decisionMessage}</p>}
 
-            <div>
+            <div {...stylex.props(workshopStyles.grid)}>
               <WorkshopCard title="État du livre">
                 {context.bookParts.length === 0 ? <p>Aucune partie projetée pour ce manuscrit.</p> : (
                   <ul>
