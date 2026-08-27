@@ -1,12 +1,11 @@
-import type { DraftUnit } from "@auto-essay/core";
 import type { ModelClientFactory } from "../llm/client.js";
-import { getUnit, updateUnit } from "./unitStore.js";
+import { getUnit } from "./unitStore.js";
+import { createRevisionProposal } from "./revisionProposalStore.js";
 import { listSources } from "./sourceStore.js";
+import type { RevisionProposal } from "@auto-essay/core";
 
 export interface ReviseChatResult {
-  before: string;
-  after: string;
-  unit: DraftUnit;
+  proposal: RevisionProposal;
 }
 
 export async function reviseUnitChat(
@@ -44,13 +43,8 @@ ${sourceList || "Aucune"}
 ${instruction}`;
 
   const after = await client.complete(system, user);
-  const updated = await updateUnit(projectId, unitId, {
-    content: after,
-    version: unit.version + 1,
-  });
-  if (!updated) throw new Error("unit not found");
-
-  return { before: unit.content, after, unit: updated };
+  const proposal = await createRevisionProposal(projectId, unitId, unit.version, unit.content, after);
+  return { proposal };
 }
 
 export async function streamReviseUnitChat(
@@ -82,11 +76,6 @@ export async function streamReviseUnitChat(
     onEvent({ type: "chunk", payload: chunk });
   });
 
-  const updated = await updateUnit(projectId, unitId, {
-    content: after,
-    version: unit.version + 1,
-  });
-  if (!updated) throw new Error("unit not found");
-
-  onEvent({ type: "done", payload: { before: unit.content, after, unit: updated } });
+  const proposal = await createRevisionProposal(projectId, unitId, unit.version, unit.content, after);
+  onEvent({ type: "done", payload: { proposal } });
 }

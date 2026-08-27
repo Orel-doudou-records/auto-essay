@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { DraftUnit } from "@auto-essay/core";
+import type { DraftUnit, RevisionProposal } from "@auto-essay/core";
 import { useUnits } from "@/hooks/useUnits";
 import { EditorPage } from "./EditorPage";
 
@@ -211,6 +211,40 @@ describe("EditorPage", () => {
     expect(screen.queryByRole("complementary", { name: "Inspecteur éditorial" })).not.toBeInTheDocument();
     fireEvent.click(within(emptyState).getByRole("button", { name: "Choisir dans le manuscrit" }));
     expect(screen.getByRole("navigation", { name: "Unités du manuscrit" })).toBeInTheDocument();
+  });
+
+  it("keeps a revision proposal separate, editable, explicit and stale after manuscript changes", async () => {
+    const proposal: RevisionProposal = {
+      id: "proposal-1", projectId: "project-1", unitId: "unit-prepared", sourceVersion: 1,
+      before: "", content: "Proposition initiale.", status: "available",
+      createdAt: "2026-08-27T12:00:00.000Z", updatedAt: "2026-08-27T12:00:00.000Z",
+    };
+    const reviseChat = vi.fn().mockResolvedValue({ proposal });
+    useProjectUnits.mockReturnValue({
+      units: [preparedUnit], loading: false, error: null, reload: vi.fn(), add: vi.fn(), update: updateUnit,
+      generate: vi.fn(), reviseChat, evaluate: vi.fn(), evaluateIntegrated: vi.fn(), verify: vi.fn(),
+    });
+    render(<MemoryRouter initialEntries={["/projects/project-1/editor?unitId=unit-prepared"]}><Routes><Route path="/projects/:projectId/editor" element={<EditorPage />} /></Routes></MemoryRouter>);
+    const manuscript = await screen.findByRole("textbox", { name: "Manuscrit : Unité préparée" });
+    fireEvent.click(screen.getByRole("button", { name: "Ouvrir les outils" }));
+    fireEvent.change(screen.getByRole("textbox", { name: "Instruction de révision" }), { target: { value: "Resserre le passage." } });
+    fireEvent.click(screen.getByRole("button", { name: "Réviser" }));
+    expect(await screen.findByRole("region", { name: "Proposition de révision" })).toBeInTheDocument();
+    expect(manuscript).toHaveValue("");
+    expect(updateUnit).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByRole("textbox", { name: "Texte proposé" }), { target: { value: "Proposition éditée." } });
+    fireEvent.click(screen.getByRole("button", { name: "Appliquer la proposition" }));
+    expect(updateUnit).toHaveBeenCalledWith("unit-prepared", { content: "Proposition éditée.", version: 2 });
+
+    reviseChat.mockResolvedValueOnce({ proposal });
+    fireEvent.change(screen.getByRole("textbox", { name: "Instruction de révision" }), { target: { value: "Nouvelle proposition." } });
+    fireEvent.click(screen.getByRole("button", { name: "Réviser" }));
+    await screen.findByRole("region", { name: "Proposition de révision" });
+    fireEvent.change(manuscript, { target: { value: "Le manuscrit a changé." } });
+    expect(screen.getByText("Proposition périmée")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Appliquer la proposition" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Écarter la proposition" }));
+    expect(screen.queryByRole("region", { name: "Proposition de révision" })).not.toBeInTheDocument();
   });
 
   it("keeps manuscript navigation and the editorial inspector closed until the author opens them", async () => {
