@@ -510,6 +510,84 @@ describe("editorial workspace routes", () => {
     expect(modelCalls).toHaveLength(2);
     expect(modelCalls[0]).toContain("évaluateur critique");
     expect(modelCalls[1]).toContain("juge éditorial indépendant");
+
+    const unitBeforeHistory = await app.request(
+      `/api/projects/${projectId}/units/${unit.id}`
+    );
+    const sectionBeforeHistory = await app.request(
+      `/api/projects/${projectId}/editorial/sections/section-1/context`
+    );
+
+    const history = await app.request(
+      `/api/projects/${projectId}/units/${unit.id}/evaluate/integrated/history`
+    );
+    expect(history.status).toBe(200);
+    await expect(history.json()).resolves.toMatchObject({
+      history: [
+        {
+          unitId: unit.id,
+          unitVersion: 2,
+          evaluation: { evaluatorModel: "judge-model" },
+          editorialEvaluation: { evaluatorModel: "editorial-judge-model" },
+          gates: { documentaryIntegrity: "fail", editorialCoherence: "pass" },
+          finalVerdict: "revise",
+          brief: { targetUnitId: unit.id },
+          assignments: {
+            documentary: { workType: "documentary_evaluation" },
+            editorial: { workType: "editorial_effect_evaluation" },
+          },
+          context: {
+            unitId: unit.id,
+            decisionIds: [decision.id],
+            transformationTraces: [{ unitId: unit.id }],
+          },
+          authorDecisions: [{ id: decision.id, status: "active" }],
+          current: true,
+        },
+      ],
+    });
+    expect(modelCalls).toHaveLength(2);
+    const unitAfterHistory = await app.request(
+      `/api/projects/${projectId}/units/${unit.id}`
+    );
+    const sectionAfterHistory = await app.request(
+      `/api/projects/${projectId}/editorial/sections/section-1/context`
+    );
+    await expect(unitAfterHistory.json()).resolves.toEqual(await unitBeforeHistory.json());
+    await expect(sectionAfterHistory.json()).resolves.toEqual(await sectionBeforeHistory.json());
+
+    const revisedUnit = await updateUnit(projectId, unit.id, {
+      content: "Texte explicitement modifié après le jugement.",
+      version: 3,
+    });
+    expect(revisedUnit?.version).toBe(3);
+    const historyAfterUnitChange = await app.request(
+      `/api/projects/${projectId}/units/${unit.id}/evaluate/integrated/history`
+    );
+    await expect(historyAfterUnitChange.json()).resolves.toMatchObject({
+      history: [{ unitVersion: 2, current: false }],
+    });
+    expect(modelCalls).toHaveLength(2);
+
+    await updateUnit(projectId, unit.id, { version: 2 });
+    await mutateWorkspace(projectId, (workspace) => {
+      const recordedDecision = workspace.decisions.find((item) => item.id === decision.id);
+      if (!recordedDecision) throw new Error("expected recorded decision fixture");
+      recordedDecision.status = "revoked";
+      recordedDecision.updatedAt = "2026-08-27T12:00:00.000Z";
+    });
+    const historyAfterDecisionChange = await app.request(
+      `/api/projects/${projectId}/units/${unit.id}/evaluate/integrated/history`
+    );
+    await expect(historyAfterDecisionChange.json()).resolves.toMatchObject({
+      history: [
+        {
+          current: false,
+          authorDecisions: [{ id: decision.id, status: "active" }],
+        },
+      ],
+    });
+    expect(modelCalls).toHaveLength(2);
   });
 
   it("rejects stale or revoked prepared contexts before obtaining a model client", async () => {

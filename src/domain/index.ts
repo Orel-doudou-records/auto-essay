@@ -73,3 +73,6 @@ export * from "./judgeRouting";
 
 // Contexte canonique et préparabilité de l’évaluation intégrée
 export * from "./integratedEvaluationReadiness";
+
+// Résultats intégrés historisés, consultables sans autorité d’écriture
+export * from "./integratedEvaluationHistory";

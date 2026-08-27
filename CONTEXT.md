@@ -50,6 +50,10 @@ l'implémentation.
   indique si son contexte canonique est complet et encore valide. Une unité
   non préparée ou devenue incohérente reste évaluable documentairement, mais ne
   peut pas recevoir un jugement éditorial intégré.
+- **Évaluation intégrée historique** : instantané d’un double jugement, de son
+  brief et de ses provenances à une version donnée de l’unité. Elle documente
+  une recommandation passée et ne confère aucune autorité sur une version ou
+  une décision auteur ultérieure.
 
 ## Frontière
 

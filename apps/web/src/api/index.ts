@@ -6,6 +6,7 @@ import type {
   Source,
   DraftUnit,
   JudgeAssignment,
+  IntegratedEvaluationHistoryEntry,
 } from "@auto-essay/core";
 
 const API = "/api";
@@ -511,6 +512,45 @@ export async function fetchIntegratedEvaluationReadiness(
   return data.status === "ready"
     ? { status: "ready" }
     : { status: "unavailable", reasons: data.reasons };
+}
+
+export type IntegratedEvaluationHistoryEntryPayload = Pick<
+  IntegratedEvaluationHistoryEntry,
+  | "id"
+  | "recordedAt"
+  | "unitId"
+  | "unitVersion"
+  | "evaluation"
+  | "editorialEvaluation"
+  | "gates"
+  | "finalVerdict"
+  | "brief"
+  | "assignments"
+  | "authorDecisions"
+> & {
+  context: Pick<
+    IntegratedEvaluationHistoryEntry["context"],
+    | "unitId"
+    | "unitVersion"
+    | "editorialPlanId"
+    | "decisionIds"
+    | "writerProjection"
+    | "evaluatorProjection"
+    | "transformationTraces"
+  >;
+  current: boolean;
+};
+
+export async function fetchIntegratedEvaluationHistory(
+  projectId: string,
+  unitId: string
+): Promise<IntegratedEvaluationHistoryEntryPayload[]> {
+  const res = await fetch(`${API}/projects/${projectId}/units/${unitId}/evaluate/integrated/history`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data = (await res.json()) as {
+    history: IntegratedEvaluationHistoryEntryPayload[];
+  };
+  return data.history;
 }
 
 export async function evaluateIntegratedUnit(
