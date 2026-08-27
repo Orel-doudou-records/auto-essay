@@ -77,8 +77,12 @@ export interface EditorialReadingResult {
 export interface AutomaticDiffractiveReadingPayload {
   id: string;
   sectionId: string;
+  scope: { kind: "section"; sectionId: string };
+  fingerprint: string;
   requestedBy: "author";
-  status: "pending" | "running" | "completed" | "failed";
+  trigger: "activation" | "text_changed" | "plan_changed" | "decision_changed" | "sources_changed";
+  status: "pending" | "running" | "completed" | "failed" | "superseded";
+  historical: boolean;
   reading?: DiffractiveReading;
   failure?: string;
   createdAt: string;

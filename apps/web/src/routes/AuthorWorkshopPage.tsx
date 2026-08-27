@@ -573,6 +573,10 @@ function AutomaticReadingReviewBox({
           {readings.map((request) => (
             <div key={request.id} className="space-y-1 rounded bg-muted/60 px-3 py-2">
               <p className="font-medium">{automaticReadingStatusLabel(request.status)}</p>
+              <p className="text-muted-foreground">
+                Déclenchée par {automaticReadingTriggerLabel(request.trigger)}
+                {request.historical ? " · historique" : ""}
+              </p>
               {request.reading && (
                 <p className="text-muted-foreground">
                   {VERDICT_LABELS[request.reading.verdict] ?? request.reading.verdict} — {request.reading.verdictDetail}
@@ -714,7 +718,18 @@ function automaticReadingStatusLabel(
   if (status === "pending") return "Lecture automatique en attente";
   if (status === "running") return "Lecture automatique en cours";
   if (status === "completed") return "Lecture automatique terminée";
+  if (status === "superseded") return "Lecture automatique remplacée";
   return "Lecture automatique échouée";
+}
+
+function automaticReadingTriggerLabel(
+  trigger: AutomaticDiffractiveReadingPayload["trigger"]
+): string {
+  if (trigger === "activation") return "l’activation du mode automatique";
+  if (trigger === "text_changed") return "un changement de texte";
+  if (trigger === "plan_changed") return "un changement de plan";
+  if (trigger === "decision_changed") return "un changement de décision";
+  return "un changement de sources";
 }
 
 function readingScopeLabel(scope: EditorialReadingScope): string {

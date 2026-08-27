@@ -39,21 +39,24 @@ export class AutomaticDiffractiveReadingWorker {
     projectId: string,
     readingId: string
   ): Promise<AutomaticDiffractiveReading | undefined> {
-    const claimed = await updateAutomaticDiffractiveReading(projectId, readingId, (reading) =>
-      startAutomaticDiffractiveReading(reading)
-    );
-    if (!claimed) return undefined;
+    const claimed = await updateAutomaticDiffractiveReading(projectId, readingId, (reading) => {
+      if (reading.status !== "pending" && reading.status !== "running") return reading;
+      return startAutomaticDiffractiveReading(reading);
+    });
+    if (!claimed || claimed.status !== "running") return undefined;
 
     try {
       const reading = await this.executeReading(claimed.input);
-      return await updateAutomaticDiffractiveReading(projectId, readingId, (current) =>
-        completeAutomaticDiffractiveReading(current, reading)
-      );
+      return await updateAutomaticDiffractiveReading(projectId, readingId, (current) => {
+        if (current.status !== "running") return current;
+        return completeAutomaticDiffractiveReading(current, reading);
+      });
     } catch (error) {
       const failure = error instanceof Error ? error.message : String(error);
-      return await updateAutomaticDiffractiveReading(projectId, readingId, (current) =>
-        failAutomaticDiffractiveReading(current, failure)
-      );
+      return await updateAutomaticDiffractiveReading(projectId, readingId, (current) => {
+        if (current.status !== "pending" && current.status !== "running") return current;
+        return failAutomaticDiffractiveReading(current, failure);
+      });
     }
   }
 }

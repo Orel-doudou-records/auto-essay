@@ -1,7 +1,6 @@
 import { Hono, type Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import {
-  createAutomaticDiffractiveReading,
   createEditorialDecisionService,
   projectBibliography,
   projectBookPlan,
@@ -39,11 +38,12 @@ import {
   type StoredReading,
   updateArticulation,
 } from "../services/editorialWorkspaceStore.js";
+import { listAutomaticDiffractiveReadings } from "../services/automaticDiffractiveReadingStore.js";
 import {
-  listAutomaticDiffractiveReadings,
-  storeAutomaticDiffractiveReading,
-} from "../services/automaticDiffractiveReadingStore.js";
-import { createAutomaticDiffractiveReadingWorker } from "../services/automaticDiffractiveReadingWorker.js";
+  enqueueAutomaticDiffractiveReading,
+  enqueueAutomaticDiffractiveReadingsForProject,
+  getAutomaticDiffractiveReadingFingerprint,
+} from "../services/automaticDiffractiveReadingScheduler.js";
 import { getProject } from "../services/projectStore.js";
 import { listSources } from "../services/sourceStore.js";
 import { createUnit, listUnits, updateUnit } from "../services/unitStore.js";
@@ -58,13 +58,34 @@ import {
 
 export function editorialRoutes(modelClientFactory: ModelClientFactory): Hono {
   const app = new Hono();
-  const automaticReadingWorker = createAutomaticDiffractiveReadingWorker(modelClientFactory);
 
   app.put("/workspace", async (c) => {
     const projectId = c.req.param("projectId") as string;
     await getProject(projectId);
     const body = EditorialWorkspaceBodySchema.parse(await c.req.json());
+    const previous = await getWorkspace(projectId).catch((error) => {
+      if (error instanceof HTTPException && error.status === 404) return undefined;
+      throw error;
+    });
     const workspace = await putWorkspace(projectId, body);
+    if (previous && JSON.stringify(previous.manuscript) !== JSON.stringify(body.manuscript)) {
+      await enqueueAutomaticDiffractiveReadingsForProject({
+        projectId,
+        trigger: "plan_changed",
+        modelClientFactory,
+      });
+    }
+    if (
+      previous &&
+      (JSON.stringify(previous.distribution) !== JSON.stringify(body.distribution) ||
+        JSON.stringify(previous.profiles) !== JSON.stringify(body.profiles))
+    ) {
+      await enqueueAutomaticDiffractiveReadingsForProject({
+        projectId,
+        trigger: "sources_changed",
+        modelClientFactory,
+      });
+    }
     return c.json({
       manuscript: workspace.manuscript,
       proposalCount: workspace.articulations.length,
@@ -74,7 +95,7 @@ export function editorialRoutes(modelClientFactory: ModelClientFactory): Hono {
   app.get("/sections/:sectionId/context", async (c) => {
     const projectId = c.req.param("projectId") as string;
     const context = await loadSectionContext(projectId, c.req.param("sectionId") as string);
-    return c.json(toPublicContext(context));
+    return c.json(await toPublicContext(context));
   });
 
   app.put("/sections/:sectionId/diffraction-mode", async (c) => {
@@ -89,16 +110,16 @@ export function editorialRoutes(modelClientFactory: ModelClientFactory): Hono {
       return c.json({ mode });
     }
 
-    const request = createAutomaticDiffractiveReading({
+    const request = await enqueueAutomaticDiffractiveReading({
       projectId,
       sectionId,
-      readingInput: toAutomaticReadingInput(context),
+      trigger: "activation",
+      modelClientFactory,
     });
-    await storeAutomaticDiffractiveReading(projectId, request);
-    queueMicrotask(() => {
-      void automaticReadingWorker.process(projectId, request.id);
+    return c.json({
+      mode,
+      ...(request ? { request: toPublicAutomaticReading(request) } : {}),
     });
-    return c.json({ mode, request: toPublicAutomaticReading(request) });
   });
 
   app.get("/chapters/:chapterId/workspace", async (c) => {
@@ -266,6 +287,11 @@ export function editorialRoutes(modelClientFactory: ModelClientFactory): Hono {
     const proposal = findArticulation(workspace.articulations, c.req.param("proposalId") as string);
     const result = createEditorialDecisionService().accept(proposal, body);
     await acceptDecision(projectId, result.articulation, result.decision, result.event);
+    await enqueueAutomaticDiffractiveReadingsForProject({
+      projectId,
+      trigger: "decision_changed",
+      modelClientFactory,
+    });
     return c.json({ decision: result.decision, event: result.event }, 201);
   });
 
@@ -276,6 +302,11 @@ export function editorialRoutes(modelClientFactory: ModelClientFactory): Hono {
     const proposal = findArticulation(workspace.articulations, c.req.param("proposalId") as string);
     const result = createEditorialDecisionService().modify(proposal, {}, body);
     await acceptDecision(projectId, result.articulation, result.decision, result.event);
+    await enqueueAutomaticDiffractiveReadingsForProject({
+      projectId,
+      trigger: "decision_changed",
+      modelClientFactory,
+    });
     return c.json({ decision: result.decision, event: result.event }, 201);
   });
 
@@ -286,6 +317,11 @@ export function editorialRoutes(modelClientFactory: ModelClientFactory): Hono {
     const proposal = findArticulation(workspace.articulations, c.req.param("proposalId") as string);
     const result = createEditorialDecisionService().reject(proposal, body.note);
     await updateArticulation(projectId, result.articulation, result.event);
+    await enqueueAutomaticDiffractiveReadingsForProject({
+      projectId,
+      trigger: "decision_changed",
+      modelClientFactory,
+    });
     return c.json({ proposal: result.articulation, event: result.event });
   });
 
@@ -356,26 +392,19 @@ function sectionStatement(context: SectionContext): string {
   return text;
 }
 
-function toAutomaticReadingInput(context: SectionContext) {
-  return {
-    statement: sectionStatement(context),
-    claimIds: [],
-    sourceIds: [],
-    bookParts: context.bookParts,
-    bookPlan: context.bookPlan,
-    existingCuts: context.existingCuts,
-    bookBibliography: context.bookBibliography,
-  };
-}
-
 function toPublicAutomaticReading(
-  request: Awaited<ReturnType<typeof listAutomaticDiffractiveReadings>>[number]
+  request: Awaited<ReturnType<typeof listAutomaticDiffractiveReadings>>[number],
+  historical = false
 ) {
   return {
     id: request.id,
     sectionId: request.sectionId,
+    scope: { kind: "section" as const, sectionId: request.sectionId },
+    fingerprint: request.input.fingerprint,
     requestedBy: request.requestedBy,
+    trigger: request.trigger,
     status: request.status,
+    historical,
     reading: request.reading,
     failure: request.failure,
     createdAt: request.createdAt,
@@ -560,8 +589,24 @@ async function loadWritingContext(projectId: string, sectionId: string, decision
   return { decision, writingContext };
 }
 
-function toPublicContext(context: SectionContext) {
+async function toPublicContext(context: SectionContext) {
   const mode = getDiffractiveReadingMode(context.workspace, context.section.id);
+  const currentFingerprint = await getAutomaticDiffractiveReadingFingerprint(
+    context.projectId,
+    context.section.id
+  ).catch((error) => {
+    if (error instanceof HTTPException && error.status === 400) return undefined;
+    throw error;
+  });
+  const automaticReadings = context.automaticReadings.map((request) =>
+    toPublicAutomaticReading(
+      request,
+      request.status === "superseded" ||
+        !currentFingerprint ||
+        request.input.fingerprint !== currentFingerprint
+    )
+  );
+  automaticReadings.sort((left, right) => Number(left.historical) - Number(right.historical));
   return {
     projectId: context.projectId,
     section: { id: context.section.id, title: context.section.title },
@@ -572,7 +617,7 @@ function toPublicContext(context: SectionContext) {
         version: paragraph.version,
         mode,
       })),
-      automaticReadings: context.automaticReadings.map(toPublicAutomaticReading),
+      automaticReadings,
     },
     bookParts: context.bookParts.map(({ id, title, status }) => ({ id, title, status })),
     bookPlan: context.bookPlan,

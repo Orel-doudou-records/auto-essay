@@ -25,6 +25,15 @@ l'implémentation.
   un fragment, un paragraphe situé dans sa section, ou la section comme
   chantier. Elle qualifie la provenance d’une lecture sans en modifier le
   verdict.
+- **Empreinte de lecture** : référence stable de l’instantané de contexte lu
+  par une demande automatique. Elle permet d’identifier qu’une même portée et
+  un même contexte ne demandent pas deux lectures.
+- **Coalescence des lectures** : conservation d’une seule demande automatique
+  courante pour une même portée et un même état de chantier ; les demandes
+  encore en attente qui deviennent obsolètes restent des traces remplacées.
+- **Lecture automatique historique** : résultat ou demande attaché à un
+  instantané qui ne correspond plus au chantier courant. Il reste consultable
+  comme trace et ne peut produire aucun effet éditorial.
 - **Verdict** : décision forcée issue de la lecture diffractive. Cinq valeurs,
   sans « ça dépend » : `integrate_now`, `adapt_differently`, `incubate`,
   `archive`, `discard`.

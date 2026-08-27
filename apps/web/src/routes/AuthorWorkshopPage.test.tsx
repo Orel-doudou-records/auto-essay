@@ -213,8 +213,12 @@ describe("AuthorWorkshopPage", () => {
       request: {
         id: "automatic-reading-1",
         sectionId: "section-1",
+        scope: { kind: "section", sectionId: "section-1" },
+        fingerprint: "fingerprint-activation",
         requestedBy: "author",
+        trigger: "activation",
         status: "pending",
+        historical: false,
         createdAt: "2026-08-27T09:00:00.000Z",
       },
     });
@@ -252,8 +256,12 @@ describe("AuthorWorkshopPage", () => {
           {
             id: "automatic-reading-1",
             sectionId: "section-1",
+            scope: { kind: "section" as const, sectionId: "section-1" },
+            fingerprint: "fingerprint-completed",
             requestedBy: "author" as const,
+            trigger: "text_changed" as const,
             status: "completed" as const,
+            historical: true,
             createdAt: "2026-08-27T09:00:00.000Z",
             reading,
           },
@@ -266,6 +274,7 @@ describe("AuthorWorkshopPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Charger l’atelier" }));
 
     expect(await screen.findByText("Lecture automatique terminée")).toBeInTheDocument();
+    expect(screen.getByText("Déclenchée par un changement de texte · historique")).toBeInTheDocument();
     expect(screen.getByText(/Intégrer maintenant/)).toBeInTheDocument();
     expect(screen.getByText("Aucune proposition n’est choisie automatiquement.")).toBeInTheDocument();
     expect(runReading).not.toHaveBeenCalled();
