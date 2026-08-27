@@ -30,8 +30,10 @@ function modelClientFactory() {
   });
 }
 
-async function createWorkspace() {
-  const app = makeTestApp(makeTempDataDir(), { modelClientFactory: modelClientFactory() });
+async function createWorkspace(
+  factory: ReturnType<typeof modelClientFactory> = modelClientFactory()
+) {
+  const app = makeTestApp(makeTempDataDir(), { modelClientFactory: factory });
   const projectResponse = await postJson(app, "/api/projects", { title: "Projet P1" });
   const created = (await projectResponse.json()) as { project: { id: string } };
   const projectId = created.project.id;
@@ -261,7 +263,8 @@ describe("editorial workspace routes", () => {
       { decisionId: decision.id, targetWordCount: 180 }
     );
     expect(created.status).toBe(201);
-    await expect(created.json()).resolves.toMatchObject({
+    const createdBody = (await created.json()) as { unit: { id: string } };
+    expect(createdBody).toMatchObject({
       unit: {
         content: "",
         targetWordCount: 180,
@@ -270,6 +273,25 @@ describe("editorial workspace routes", () => {
         appliedArticulationIds: ["proposal-1"],
       },
       generated: false,
+    });
+
+    const readiness = await app.request(
+      `/api/projects/${projectId}/units/${createdBody.unit.id}/evaluate/readiness`
+    );
+    expect(readiness.status).toBe(200);
+    await expect(readiness.json()).resolves.toMatchObject({
+      status: "unavailable",
+      reasons: [{ code: "missing_compatible_traces" }],
+      context: {
+        unitId: createdBody.unit.id,
+        unitVersion: 2,
+        decisionIds: [decision.id],
+        evaluatorProjection: {
+          unitId: createdBody.unit.id,
+          decisionIds: [decision.id],
+        },
+        transformationTraces: [],
+      },
     });
 
     const candidate = await app.request(
@@ -287,6 +309,80 @@ describe("editorial workspace routes", () => {
       `/api/projects/${projectId}/editorial/sections/section-1/writing-context?decisionId=${decision.id}`
     );
     expect(revoked.status).toBe(404);
+
+    const revokedReadiness = await app.request(
+      `/api/projects/${projectId}/units/${createdBody.unit.id}/evaluate/readiness`
+    );
+    expect(revokedReadiness.status).toBe(200);
+    await expect(revokedReadiness.json()).resolves.toEqual({
+      status: "unavailable",
+      reasons: [{ code: "missing_active_decision" }],
+    });
+  });
+
+  it("becomes ready only after an explicit editorial generation declares a compatible writer trace", async () => {
+    const appFactory = async () => ({
+      complete: async (_system: string, user: string) => {
+        if (!user.includes("Tu travailles en mode PARAGRAPHE")) return makeReadingJson();
+        const directive = user.match(/- \[([^\]]+)\][\s\S]*?decision=([^;]+); articulation=([^\n]+)/);
+        if (!directive) throw new Error("expected writer directive in generation prompt");
+        const paragraph = "La transition est ralentie pour distinguer les archives sans les réduire.";
+        return JSON.stringify({
+          plan_3_sentences: ["Première.", "Deuxième.", "Troisième."],
+          paragraph,
+          claims: [],
+          confidence_assessment: "medium",
+          applied_directives: [
+            {
+              directiveId: directive[1],
+              decisionId: directive[2],
+              articulationId: directive[3],
+              declaration: "La transition est ralentie.",
+              excerpt: "La transition est ralentie",
+            },
+          ],
+        });
+      },
+      completeStream: async () => undefined,
+    });
+    const { app, projectId } = await createWorkspace(appFactory);
+    const modified = await postJson(
+      app,
+      `/api/projects/${projectId}/editorial/proposals/proposal-1/modify`,
+      {
+        contentCommitments: ["Conserver la tension"],
+        formalCommitments: ["Ralentir le rythme"],
+        validationNote: "Je prépare cette décision pour une évaluation intégrée.",
+      }
+    );
+    const { decision } = (await modified.json()) as { decision: { id: string } };
+    const created = await postJson(
+      app,
+      `/api/projects/${projectId}/editorial/sections/section-1/draft-units`,
+      { decisionId: decision.id }
+    );
+    const { unit } = (await created.json()) as { unit: { id: string } };
+
+    const generated = await app.request(
+      `/api/projects/${projectId}/units/${unit.id}/generate`,
+      { method: "POST" }
+    );
+    expect(generated.status).toBe(200);
+
+    const readiness = await app.request(
+      `/api/projects/${projectId}/units/${unit.id}/evaluate/readiness`
+    );
+    expect(readiness.status).toBe(200);
+    await expect(readiness.json()).resolves.toMatchObject({
+      status: "ready",
+      context: {
+        unitId: unit.id,
+        decisionIds: [decision.id],
+        transformationTraces: [
+          { decisionId: decision.id, declaration: "La transition est ralentie." },
+        ],
+      },
+    });
   });
 
   it("requires an author note for adaptation and archives a rejection without an active cut", async () => {

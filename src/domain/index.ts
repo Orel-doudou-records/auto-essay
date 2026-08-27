@@ -70,3 +70,6 @@ export * from "./chapterOperation";
 
 // Politique pure d’affectation des juges spécialisés
 export * from "./judgeRouting";
+
+// Contexte canonique et préparabilité de l’évaluation intégrée
+export * from "./integratedEvaluationReadiness";
