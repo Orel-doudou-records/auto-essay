@@ -7,6 +7,7 @@ import { EvaluatePage } from "@/routes/EvaluatePage";
 import { DemoPage } from "@/routes/DemoPage";
 import { AuthorWorkshopPage } from "@/routes/AuthorWorkshopPage";
 import { ChapterWorkshopPage } from "@/routes/ChapterWorkshopPage";
+import { WorkspaceLandingPage } from "@/routes/WorkspaceLandingPage";
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/demo" element={<DemoPage />} />
+        <Route path="/espace" element={<WorkspaceLandingPage />} />
         <Route path="/projects/:projectId" element={<ProjectPage />} />
         <Route path="/projects/:projectId/sources" element={<SourcesPage />} />
         <Route path="/projects/:projectId/editor" element={<EditorPage />} />
