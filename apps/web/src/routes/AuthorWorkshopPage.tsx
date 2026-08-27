@@ -33,23 +33,15 @@ const VERDICT_LABELS: Record<string, string> = {
   discard: "Écarter",
 };
 
-const VERDICT_STYLES: Record<string, string> = {
-  integrate_now: "bg-emerald-100 text-emerald-900",
-  adapt_differently: "bg-amber-100 text-amber-900",
-  incubate: "bg-sky-100 text-sky-900",
-  archive: "bg-slate-200 text-slate-800",
-  discard: "bg-rose-100 text-rose-900",
-};
-
 type AuthorAction = "adapt" | "reject" | null;
 
 function WorkshopCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm">{title}</CardTitle>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
       </CardHeader>
-      <CardContent className="text-sm">{children}</CardContent>
+      <CardContent>{children}</CardContent>
     </Card>
   );
 }
@@ -340,18 +332,18 @@ export function AuthorWorkshopPage() {
 
   return (
     <AppShell projectId={projectId}>
-      <div className="mx-auto max-w-5xl space-y-6">
+      <div>
         <div>
-          <p className="text-sm font-medium text-muted-foreground">Atelier de décision auteur</p>
-          <h1 className="text-2xl font-bold">Lecture située sur un projet réel</h1>
-          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
+          <p>Atelier de décision auteur</p>
+          <h1>Lecture située sur un projet réel</h1>
+          <p>
             La lecture décrit une proposition et ses conséquences. L’auteur peut la valider, l’adapter ou la refuser ; aucun acte n’est appliqué par défaut.
           </p>
         </div>
 
         <WorkshopCard title="Portée de travail">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <div className="w-full space-y-2">
+          <div>
+            <div>
               <Label htmlFor="sectionId">ID de section</Label>
               <Input
                 id="sectionId"
@@ -364,31 +356,31 @@ export function AuthorWorkshopPage() {
               {contextLoading ? "Chargement…" : "Charger l’atelier"}
             </Button>
           </div>
-          {contextError && <p className="mt-3 text-sm text-rose-600">Contexte indisponible : {contextError}</p>}
+          {contextError && <p>Contexte indisponible : {contextError}</p>}
         </WorkshopCard>
 
         {context && (
           <>
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <div>
               <div>
-                <h2 className="text-xl font-semibold">{context.section.title}</h2>
-                <p className="text-sm text-muted-foreground">Scope : {context.section.id}</p>
+                <h2>{context.section.title}</h2>
+                <p>Scope : {context.section.id}</p>
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p>
                 {context.decisions.length} décision{context.decisions.length > 1 ? "s" : ""} active
                 {context.decisions.length > 1 ? "s" : ""}
               </p>
             </div>
 
-            {decisionMessage && <p className="rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">{decisionMessage}</p>}
+            {decisionMessage && <p>{decisionMessage}</p>}
 
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div>
               <WorkshopCard title="État du livre">
-                {context.bookParts.length === 0 ? <p className="text-muted-foreground">Aucune partie projetée pour ce manuscrit.</p> : (
-                  <ul className="space-y-2">
+                {context.bookParts.length === 0 ? <p>Aucune partie projetée pour ce manuscrit.</p> : (
+                  <ul>
                     {context.bookParts.map((part) => (
-                      <li key={part.id} className="flex justify-between gap-3 rounded bg-muted/60 px-3 py-2">
-                        <span>{part.title}</span><span className="text-xs text-muted-foreground">{part.status}</span>
+                      <li key={part.id}>
+                        <span>{part.title}</span><span>{part.status}</span>
                       </li>
                     ))}
                   </ul>
@@ -396,11 +388,11 @@ export function AuthorWorkshopPage() {
               </WorkshopCard>
 
               <WorkshopCard title="Coupes déjà édictées">
-                {context.existingCuts.length === 0 ? <p className="text-muted-foreground">Aucune coupe active dans cette portée.</p> : (
-                  <ul className="space-y-2">
+                {context.existingCuts.length === 0 ? <p>Aucune coupe active dans cette portée.</p> : (
+                  <ul>
                     {context.existingCuts.map((cut) => (
-                      <li key={`${cut.scope}-${cut.cut}`} className="rounded bg-muted/60 px-3 py-2">
-                        <p className="font-medium">{cut.scope} — {cut.verdict}</p><p className="text-muted-foreground">{cut.cut}</p>
+                      <li key={`${cut.scope}-${cut.cut}`}>
+                        <p>{cut.scope} — {cut.verdict}</p><p>{cut.cut}</p>
                       </li>
                     ))}
                   </ul>
@@ -409,14 +401,14 @@ export function AuthorWorkshopPage() {
             </div>
 
             <WorkshopCard title="Décisions actives">
-              {context.decisions.length === 0 ? <p className="text-muted-foreground">Aucune décision active dans cette portée.</p> : (
-                <ul className="space-y-2">
+              {context.decisions.length === 0 ? <p>Aucune décision active dans cette portée.</p> : (
+                <ul>
                   {context.decisions.map((decision) => (
-                    <li key={decision.id} className="rounded bg-muted/60 px-3 py-2">
-                      <p className="font-medium">Décision {decision.id}</p>
-                      <p className="text-muted-foreground">Validée par {decision.validation.validatedBy}</p>
+                    <li key={decision.id}>
+                      <p>Décision {decision.id}</p>
+                      <p>Validée par {decision.validation.validatedBy}</p>
                       {decision.supersedesDecisionId && (
-                        <p className="text-muted-foreground">Supersède la décision {decision.supersedesDecisionId}</p>
+                        <p>Supersède la décision {decision.supersedesDecisionId}</p>
                       )}
                     </li>
                   ))}
@@ -426,16 +418,15 @@ export function AuthorWorkshopPage() {
 
             <WorkshopCard title="Préparer la rédaction">
               {context.decisions.length === 0 ? (
-                <p className="text-muted-foreground">Une décision auteur active est nécessaire avant de préparer une unité de rédaction.</p>
+                <p>Une décision auteur active est nécessaire avant de préparer une unité de rédaction.</p>
               ) : (
-                <div className="space-y-3">
-                  <p className="text-muted-foreground">Cette préparation assemble des décisions et des preuves ; elle ne génère aucun texte.</p>
+                <div>
+                  <p>Cette préparation assemble des décisions et des preuves ; elle ne génère aucun texte.</p>
                   {context.decisions.length > 1 && (
-                    <div className="space-y-2">
+                    <div>
                       <Label htmlFor="writingDecisionId">Décision active</Label>
                       <select
                         id="writingDecisionId"
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                         value={writingDecisionId}
                         onChange={(event) => {
                           setWritingDecisionId(event.target.value);
@@ -451,7 +442,7 @@ export function AuthorWorkshopPage() {
                   <Button onClick={() => void prepareWritingContext()} disabled={writingLoading || !writingDecisionId}>
                     {writingLoading ? "Préparation…" : "Préparer le contexte de rédaction"}
                   </Button>
-                  {writingError && <p className="text-sm text-rose-600">Préparation indisponible : {writingError}</p>}
+                  {writingError && <p>Préparation indisponible : {writingError}</p>}
                   {writingContext && (
                     <WritingContextResult
                       context={writingContext}
@@ -460,10 +451,10 @@ export function AuthorWorkshopPage() {
                     />
                   )}
                   {draftMessage && (
-                    <div className="flex flex-wrap items-center gap-3 rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+                    <div>
                       <p>{draftMessage}</p>
                       {createdDraftUnitId && projectId && (
-                        <Link className="font-medium underline" to={`/projects/${projectId}/editor?unitId=${createdDraftUnitId}`}>
+                        <Link to={`/projects/${projectId}/editor?unitId=${createdDraftUnitId}`}>
                           Ouvrir l’unité préparée
                         </Link>
                       )}
@@ -474,16 +465,16 @@ export function AuthorWorkshopPage() {
             </WorkshopCard>
 
             <WorkshopCard title="Sources de la section">
-              {context.sources.length === 0 ? <p className="text-muted-foreground">Aucune source distribuée dans cette portée.</p> : (
-                <ul className="space-y-2">
+              {context.sources.length === 0 ? <p>Aucune source distribuée dans cette portée.</p> : (
+                <ul>
                   {context.sources.map((source) => (
-                    <li key={source.sourceId} className="rounded bg-muted/60 px-3 py-2">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span className="font-medium">{source.title}</span>
-                        <span className={source.qualified ? "text-emerald-700" : "text-amber-700"}>{source.qualified ? "Qualifiée" : "Non qualifiée"}</span>
+                    <li key={source.sourceId}>
+                      <div>
+                        <span>{source.title}</span>
+                        <span>{source.qualified ? "Qualifiée" : "Non qualifiée"}</span>
                       </div>
-                      {source.authors.length > 0 && <p className="text-muted-foreground">{source.authors.join(", ")}</p>}
-                      {!source.qualified && <p className="mt-1 text-xs text-muted-foreground">Piste visible, mais non disponible comme preuve automatique.</p>}
+                      {source.authors.length > 0 && <p>{source.authors.join(", ")}</p>}
+                      {!source.qualified && <p>Piste visible, mais non disponible comme preuve automatique.</p>}
                     </li>
                   ))}
                 </ul>
@@ -491,11 +482,11 @@ export function AuthorWorkshopPage() {
             </WorkshopCard>
 
             <WorkshopCard title="Mode de diffraction">
-              <div className="space-y-3">
-                <p className="font-medium">
+              <div>
+                <p>
                   {context.diffraction.mode === "automatic" ? "Mode automatique" : "Mode strict"}
                 </p>
-                <p className="text-muted-foreground">
+                <p>
                   {context.diffraction.mode === "automatic"
                     ? "Les lectures de section sont demandées automatiquement ; aucun texte ni aucune décision ne sont modifiés."
                     : "Chaque lecture est déclenchée explicitement par l’auteur."}
@@ -513,26 +504,26 @@ export function AuthorWorkshopPage() {
                       ? "Suspendre l’automatisme"
                       : "Activer les lectures automatiques"}
                 </Button>
-                {modeError && <p className="text-sm text-rose-600">Mode indisponible : {modeError}</p>}
+                {modeError && <p>Mode indisponible : {modeError}</p>}
               </div>
             </WorkshopCard>
 
             {context.diffraction.mode === "strict" && (
               <WorkshopCard title="Lectures strictes">
-                <div className="space-y-3">
-                  <p className="text-muted-foreground">
+                <div>
+                  <p>
                     Choisissez explicitement la portée de la lecture. Ces lectures restent non exécutables.
                   </p>
                   <Button onClick={() => void runSectionScopeReading()} disabled={readingLoading}>
                     {readingLoading ? "Lecture en cours…" : "Lire la section"}
                   </Button>
                   {context.diffraction.paragraphs.length === 0 ? (
-                    <p className="text-muted-foreground">Aucun paragraphe rédigé dans cette section.</p>
+                    <p>Aucun paragraphe rédigé dans cette section.</p>
                   ) : (
-                    <div className="space-y-2">
+                    <div>
                       {context.diffraction.paragraphs.map((paragraph) => (
-                        <div key={paragraph.id} className="flex flex-wrap items-center justify-between gap-2 rounded bg-muted/60 px-3 py-2">
-                          <span className="text-muted-foreground">{paragraph.id}, version {paragraph.version}</span>
+                        <div key={paragraph.id}>
+                          <span>{paragraph.id}, version {paragraph.version}</span>
                           <Button variant="outline" onClick={() => void runParagraphScopeReading(paragraph.id)} disabled={readingLoading}>
                             Lire le paragraphe {paragraph.id}
                           </Button>
@@ -540,7 +531,7 @@ export function AuthorWorkshopPage() {
                       ))}
                     </div>
                   )}
-                  {readingError && <p className="text-sm text-rose-600">Lecture indisponible : {readingError}</p>}
+                  {readingError && <p>Lecture indisponible : {readingError}</p>}
                 </div>
               </WorkshopCard>
             )}
@@ -553,19 +544,19 @@ export function AuthorWorkshopPage() {
             />
 
             <WorkshopCard title="Fragment à diffracter">
-              <div className="space-y-3">
+              <div>
                 {context.proposals.length > 0 && (
-                  <div className="space-y-2">
+                  <div>
                     <Label htmlFor="proposalId">Proposition candidate</Label>
-                    <select id="proposalId" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" value={proposalId} onChange={(event) => selectProposal(event.target.value)}>
+                    <select id="proposalId" value={proposalId} onChange={(event) => selectProposal(event.target.value)}>
                       {context.proposals.map((proposal) => <option key={proposal.id} value={proposal.id}>{proposal.id}</option>)}
                     </select>
                   </div>
                 )}
                 <Textarea id="statement" aria-label="Fragment à lire" value={statement} onChange={(event) => setStatement(event.target.value)} placeholder="Posez un fragment dans la section sélectionnée…" rows={4} />
-                <div className="flex flex-wrap items-center gap-3">
+                <div>
                   <Button onClick={() => void runReading()} disabled={readingLoading || !statement.trim()}>{readingLoading ? "Lecture en cours…" : "Lire le fragment"}</Button>
-                  {readingError && <p className="text-sm text-rose-600">Lecture indisponible : {readingError}</p>}
+                  {readingError && <p>Lecture indisponible : {readingError}</p>}
                 </div>
               </div>
             </WorkshopCard>
@@ -613,25 +604,25 @@ function AutomaticReadingReviewBox({
   return (
     <WorkshopCard title="Boîte de revue automatique">
       {readings.length === 0 ? (
-        <p className="text-muted-foreground">Aucune lecture automatique enregistrée pour cette section.</p>
+        <p>Aucune lecture automatique enregistrée pour cette section.</p>
       ) : (
-        <div className="space-y-3">
-          <p className="text-muted-foreground">Aucune proposition n’est choisie automatiquement.</p>
+        <div>
+          <p>Aucune proposition n’est choisie automatiquement.</p>
           {readings.map((request) => (
-            <div key={request.id} className="space-y-3 rounded bg-muted/60 px-3 py-2">
-              <div className="space-y-1">
-                <p className="font-medium">{automaticReadingStatusLabel(request.status)}</p>
-                <p className="text-muted-foreground">
+            <div key={request.id}>
+              <div>
+                <p>{automaticReadingStatusLabel(request.status)}</p>
+                <p>
                   {automaticReadingReviewStatusLabel(request.reviewStatus)} · {request.historical ? "Historique" : "Courante"}
                 </p>
-                <p className="text-muted-foreground">
+                <p>
                   Déclenchée par {automaticReadingTriggerLabel(request.trigger)}
                   {request.historical ? " · historique" : ""}
                 </p>
               </div>
               {request.reading && <AutomaticReadingDetails request={request} />}
-              {request.failure && <p className="text-rose-600">Lecture indisponible : {request.failure}</p>}
-              <div className="flex flex-wrap gap-2">
+              {request.failure && <p>Lecture indisponible : {request.failure}</p>}
+              <div>
                 <Button
                   variant="outline"
                   onClick={() => onReview(request.id, "kept")}
@@ -649,7 +640,7 @@ function AutomaticReadingReviewBox({
               </div>
             </div>
           ))}
-          {error && <p className="text-sm text-rose-600">Revue indisponible : {error}</p>}
+          {error && <p>Revue indisponible : {error}</p>}
         </div>
       )}
     </WorkshopCard>
@@ -660,14 +651,14 @@ function AutomaticReadingDetails({ request }: { request: AutomaticDiffractiveRea
   const reading = request.reading;
   if (!reading) return null;
   return (
-    <details open className="space-y-3 rounded border bg-background/70 p-3">
-      <summary className="cursor-pointer font-medium">Consulter la lecture complète</summary>
-      <div className="mt-3 space-y-3">
+    <details open>
+      <summary>Consulter la lecture complète</summary>
+      <div>
         <ReadingItems title="Passe 1 — Réfraction" items={reading.pass1.refraction} />
         <ReadingItems title="Passe 2 — Motifs nommés" items={reading.pass2.namedPatterns} />
         <section>
-          <h4 className="font-medium">Passe 2 — Defaults révélés</h4>
-          <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+          <h4>Passe 2 — Defaults révélés</h4>
+          <ul>
             {reading.pass2.revealedDefaults.map((item) => (
               <li key={`${item.default}-${item.priorCut ?? ""}`}>
                 {item.default}{item.priorCut ? ` — coupe antérieure : ${item.priorCut}` : ""}
@@ -676,32 +667,32 @@ function AutomaticReadingDetails({ request }: { request: AutomaticDiffractiveRea
           </ul>
         </section>
         <section>
-          <h4 className="font-medium">Passe 3 — Enchevêtrements</h4>
-          <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+          <h4>Passe 3 — Enchevêtrements</h4>
+          <ul>
             {reading.pass3.entanglements.map((item) => (
               <li key={item.name}>{item.name} — {item.cutIfIntegrated}</li>
             ))}
           </ul>
         </section>
         <section>
-          <h4 className="font-medium">Coupe agentielle</h4>
-          <p className="text-muted-foreground">{reading.pass4.cut}</p>
+          <h4>Coupe agentielle</h4>
+          <p>{reading.pass4.cut}</p>
           <ReadingItems title="Inclus" items={reading.pass4.included} />
           <ReadingItems title="Exclus" items={reading.pass4.excluded} />
           <ReadingItems title="Exclusion de la non-décision" items={reading.pass4.cutOfNonAdoption} />
         </section>
         <section>
-          <h4 className="font-medium">Verdict</h4>
-          <p className="text-muted-foreground">
+          <h4>Verdict</h4>
+          <p>
             {VERDICT_LABELS[reading.verdict] ?? reading.verdict} — {reading.verdictDetail}
           </p>
         </section>
         <section>
-          <h4 className="font-medium">Compromis</h4>
+          <h4>Compromis</h4>
           {reading.tradeoffs.length === 0 ? (
-            <p className="text-muted-foreground">Aucun compromis renseigné.</p>
+            <p>Aucun compromis renseigné.</p>
           ) : (
-            <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+            <ul>
               {reading.tradeoffs.map((tradeoff) => (
                 <li key={tradeoff.path}>
                   {tradeoff.path} — effort : {tradeoff.effort} ; réversibilité : {tradeoff.reversibility} ; levier : {tradeoff.leverage} ; taxe de distraction : {tradeoff.distractionTax}.
@@ -711,9 +702,9 @@ function AutomaticReadingDetails({ request }: { request: AutomaticDiffractiveRea
           )}
         </section>
         <section>
-          <h4 className="font-medium">Provenance</h4>
-          <p className="text-muted-foreground">{request.scope.sectionId} · {request.fingerprint}</p>
-          <p className="text-muted-foreground">
+          <h4>Provenance</h4>
+          <p>{request.scope.sectionId} · {request.fingerprint}</p>
+          <p>
             Demandée par l’auteur le {new Date(request.createdAt).toLocaleString("fr-FR")}.
           </p>
         </section>
@@ -725,11 +716,11 @@ function AutomaticReadingDetails({ request }: { request: AutomaticDiffractiveRea
 function ReadingItems({ title, items }: { title: string; items: string[] }) {
   return (
     <section>
-      <h4 className="font-medium">{title}</h4>
+      <h4>{title}</h4>
       {items.length === 0 ? (
-        <p className="text-muted-foreground">Aucun élément renseigné.</p>
+        <p>Aucun élément renseigné.</p>
       ) : (
-        <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+        <ul>
           {items.map((item) => <li key={item}>{item}</li>)}
         </ul>
       )}
@@ -747,21 +738,21 @@ function WritingContextResult({
   onCreate: () => void;
 }) {
   return (
-    <div className="space-y-3 rounded border border-emerald-200 bg-emerald-50/40 p-3">
-      <p className="font-medium">Contexte de rédaction préparé : aucune génération n’a été lancée.</p>
-      <p className="text-muted-foreground">Décision {context.decision.id}, validée par {context.decision.validation.validatedBy}.</p>
-      <p className="text-muted-foreground">{context.evidencePack.sourceIds.length} preuve{context.evidencePack.sourceIds.length > 1 ? "s" : ""} retenue{context.evidencePack.sourceIds.length > 1 ? "s" : ""} dans l’EvidencePack.</p>
-      <ul className="space-y-2">
+    <div>
+      <p>Contexte de rédaction préparé : aucune génération n’a été lancée.</p>
+      <p>Décision {context.decision.id}, validée par {context.decision.validation.validatedBy}.</p>
+      <p>{context.evidencePack.sourceIds.length} preuve{context.evidencePack.sourceIds.length > 1 ? "s" : ""} retenue{context.evidencePack.sourceIds.length > 1 ? "s" : ""} dans l’EvidencePack.</p>
+      <ul>
         {context.visibleSources.map((source) => (
-          <li key={source.sourceId} className="rounded bg-background/70 px-3 py-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="font-medium">{source.title}</span>
-              <span className={source.inclusion === "evidence_pack" ? "text-emerald-700" : "text-amber-700"}>
+          <li key={source.sourceId}>
+            <div>
+              <span>{source.title}</span>
+              <span>
                 {source.inclusion === "evidence_pack" ? "Preuve retenue" : "Visible, non retenue"}
               </span>
             </div>
-            <p className="text-xs text-muted-foreground">Distribution : {source.provenance.distributionRationale}</p>
-            {source.exclusionReason && <p className="text-xs text-muted-foreground">Exclusion : {source.exclusionReason === "missing_or_unqualified_profile" ? "profil manquant ou non qualifiant" : "extrait manquant"}.</p>}
+            <p>Distribution : {source.provenance.distributionRationale}</p>
+            {source.exclusionReason && <p>Exclusion : {source.exclusionReason === "missing_or_unqualified_profile" ? "profil manquant ou non qualifiant" : "extrait manquant"}.</p>}
           </li>
         ))}
       </ul>
@@ -795,62 +786,62 @@ function ReadingResult({
     authorNote.trim().length > 0;
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <span className={`rounded-full px-3 py-1 text-sm font-semibold ${VERDICT_STYLES[reading.verdict] ?? "bg-slate-100 text-slate-800"}`}>{VERDICT_LABELS[reading.verdict] ?? reading.verdict}</span>
-        <span className="text-sm text-muted-foreground">{reading.verdictDetail}</span>
-        {scope && <span className="rounded border border-dashed px-2 py-1 text-xs text-muted-foreground">{readingScopeLabel(scope)}</span>}
-        <span className="rounded border border-dashed px-2 py-1 text-xs text-muted-foreground">Proposition non exécutable avant acte auteur</span>
+    <div>
+      <div>
+        <span>{VERDICT_LABELS[reading.verdict] ?? reading.verdict}</span>
+        <span>{reading.verdictDetail}</span>
+        {scope && <span>{readingScopeLabel(scope)}</span>}
+        <span>Proposition non exécutable avant acte auteur</span>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div>
         <WorkshopCard title="Pass 1 — le fragment à travers le livre">
-          {reading.pass1.refraction.length > 0 ? <ul className="list-disc space-y-1 pl-4">{reading.pass1.refraction.map((item) => <li key={item}>{item}</li>)}</ul> : <p className="text-muted-foreground">Aucune réfraction supplémentaire.</p>}
+          {reading.pass1.refraction.length > 0 ? <ul>{reading.pass1.refraction.map((item) => <li key={item}>{item}</li>)}</ul> : <p>Aucune réfraction supplémentaire.</p>}
         </WorkshopCard>
-        <WorkshopCard title="Pass 4 — la coupe agentielle"><p className="font-medium">{reading.pass4.cut}</p><p className="mt-2 text-muted-foreground">{reading.action}</p></WorkshopCard>
+        <WorkshopCard title="Pass 4 — la coupe agentielle"><p>{reading.pass4.cut}</p><p>{reading.action}</p></WorkshopCard>
       </div>
 
       {(reading.planImpacts.length > 0 || reading.bibliographyImpacts.length > 0) && (
-        <div className="grid gap-4 md:grid-cols-2">
-          {reading.planImpacts.length > 0 && <WorkshopCard title="Impacts sur le plan"><ul className="list-disc space-y-1 pl-4">{reading.planImpacts.map((impact) => <li key={`${impact.partId}-${impact.entryId ?? impact.impact}`}>{impact.impact}</li>)}</ul></WorkshopCard>}
-          {reading.bibliographyImpacts.length > 0 && <WorkshopCard title="Impacts bibliographiques"><ul className="list-disc space-y-1 pl-4">{reading.bibliographyImpacts.map((impact) => <li key={`${impact.sourceId}-${impact.scopeId}`}>{impact.kind} — {impact.impact}</li>)}</ul></WorkshopCard>}
+        <div>
+          {reading.planImpacts.length > 0 && <WorkshopCard title="Impacts sur le plan"><ul>{reading.planImpacts.map((impact) => <li key={`${impact.partId}-${impact.entryId ?? impact.impact}`}>{impact.impact}</li>)}</ul></WorkshopCard>}
+          {reading.bibliographyImpacts.length > 0 && <WorkshopCard title="Impacts bibliographiques"><ul>{reading.bibliographyImpacts.map((impact) => <li key={`${impact.sourceId}-${impact.scopeId}`}>{impact.kind} — {impact.impact}</li>)}</ul></WorkshopCard>}
         </div>
       )}
 
       <WorkshopCard title="Acte auteur">
         {!proposal ? (
-          <p className="text-muted-foreground">Cette lecture n’est rattachée à aucune proposition candidate ; aucun acte ne peut être enregistré.</p>
+          <p>Cette lecture n’est rattachée à aucune proposition candidate ; aucun acte ne peut être enregistré.</p>
         ) : (
-          <div className="space-y-3">
-            <p className="text-muted-foreground">La proposition {proposal.id} reste candidate jusqu’à votre acte explicite.</p>
+          <div>
+            <p>La proposition {proposal.id} reste candidate jusqu’à votre acte explicite.</p>
             {authorAction === null && (
-              <div className="space-y-2">
+              <div>
                 <Label htmlFor="validationNote">Note de validation (facultative)</Label>
                 <Textarea id="validationNote" value={authorNote} onChange={(event) => onAuthorNote(event.target.value)} rows={2} />
               </div>
             )}
-            <div className="flex flex-wrap gap-2">
+            <div>
               <Button disabled={loading} onClick={() => onSubmit("accept")}>{loading ? "Enregistrement…" : "Valider"}</Button>
               <Button disabled={loading} variant="outline" onClick={() => onAuthorAction(authorAction === "adapt" ? null : "adapt")}>Adapter</Button>
               <Button disabled={loading} variant="outline" onClick={() => onAuthorAction(authorAction === "reject" ? null : "reject")}>Refuser</Button>
             </div>
             {authorAction === "adapt" && (
-              <div className="space-y-3 rounded border p-3">
-                <p className="font-medium">Adapter la proposition</p>
-                <div className="space-y-2"><Label htmlFor="contentCommitments">Engagements de contenu (une ligne par engagement)</Label><Textarea id="contentCommitments" value={contentCommitments} onChange={(event) => onContentCommitments(event.target.value)} rows={3} /></div>
-                <div className="space-y-2"><Label htmlFor="formalCommitments">Engagements de forme (une ligne par engagement)</Label><Textarea id="formalCommitments" value={formalCommitments} onChange={(event) => onFormalCommitments(event.target.value)} rows={3} /></div>
-                <div className="space-y-2"><Label htmlFor="adaptationNote">Note d’adaptation</Label><Textarea id="adaptationNote" value={authorNote} onChange={(event) => onAuthorNote(event.target.value)} rows={3} /></div>
+              <div>
+                <p>Adapter la proposition</p>
+                <div><Label htmlFor="contentCommitments">Engagements de contenu (une ligne par engagement)</Label><Textarea id="contentCommitments" value={contentCommitments} onChange={(event) => onContentCommitments(event.target.value)} rows={3} /></div>
+                <div><Label htmlFor="formalCommitments">Engagements de forme (une ligne par engagement)</Label><Textarea id="formalCommitments" value={formalCommitments} onChange={(event) => onFormalCommitments(event.target.value)} rows={3} /></div>
+                <div><Label htmlFor="adaptationNote">Note d’adaptation</Label><Textarea id="adaptationNote" value={authorNote} onChange={(event) => onAuthorNote(event.target.value)} rows={3} /></div>
                 <Button disabled={loading || !adaptationReady} onClick={() => onSubmit("modify")}>Enregistrer l’adaptation</Button>
               </div>
             )}
             {authorAction === "reject" && (
-              <div className="space-y-3 rounded border p-3">
-                <p className="font-medium">Refuser la proposition</p>
-                <div className="space-y-2"><Label htmlFor="rejectionNote">Note de refus (facultative)</Label><Textarea id="rejectionNote" value={authorNote} onChange={(event) => onAuthorNote(event.target.value)} rows={3} /></div>
+              <div>
+                <p>Refuser la proposition</p>
+                <div><Label htmlFor="rejectionNote">Note de refus (facultative)</Label><Textarea id="rejectionNote" value={authorNote} onChange={(event) => onAuthorNote(event.target.value)} rows={3} /></div>
                 <Button disabled={loading} variant="outline" onClick={() => onSubmit("reject")}>Confirmer le refus</Button>
               </div>
             )}
-            {error && <p className="text-sm text-rose-600">Décision indisponible : {error}</p>}
+            {error && <p>Décision indisponible : {error}</p>}
           </div>
         )}
       </WorkshopCard>

@@ -49,10 +49,10 @@ export function ChapterOperationPanel({ projectId, chapterId }: ChapterOperation
       <CardHeader>
         <CardTitle>Opération de chapitre</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent>
         {!operation ? (
-          <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">
+          <div>
+            <p>
               Déclarez une opération pour rendre ses futurs actes observables. Cette déclaration ne lance aucun travail.
             </p>
             <Button
@@ -65,16 +65,16 @@ export function ChapterOperationPanel({ projectId, chapterId }: ChapterOperation
           </div>
         ) : (
           <>
-            <div className="space-y-1">
-              <p className="font-medium">{stateLabels[operation.state]}</p>
+            <div>
+              <p>{stateLabels[operation.state]}</p>
               {operation.state === "preparing" && (
-                <p className="text-sm text-muted-foreground">
+                <p>
                   Préparation déclarée : aucun travail automatique n’est lancé.
                 </p>
               )}
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div>
               {operation.state === "preparing" && (
                 <Button
                   type="button"
@@ -125,7 +125,7 @@ export function ChapterOperationPanel({ projectId, chapterId }: ChapterOperation
               )}
             </div>
 
-            <ol className="space-y-1 text-sm text-muted-foreground">
+            <ol>
               {operation.trace.map((event, index) => (
                 <li key={`${event.occurredAt}-${index}`}>
                   {event.type} — {event.actor}

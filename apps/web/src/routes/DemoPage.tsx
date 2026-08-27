@@ -16,14 +16,6 @@ import {
 } from "@/api";
 import type { DiffractiveReading } from "@auto-essay/core";
 
-const VERDICT_STYLES: Record<string, string> = {
-  integrate_now: "bg-emerald-100 text-emerald-900",
-  adapt_differently: "bg-amber-100 text-amber-900",
-  incubate: "bg-sky-100 text-sky-900",
-  archive: "bg-slate-200 text-slate-800",
-  discard: "bg-rose-100 text-rose-900",
-};
-
 const VERDICT_LABELS: Record<string, string> = {
   integrate_now: "Intégrer maintenant",
   adapt_differently: "Adapter la coupe",
@@ -35,10 +27,10 @@ const VERDICT_LABELS: Record<string, string> = {
 function PassCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm">{title}</CardTitle>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
       </CardHeader>
-      <CardContent className="text-sm">{children}</CardContent>
+      <CardContent>{children}</CardContent>
     </Card>
   );
 }
@@ -83,10 +75,10 @@ export function DemoPage() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-4xl space-y-6">
+      <div>
         <div>
-          <h1 className="text-2xl font-bold">Lecture diffractive — démo</h1>
-          <p className="text-muted-foreground text-sm">
+          <h1>Lecture diffractive — démo</h1>
+          <p>
             {demo
               ? `${demo.title} — ${demo.chapter.title}. Bibliothèque graphifiée : ${demo.sourcesCount} sources, graphe de ${demo.graphSummary.nodes} nœuds / ${demo.graphSummary.links} arêtes.`
               : "Chargement du contexte de démonstration…"}
@@ -94,17 +86,17 @@ export function DemoPage() {
         </div>
 
         {contextError && (
-          <p className="text-sm text-rose-600">
+          <p>
             Contexte indisponible : {contextError} (l'API doit être lancée depuis
             apps/api avec le .env renseigné).
           </p>
         )}
 
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Fragment à diffracter</CardTitle>
+          <CardHeader>
+            <CardTitle>Fragment à diffracter</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent>
             <Textarea
               value={statement}
               onChange={(e) => setStatement(e.target.value)}
@@ -112,7 +104,7 @@ export function DemoPage() {
               rows={3}
             />
             {demo && demo.suggestedFragments.length > 0 && (
-              <div className="flex flex-wrap gap-2">
+              <div>
                 {demo.suggestedFragments.map((f) => (
                   <Button
                     key={f.label}
@@ -128,33 +120,33 @@ export function DemoPage() {
                 ))}
               </div>
             )}
-            <div className="flex items-center gap-3">
+            <div>
               <Button onClick={() => void handleRun()} disabled={loading || !demo}>
                 {loading ? "Lecture en cours…" : "Lire (4 passes + verdict)"}
               </Button>
-              {error && <p className="text-sm text-rose-600">{error}</p>}
+              {error && <p>{error}</p>}
             </div>
           </CardContent>
         </Card>
 
         {demo && demo.context.bookBibliography.graphNeighborhoods && (
           <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">
+            <CardHeader>
+              <CardTitle>
                 Signaux du graphe envoyés au lecteur (
                 {demo.context.bookBibliography.graphNeighborhoods.length} voisinages)
               </CardTitle>
             </CardHeader>
-            <CardContent className="text-xs">
+            <CardContent>
               <details>
-                <summary className="cursor-pointer text-sm">
+                <summary>
                   Voir les voisinages (BFS budgété, zéro token)
                 </summary>
-                <div className="mt-2 space-y-3">
+                <div>
                   {demo.context.bookBibliography.graphNeighborhoods.map((n) => (
                     <div key={n.term}>
-                      <p className="font-medium">Terme : {n.term}</p>
-                      <pre className="whitespace-pre-wrap rounded bg-muted p-2">
+                      <p>Terme : {n.term}</p>
+                      <pre>
                         {n.text}
                       </pre>
                     </div>
@@ -166,23 +158,20 @@ export function DemoPage() {
         )}
 
         {reading && (
-          <div className="space-y-4">
-            <div className="flex flex-wrap items-center gap-3">
+          <div>
+            <div>
               <span
-                className={`rounded-full px-3 py-1 text-sm font-semibold ${
-                  VERDICT_STYLES[reading.verdict] ?? "bg-slate-100 text-slate-800"
-                }`}
               >
                 {VERDICT_LABELS[reading.verdict] ?? reading.verdict}
               </span>
-              <span className="text-sm text-muted-foreground">
+              <span>
                 {reading.verdictDetail}
               </span>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div>
               <PassCard title="Pass 1 — le fragment à travers le livre">
-                <ul className="list-disc space-y-1 pl-4">
+                <ul>
                   {reading.pass1.refraction.map((r, i) => (
                     <li key={i}>{r}</li>
                   ))}
@@ -190,14 +179,14 @@ export function DemoPage() {
               </PassCard>
               <PassCard title="Pass 2 — le livre à travers le fragment">
                 {reading.pass2.namedPatterns.length > 0 && (
-                  <ul className="list-disc space-y-1 pl-4">
+                  <ul>
                     {reading.pass2.namedPatterns.map((p, i) => (
                       <li key={i}>{p}</li>
                     ))}
                   </ul>
                 )}
                 {reading.pass2.revealedDefaults.length > 0 && (
-                  <ul className="mt-2 list-disc space-y-1 pl-4 text-muted-foreground">
+                  <ul>
                     {reading.pass2.revealedDefaults.map((d, i) => (
                       <li key={i}>
                         défaut : {d.default}
@@ -209,13 +198,13 @@ export function DemoPage() {
               </PassCard>
               <PassCard title="Pass 3 — enchevêtrements">
                 {reading.pass3.entanglements.length === 0 ? (
-                  <p className="text-muted-foreground">Aucun enchevêtrement honnête.</p>
+                  <p>Aucun enchevêtrement honnête.</p>
                 ) : (
-                  <ul className="space-y-2">
+                  <ul>
                     {reading.pass3.entanglements.map((e, i) => (
                       <li key={i}>
-                        <p className="font-medium">{e.name}</p>
-                        <p className="text-muted-foreground">
+                        <p>{e.name}</p>
+                        <p>
                           coupe si intégré : {e.cutIfIntegrated}
                         </p>
                       </li>
@@ -224,8 +213,8 @@ export function DemoPage() {
                 )}
               </PassCard>
               <PassCard title="Pass 4 — la coupe agentielle">
-                <p className="font-medium">{reading.pass4.cut}</p>
-                <ul className="mt-2 list-disc space-y-1 pl-4">
+                <p>{reading.pass4.cut}</p>
+                <ul>
                   {reading.pass4.included.map((x, i) => (
                     <li key={i}>inclut : {x}</li>
                   ))}
@@ -233,7 +222,7 @@ export function DemoPage() {
                     <li key={i}>exclut : {x}</li>
                   ))}
                   {reading.pass4.cutOfNonAdoption.map((x, i) => (
-                    <li key={i} className="text-muted-foreground">
+                    <li key={i}>
                       sinon : {x}
                     </li>
                   ))}
@@ -242,10 +231,10 @@ export function DemoPage() {
             </div>
 
             {(planImpacts.length > 0 || bibliographyImpacts.length > 0) && (
-              <div className="grid gap-4 md:grid-cols-2">
+              <div>
                 {planImpacts.length > 0 && (
                   <PassCard title="Impacts sur le plan">
-                    <ul className="list-disc space-y-1 pl-4">
+                    <ul>
                       {planImpacts.map((p, i) => (
                         <li key={i}>
                           [{p.partId}
@@ -257,11 +246,11 @@ export function DemoPage() {
                 )}
                 {bibliographyImpacts.length > 0 && (
                   <PassCard title="Impacts bibliographiques (signaux du graphe qualifiés)">
-                    <ul className="list-disc space-y-1 pl-4">
+                    <ul>
                       {bibliographyImpacts.map((b, i) => (
                         <li key={i}>
-                          <span className="font-medium">{b.kind}</span> — {b.impact}
-                          <span className="text-muted-foreground">
+                          <span>{b.kind}</span> — {b.impact}
+                          <span>
                             {" "}
                             ({b.sourceId} / {b.scopeId})
                           </span>
@@ -275,14 +264,14 @@ export function DemoPage() {
 
             {reading.tradeoffs.length > 0 && (
               <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">Matrice de compromis</CardTitle>
+                <CardHeader>
+                  <CardTitle>Matrice de compromis</CardTitle>
                 </CardHeader>
-                <CardContent className="text-sm">
-                  <ul className="space-y-2">
+                <CardContent>
+                  <ul>
                     {reading.tradeoffs.map((t, i) => (
                       <li key={i}>
-                        <span className="font-medium">{t.path}</span> — verdict{" "}
+                        <span>{t.path}</span> — verdict{" "}
                         {VERDICT_LABELS[t.verdict] ?? t.verdict} — effort : {t.effort},
                         réversibilité : {t.reversibility}, levier : {t.leverage},
                         taxe de distraction : {t.distractionTax}

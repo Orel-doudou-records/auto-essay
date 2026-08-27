@@ -1,19 +1,22 @@
 import * as React from "react";
-import { cn } from "@/lib/utils";
+import * as stylex from "@stylexjs/stylex";
+import { themeVars } from "../../styles/tokens.stylex";
 
-const Label = React.forwardRef<
-  HTMLLabelElement,
-  React.LabelHTMLAttributes<HTMLLabelElement>
->(({ className, ...props }, ref) => (
-  <label
-    ref={ref}
-    className={cn(
-      "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
-      className
-    )}
-    {...props}
-  />
+export type LabelProps = Omit<React.LabelHTMLAttributes<HTMLLabelElement>, "className">;
+
+const Label = React.forwardRef<HTMLLabelElement, LabelProps>((props, ref) => (
+  <label ref={ref} {...props} {...stylex.props(styles.label)} />
 ));
 Label.displayName = "Label";
+
+const styles = stylex.create({
+  label: {
+    color: themeVars.textPrimary,
+    fontFamily: themeVars.fontInterface,
+    fontSize: "0.875rem",
+    fontWeight: 600,
+    lineHeight: 1.2,
+  },
+});
 
 export { Label };

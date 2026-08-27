@@ -1,0 +1,25 @@
+import * as stylex from "@stylexjs/stylex";
+
+export const themeVars = stylex.defineVars({
+  canvas: "#f7f7f5",
+  surface: "#ffffff",
+  surfaceRaised: "#efefec",
+  textPrimary: "#20252d",
+  textSecondary: "#606975",
+  textSubtle: "#7f8791",
+  border: "#d9dcd9",
+  accent: "#476379",
+  accentHover: "#38566d",
+  accentContrast: "#ffffff",
+  accentMuted: "#e7edf1",
+  danger: "#b34545",
+  dangerHover: "#943535",
+  dangerMuted: "#f9e8e8",
+  focus: "#476379",
+  shadow: "0 12px 36px rgba(30, 37, 45, 0.08)",
+  radiusSmall: "6px",
+  radiusMedium: "10px",
+  radiusLarge: "16px",
+  fontInterface: "Inter, ui-sans-serif, system-ui, sans-serif",
+  fontManuscript: "Iowan Old Style, Palatino Linotype, Book Antiqua, Georgia, serif",
+});

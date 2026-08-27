@@ -36,15 +36,15 @@ export function ProjectPage() {
 
   return (
     <AppShell projectId={projectId}>
-      <div className="mx-auto max-w-3xl space-y-6">
-        <h1 className="text-2xl font-bold">Projet</h1>
-        <form onSubmit={handleSave} className="space-y-4">
+      <div>
+        <h1>Projet</h1>
+        <form onSubmit={handleSave}>
           <Card>
             <CardHeader>
               <CardTitle>Métadonnées</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
+            <CardContent>
+              <div>
                 <Label htmlFor="title">Titre</Label>
                 <Input
                   id="title"
@@ -52,7 +52,7 @@ export function ProjectPage() {
                   onChange={(e) => setTitle(e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
+              <div>
                 <Label htmlFor="thesisSeed">Thèse (amorce)</Label>
                 <Textarea
                   id="thesisSeed"
@@ -72,7 +72,7 @@ export function ProjectPage() {
               <CardTitle>Carte argumentative</CardTitle>
             </CardHeader>
             <CardContent>
-              <pre className="rounded bg-muted p-3 text-xs">
+              <pre>
                 {JSON.stringify(project.argumentMap, null, 2)}
               </pre>
             </CardContent>
