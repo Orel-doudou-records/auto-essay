@@ -10,6 +10,7 @@ import {
   generateUnit,
   modifyEditorialProposal,
   rejectEditorialProposal,
+  reviewAutomaticDiffractiveReading,
   runEditorialParagraphReading,
   runEditorialSectionReading,
   runEditorialSectionScopeReading,
@@ -28,6 +29,7 @@ vi.mock("@/api", () => ({
   acceptEditorialProposal: vi.fn(),
   modifyEditorialProposal: vi.fn(),
   rejectEditorialProposal: vi.fn(),
+  reviewAutomaticDiffractiveReading: vi.fn(),
 }));
 
 const fetchContext = vi.mocked(fetchEditorialSectionContext);
@@ -41,6 +43,7 @@ const setDiffractionMode = vi.mocked(setEditorialSectionDiffractionMode);
 const acceptProposal = vi.mocked(acceptEditorialProposal);
 const modifyProposal = vi.mocked(modifyEditorialProposal);
 const rejectProposal = vi.mocked(rejectEditorialProposal);
+const reviewAutomaticReading = vi.mocked(reviewAutomaticDiffractiveReading);
 
 const context = {
   projectId: "project-1",
@@ -218,6 +221,7 @@ describe("AuthorWorkshopPage", () => {
         requestedBy: "author",
         trigger: "activation",
         status: "pending",
+        reviewStatus: "new",
         historical: false,
         createdAt: "2026-08-27T09:00:00.000Z",
       },
@@ -261,6 +265,7 @@ describe("AuthorWorkshopPage", () => {
             requestedBy: "author" as const,
             trigger: "text_changed" as const,
             status: "completed" as const,
+            reviewStatus: "new" as const,
             historical: true,
             createdAt: "2026-08-27T09:00:00.000Z",
             reading,
@@ -280,6 +285,71 @@ describe("AuthorWorkshopPage", () => {
     expect(runReading).not.toHaveBeenCalled();
     expect(runSectionScopeReading).not.toHaveBeenCalled();
     expect(runParagraphReading).not.toHaveBeenCalled();
+    expect(generateDraftUnit).not.toHaveBeenCalled();
+  });
+
+  it("shows detailed automatic reading provenance and lets the author keep it without an editorial act", async () => {
+    const automaticReading = {
+      id: "automatic-reading-1",
+      sectionId: "section-1",
+      scope: { kind: "section" as const, sectionId: "section-1" },
+      fingerprint: "fingerprint-review-1",
+      requestedBy: "author" as const,
+      trigger: "text_changed" as const,
+      status: "completed" as const,
+      reviewStatus: "new" as const,
+      historical: false,
+      createdAt: "2026-08-27T09:00:00.000Z",
+      reading,
+    };
+    fetchContext.mockResolvedValue({
+      ...context,
+      diffraction: {
+        ...context.diffraction,
+        mode: "automatic" as const,
+        automaticReadings: [automaticReading],
+      },
+    });
+    reviewAutomaticReading
+      .mockResolvedValueOnce({ automaticReading: { ...automaticReading, reviewStatus: "kept" } })
+      .mockResolvedValueOnce({ automaticReading: { ...automaticReading, reviewStatus: "archived" } });
+    renderPage();
+
+    fireEvent.change(screen.getByLabelText("ID de section"), { target: { value: "section-1" } });
+    fireEvent.click(screen.getByRole("button", { name: "Charger l’atelier" }));
+
+    expect(await screen.findByText("Passe 1 — Réfraction")).toBeInTheDocument();
+    expect(screen.getByText("Coupe agentielle")).toBeInTheDocument();
+    expect(screen.getByText("Verdict")).toBeInTheDocument();
+    expect(screen.getByText("Compromis")).toBeInTheDocument();
+    expect(screen.getByText("Provenance")).toBeInTheDocument();
+    expect(screen.getByText("section-1 · fingerprint-review-1")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Conserver cette lecture" }));
+    await waitFor(() => {
+      expect(reviewAutomaticReading).toHaveBeenCalledWith(
+        "project-1",
+        "section-1",
+        "automatic-reading-1",
+        "kept"
+      );
+    });
+    expect(await screen.findByText(/Lecture conservée/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Archiver cette lecture" }));
+    await waitFor(() => {
+      expect(reviewAutomaticReading).toHaveBeenLastCalledWith(
+        "project-1",
+        "section-1",
+        "automatic-reading-1",
+        "archived"
+      );
+    });
+    expect(await screen.findByText(/Lecture archivée/)).toBeInTheDocument();
+    expect(acceptProposal).not.toHaveBeenCalled();
+    expect(modifyProposal).not.toHaveBeenCalled();
+    expect(rejectProposal).not.toHaveBeenCalled();
+    expect(runReading).not.toHaveBeenCalled();
     expect(generateDraftUnit).not.toHaveBeenCalled();
   });
 

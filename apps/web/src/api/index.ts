@@ -82,6 +82,7 @@ export interface AutomaticDiffractiveReadingPayload {
   requestedBy: "author";
   trigger: "activation" | "text_changed" | "plan_changed" | "decision_changed" | "sources_changed";
   status: "pending" | "running" | "completed" | "failed" | "superseded";
+  reviewStatus: "new" | "kept" | "archived";
   historical: boolean;
   reading?: DiffractiveReading;
   failure?: string;
@@ -320,6 +321,24 @@ export async function setEditorialSectionDiffractionMode(
     mode: "strict" | "automatic";
     request?: AutomaticDiffractiveReadingPayload;
   }>;
+}
+
+export async function reviewAutomaticDiffractiveReading(
+  projectId: string,
+  sectionId: string,
+  readingId: string,
+  disposition: "kept" | "archived"
+): Promise<{ automaticReading: AutomaticDiffractiveReadingPayload }> {
+  const res = await fetch(
+    `${API}/projects/${projectId}/editorial/sections/${sectionId}/automatic-readings/${readingId}/review`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ disposition }),
+    }
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<{ automaticReading: AutomaticDiffractiveReadingPayload }>;
 }
 
 export async function runEditorialSectionReading(

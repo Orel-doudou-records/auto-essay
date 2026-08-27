@@ -29,6 +29,10 @@ export const UpdateDiffractiveReadingModeBodySchema = z.object({
   mode: DiffractiveReadingModeSchema,
 });
 
+export const ReviewAutomaticDiffractiveReadingBodySchema = z.object({
+  disposition: z.enum(["kept", "archived"]),
+});
+
 const DecisionCommitmentsSchema = z.object({
   contentCommitments: z.array(z.string().min(1)).min(1),
   formalCommitments: z.array(z.string().min(1)).min(1),
@@ -73,6 +77,9 @@ export type ReadSectionBody = z.infer<typeof ReadSectionBodySchema>;
 export type ReadScopedSectionBody = z.infer<typeof ReadScopedSectionBodySchema>;
 export type UpdateDiffractiveReadingModeBody = z.infer<
   typeof UpdateDiffractiveReadingModeBodySchema
+>;
+export type ReviewAutomaticDiffractiveReadingBody = z.infer<
+  typeof ReviewAutomaticDiffractiveReadingBodySchema
 >;
 export type DecisionCommitmentsBody = z.infer<typeof DecisionCommitmentsSchema>;
 export type CreateWritingDraftUnitBody = z.infer<typeof CreateWritingDraftUnitBodySchema>;

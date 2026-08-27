@@ -16,6 +16,11 @@ export type AutomaticDiffractiveReadingStatus = z.infer<
   typeof AutomaticDiffractiveReadingStatusSchema
 >;
 
+export const AutomaticDiffractiveReadingReviewStatusSchema = z.enum(["new", "kept", "archived"]);
+export type AutomaticDiffractiveReadingReviewStatus = z.infer<
+  typeof AutomaticDiffractiveReadingReviewStatusSchema
+>;
+
 export const AutomaticDiffractiveReadingTriggerSchema = z.enum([
   "activation",
   "text_changed",
@@ -105,6 +110,7 @@ export const AutomaticDiffractiveReadingSchema = z
     requestedBy: z.literal("author"),
     trigger: AutomaticDiffractiveReadingTriggerSchema,
     status: AutomaticDiffractiveReadingStatusSchema,
+    reviewStatus: AutomaticDiffractiveReadingReviewStatusSchema.default("new"),
     input: AutomaticDiffractiveReadingInputSchema,
     reading: DiffractiveReadingSchema.optional(),
     failure: z.string().min(1).optional(),
@@ -185,6 +191,18 @@ export function completeAutomaticDiffractiveReading(
     ...request,
     status: "completed",
     reading,
+    updatedAt: occurredAt,
+  });
+}
+
+export function setAutomaticDiffractiveReadingReviewStatus(
+  request: AutomaticDiffractiveReading,
+  reviewStatus: Exclude<AutomaticDiffractiveReadingReviewStatus, "new">,
+  occurredAt = new Date().toISOString()
+): AutomaticDiffractiveReading {
+  return AutomaticDiffractiveReadingSchema.parse({
+    ...request,
+    reviewStatus,
     updatedAt: occurredAt,
   });
 }

@@ -14,6 +14,7 @@ import {
   fetchEditorialWritingContext,
   modifyEditorialProposal,
   rejectEditorialProposal,
+  reviewAutomaticDiffractiveReading,
   runEditorialParagraphReading,
   runEditorialSectionReading,
   runEditorialSectionScopeReading,
@@ -68,6 +69,8 @@ export function AuthorWorkshopPage() {
   const [readingError, setReadingError] = useState<string | null>(null);
   const [modeLoading, setModeLoading] = useState(false);
   const [modeError, setModeError] = useState<string | null>(null);
+  const [reviewingReadingId, setReviewingReadingId] = useState<string | null>(null);
+  const [reviewError, setReviewError] = useState<string | null>(null);
   const [authorAction, setAuthorAction] = useState<AuthorAction>(null);
   const [contentCommitments, setContentCommitments] = useState("");
   const [formalCommitments, setFormalCommitments] = useState("");
@@ -155,6 +158,39 @@ export function AuthorWorkshopPage() {
       setModeError(error instanceof Error ? error.message : String(error));
     } finally {
       setModeLoading(false);
+    }
+  }
+
+  async function reviewAutomaticReading(
+    readingId: string,
+    disposition: "kept" | "archived"
+  ) {
+    if (!projectId || !context || reviewingReadingId) return;
+    setReviewingReadingId(readingId);
+    setReviewError(null);
+    try {
+      const result = await reviewAutomaticDiffractiveReading(
+        projectId,
+        context.section.id,
+        readingId,
+        disposition
+      );
+      setContext((current) => {
+        if (!current) return current;
+        return {
+          ...current,
+          diffraction: {
+            ...current.diffraction,
+            automaticReadings: current.diffraction.automaticReadings.map((reading) =>
+              reading.id === result.automaticReading.id ? result.automaticReading : reading
+            ),
+          },
+        };
+      });
+    } catch (error) {
+      setReviewError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setReviewingReadingId(null);
     }
   }
 
@@ -509,7 +545,12 @@ export function AuthorWorkshopPage() {
               </WorkshopCard>
             )}
 
-            <AutomaticReadingReviewBox readings={context.diffraction.automaticReadings} />
+            <AutomaticReadingReviewBox
+              readings={context.diffraction.automaticReadings}
+              reviewingReadingId={reviewingReadingId}
+              error={reviewError}
+              onReview={(readingId, disposition) => void reviewAutomaticReading(readingId, disposition)}
+            />
 
             <WorkshopCard title="Fragment à diffracter">
               <div className="space-y-3">
@@ -560,8 +601,14 @@ export function AuthorWorkshopPage() {
 
 function AutomaticReadingReviewBox({
   readings,
+  reviewingReadingId,
+  error,
+  onReview,
 }: {
   readings: AutomaticDiffractiveReadingPayload[];
+  reviewingReadingId: string | null;
+  error: string | null;
+  onReview: (readingId: string, disposition: "kept" | "archived") => void;
 }) {
   return (
     <WorkshopCard title="Boîte de revue automatique">
@@ -571,23 +618,122 @@ function AutomaticReadingReviewBox({
         <div className="space-y-3">
           <p className="text-muted-foreground">Aucune proposition n’est choisie automatiquement.</p>
           {readings.map((request) => (
-            <div key={request.id} className="space-y-1 rounded bg-muted/60 px-3 py-2">
-              <p className="font-medium">{automaticReadingStatusLabel(request.status)}</p>
-              <p className="text-muted-foreground">
-                Déclenchée par {automaticReadingTriggerLabel(request.trigger)}
-                {request.historical ? " · historique" : ""}
-              </p>
-              {request.reading && (
+            <div key={request.id} className="space-y-3 rounded bg-muted/60 px-3 py-2">
+              <div className="space-y-1">
+                <p className="font-medium">{automaticReadingStatusLabel(request.status)}</p>
                 <p className="text-muted-foreground">
-                  {VERDICT_LABELS[request.reading.verdict] ?? request.reading.verdict} — {request.reading.verdictDetail}
+                  {automaticReadingReviewStatusLabel(request.reviewStatus)} · {request.historical ? "Historique" : "Courante"}
                 </p>
-              )}
+                <p className="text-muted-foreground">
+                  Déclenchée par {automaticReadingTriggerLabel(request.trigger)}
+                  {request.historical ? " · historique" : ""}
+                </p>
+              </div>
+              {request.reading && <AutomaticReadingDetails request={request} />}
               {request.failure && <p className="text-rose-600">Lecture indisponible : {request.failure}</p>}
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => onReview(request.id, "kept")}
+                  disabled={reviewingReadingId !== null || request.reviewStatus === "kept"}
+                >
+                  {reviewingReadingId === request.id ? "Mise à jour…" : "Conserver cette lecture"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => onReview(request.id, "archived")}
+                  disabled={reviewingReadingId !== null || request.reviewStatus === "archived"}
+                >
+                  Archiver cette lecture
+                </Button>
+              </div>
             </div>
           ))}
+          {error && <p className="text-sm text-rose-600">Revue indisponible : {error}</p>}
         </div>
       )}
     </WorkshopCard>
+  );
+}
+
+function AutomaticReadingDetails({ request }: { request: AutomaticDiffractiveReadingPayload }) {
+  const reading = request.reading;
+  if (!reading) return null;
+  return (
+    <details open className="space-y-3 rounded border bg-background/70 p-3">
+      <summary className="cursor-pointer font-medium">Consulter la lecture complète</summary>
+      <div className="mt-3 space-y-3">
+        <ReadingItems title="Passe 1 — Réfraction" items={reading.pass1.refraction} />
+        <ReadingItems title="Passe 2 — Motifs nommés" items={reading.pass2.namedPatterns} />
+        <section>
+          <h4 className="font-medium">Passe 2 — Defaults révélés</h4>
+          <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+            {reading.pass2.revealedDefaults.map((item) => (
+              <li key={`${item.default}-${item.priorCut ?? ""}`}>
+                {item.default}{item.priorCut ? ` — coupe antérieure : ${item.priorCut}` : ""}
+              </li>
+            ))}
+          </ul>
+        </section>
+        <section>
+          <h4 className="font-medium">Passe 3 — Enchevêtrements</h4>
+          <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+            {reading.pass3.entanglements.map((item) => (
+              <li key={item.name}>{item.name} — {item.cutIfIntegrated}</li>
+            ))}
+          </ul>
+        </section>
+        <section>
+          <h4 className="font-medium">Coupe agentielle</h4>
+          <p className="text-muted-foreground">{reading.pass4.cut}</p>
+          <ReadingItems title="Inclus" items={reading.pass4.included} />
+          <ReadingItems title="Exclus" items={reading.pass4.excluded} />
+          <ReadingItems title="Exclusion de la non-décision" items={reading.pass4.cutOfNonAdoption} />
+        </section>
+        <section>
+          <h4 className="font-medium">Verdict</h4>
+          <p className="text-muted-foreground">
+            {VERDICT_LABELS[reading.verdict] ?? reading.verdict} — {reading.verdictDetail}
+          </p>
+        </section>
+        <section>
+          <h4 className="font-medium">Compromis</h4>
+          {reading.tradeoffs.length === 0 ? (
+            <p className="text-muted-foreground">Aucun compromis renseigné.</p>
+          ) : (
+            <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+              {reading.tradeoffs.map((tradeoff) => (
+                <li key={tradeoff.path}>
+                  {tradeoff.path} — effort : {tradeoff.effort} ; réversibilité : {tradeoff.reversibility} ; levier : {tradeoff.leverage} ; taxe de distraction : {tradeoff.distractionTax}.
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+        <section>
+          <h4 className="font-medium">Provenance</h4>
+          <p className="text-muted-foreground">{request.scope.sectionId} · {request.fingerprint}</p>
+          <p className="text-muted-foreground">
+            Demandée par l’auteur le {new Date(request.createdAt).toLocaleString("fr-FR")}.
+          </p>
+        </section>
+      </div>
+    </details>
+  );
+}
+
+function ReadingItems({ title, items }: { title: string; items: string[] }) {
+  return (
+    <section>
+      <h4 className="font-medium">{title}</h4>
+      {items.length === 0 ? (
+        <p className="text-muted-foreground">Aucun élément renseigné.</p>
+      ) : (
+        <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+          {items.map((item) => <li key={item}>{item}</li>)}
+        </ul>
+      )}
+    </section>
   );
 }
 
@@ -720,6 +866,14 @@ function automaticReadingStatusLabel(
   if (status === "completed") return "Lecture automatique terminée";
   if (status === "superseded") return "Lecture automatique remplacée";
   return "Lecture automatique échouée";
+}
+
+function automaticReadingReviewStatusLabel(
+  reviewStatus: AutomaticDiffractiveReadingPayload["reviewStatus"]
+): string {
+  if (reviewStatus === "kept") return "Lecture conservée";
+  if (reviewStatus === "archived") return "Lecture archivée";
+  return "Nouvelle lecture";
 }
 
 function automaticReadingTriggerLabel(
