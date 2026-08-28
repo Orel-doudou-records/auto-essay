@@ -36,7 +36,10 @@ def result(payload, engine, items, started, errors=None):
             "diagnostics": {"durationMs": round((time.perf_counter() - started) * 1000), "errors": errors or []}}
 
 def prefix(payload, docs):
-    from PyPDF2 import PdfReader
+    try:
+        from pypdf import PdfReader
+    except ImportError:
+        from PyPDF2 import PdfReader
     started, items = time.perf_counter(), []
     for doc in docs:
         text, last = "", 0
