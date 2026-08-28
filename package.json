@@ -35,7 +35,8 @@
     "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
     "demo:synthetic": "npm run build:demo && npm run prepare:demo-runtime && node .demo-dist/demo/runSyntheticDemo.js",
     "demo:station-reverse": "npm run build:demo && npm run prepare:demo-runtime && node .demo-dist/demo/runStationReverseDemo.js",
-    "example:judeofuturisme": "npm run build:core && tsx examples/judeofuturisme/run.ts"
+    "example:judeofuturisme": "npm run build:core && tsx examples/judeofuturisme/run.ts",
+    "prototype:pageindex": "node --import tsx src/bibliography/__prototype__/pageindex-benchmark/benchmark.ts"
   },
   "dependencies": {
     "js-yaml": "^5.3.0",
