@@ -49,69 +49,65 @@ interface Manifest { documents: Array<{ sourceId: string; path: string }> }
 
 const cases: BenchmarkCase[] = [
   {
-    id: "exploration-salon",
-    title: "Exploration sans thèse — le salon spatial",
+    id: "exploration-race-colonialite",
+    title: "Exploration — race, colonialité et rupture",
     mode: "exploration",
-    subject: "Le vaisseau comme salon diasporique : autonomie, sociabilité et fabrication institutionnelle",
+    subject: "Comment la race se fabrique historiquement entre colonialité, politique et expériences juives arabes",
     sourceIds: [
-      "dialnetjewsinspaceahistoryofextraterrestrialdiasp_william_tenn",
-      "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_wandering_stars",
-      "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_star_trek",
-      "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_on_venus_have_we_got_a_rabbi",
-      "dialnetjewsinspaceahistoryofextraterrestrialdiasp_daniel_boyarin",
+      "colonialite-ruptures",
+      "schaub-histoire-politique-race",
+      "schaub-race-histoire-occidentale",
+      "conversos-moriscos",
     ],
-    graphTerms: ["jews in space", "wandering stars", "star trek", "diaspora"],
+    graphTerms: ["colonialité", "race", "juifs arabes", "diaspora"],
     probes: [
-      { id: "structure", reason: "structuring", query: "Quels passages structurent le rapport entre diaspora, espace et vie collective ?" },
-      { id: "practice", reason: "practice", query: "Quelles pratiques matérielles ou institutionnelles donnent corps à cet imaginaire ?" },
-      { id: "exception", reason: "exception", query: "Quels passages résistent à une lecture unifiée de l'espace comme émancipation ?" },
+      { id: "structure", reason: "structuring", query: "Quels passages structurent historiquement la catégorie de race ?" },
+      { id: "practice", reason: "practice", query: "Quelles pratiques administratives, religieuses ou sociales fabriquent la différence ?" },
+      { id: "exception", reason: "exception", query: "Quels passages résistent à une définition unique et transhistorique de la race ?" },
     ],
   },
   {
-    id: "corroboration-autonomie",
-    title: "Corroboration — l'espace fabrique-t-il l'autonomie ?",
+    id: "corroboration-historicite",
+    title: "Corroboration — la race est-elle une catégorie historique ?",
     mode: "corroboration",
-    subject: "Imaginaire spatial et autonomie collective",
-    hypothesis: "L'imaginaire spatial fonctionne comme un moyen matériel de construire une autonomie collective.",
+    subject: "Historicité politique de la race",
+    hypothesis: "La race n'est pas une catégorie stable : elle se recompose selon des régimes historiques, politiques et sociaux situés.",
     sourceIds: [
-      "jewish_fantasy_worldwide_trends_in_speculative_sto_foundation",
-      "motifs_of_secrecy_hawkins_foundations_edge",
-      "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_star_trek",
-      "dialnetjewsinspaceahistoryofextraterrestrialdiasp_hannah_arendt",
-      "atlantic_juif_zotero_import_jewish_sanctuary_in_the_atlantic_world",
+      "schaub-histoire-politique-race",
+      "schaub-race-histoire-occidentale",
+      "conversos-moriscos",
     ],
-    graphTerms: ["foundation", "star trek", "hannah arendt", "jewish sanctuary"],
+    graphTerms: ["race", "historicité", "conversos", "moriscos"],
     probes: [
-      { id: "support", reason: "support", query: "Quels passages soutiennent directement l'hypothèse ?" },
-      { id: "contradiction", reason: "contradiction", query: "Quels passages la contredisent ou montrent une dépendance persistante ?" },
-      { id: "qualification", reason: "qualification", query: "Quelles limites obligent à qualifier le sens d'autonomie collective ?" },
-      { id: "alternative", reason: "alternative", query: "Quelle autre explication rend compte des mêmes pratiques ou récits ?" },
+      { id: "support", reason: "support", query: "Quels passages soutiennent directement cette historicité ?" },
+      { id: "contradiction", reason: "contradiction", query: "Quels passages la contredisent ou réintroduisent une stabilité de la race ?" },
+      { id: "qualification", reason: "qualification", query: "Quelles limites obligent à qualifier cette hypothèse ?" },
+      { id: "alternative", reason: "alternative", query: "Quelle autre explication rend compte des mêmes classifications ?" },
     ],
   },
   {
-    id: "tension-regimes",
-    title: "Tension — récit, théorie et histoire matérielle",
+    id: "tension-regimes-race",
+    title: "Tension — race, religion et colonialité",
     mode: "exploration",
-    subject: "Traductions et écarts entre fiction spéculative, théorie diasporique et histoire matérielle",
+    subject: "Écarts entre histoire politique de la race, études des sociétés occidentales et expériences converses/morisques",
     sourceIds: [
-      "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_brooklyn_project",
-      "dialnetjewsinspaceahistoryofextraterrestrialdiasp_daniel_boyarin",
-      "dialnetjewsinspaceahistoryofextraterrestrialdiasp_jonathan_boyarin",
-      "atlantic_juif_zotero_import_the_sephardic_atlantic_colonial_histories_and_postcolonial_perspectives",
-      "jewish_fantasy_worldwide_trends_book_of_esther",
+      "colonialite-ruptures",
+      "schaub-histoire-politique-race",
+      "schaub-race-histoire-occidentale",
+      "conversos-moriscos",
     ],
-    graphTerms: ["brooklyn project", "daniel boyarin", "diaspora", "sephardic atlantic"],
+    graphTerms: ["colonialité", "race", "religion", "conversos"],
     probes: [
-      { id: "translation", reason: "conceptual_shift", query: "Où des vocabulaires différents deviennent-ils traduisibles ?" },
+      { id: "translation", reason: "conceptual_shift", query: "Où ces vocabulaires différents deviennent-ils traduisibles sans être fusionnés ?" },
       { id: "scale", reason: "contrast", query: "Quels écarts relèvent d'un changement d'échelle plutôt que d'une contradiction ?" },
-      { id: "counterexample", reason: "counterexample", query: "Quel passage empêche de fusionner fiction, théorie et histoire ?" },
+      { id: "counterexample", reason: "counterexample", query: "Quel passage empêche de réduire religion, colonialité et race à un même mécanisme ?" },
     ],
   },
 ];
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "../../../..");
-const graphPath = join(root, "examples/judeofuturisme/graph-chap2.json");
+const graphPath = process.env.AUTO_ESSAY_GRAPHIFY_GRAPH ?? join(root, "examples/judeofuturisme/graph-chap2.json");
 const workerPath = join(here, "pageindex_worker.py");
 const storePath = join(root, ".scratch/pageindex-prototype-store-WIPE-ME");
 const manifestPath = process.env.AUTO_ESSAY_PAGEINDEX_MANIFEST ?? join(here, "manifest.local.json");
@@ -123,6 +119,9 @@ const manifest = (): Manifest | undefined =>
     : undefined;
 
 async function graphify(benchmarkCase: BenchmarkCase): Promise<Run> {
+  if (!process.env.AUTO_ESSAY_GRAPHIFY_GRAPH) {
+    throw new Error("Graphify désactivé : fournir un graph.json produit pour ce corpus via AUTO_ESSAY_GRAPHIFY_GRAPH");
+  }
   const started = performance.now();
   const graph = parseKnowledgeGraph(JSON.parse(await readFile(graphPath, "utf8")));
   const items: Item[] = [];
@@ -165,8 +164,10 @@ function python(engine: "prefix" | "pageindex", benchmarkCase: BenchmarkCase, do
 }
 
 function pythonStatus(): string {
-  const check = spawnSync(process.env.AUTO_ESSAY_PAGEINDEX_PYTHON ?? "python3", ["-c", "import pageindex, PyPDF2"]);
-  return check.status === 0 ? "prêt" : "PageIndex/PyPDF2 absents";
+  const python = process.env.AUTO_ESSAY_PAGEINDEX_PYTHON ?? "python3";
+  const prefixCheck = spawnSync(python, ["-c", "import pypdf"], { stdio: "ignore" });
+  const pageIndexCheck = spawnSync(python, ["-c", "import pageindex"], { stdio: "ignore" });
+  return `${prefixCheck.status === 0 ? "préfixe prêt" : "pypdf absent"} · ${pageIndexCheck.status === 0 ? "PageIndex prêt" : "PageIndex absent"}`;
 }
 
 function summary(run?: Run): string {
@@ -241,7 +242,7 @@ async function execute(engine: Engine, state: State): Promise<State> {
 }
 
 function preflight(): void {
-  console.log(`Graph fixture: ${existsSync(graphPath) ? "ok" : "absente"}`);
+  console.log(`Graph fixture: ${process.env.AUTO_ESSAY_GRAPHIFY_GRAPH ? (existsSync(graphPath) ? "fourni" : "absent") : "non fourni pour ce corpus"}`);
   console.log(`Manifest PDF: ${manifest() ? "ok" : "absent"}`);
   console.log(`Python: ${pythonStatus()}`);
   cases.forEach((item) => console.log(`- ${item.id}: ${item.sourceIds.length} sources, ${item.probes.length} probes`));
