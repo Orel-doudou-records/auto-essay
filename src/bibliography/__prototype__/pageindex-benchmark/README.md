@@ -16,8 +16,9 @@ explicitement `AUTO_ESSAY_PAGEINDEX_INDEX_MODEL` et
 refuse l'absence de modèles explicites. L'index jetable est conservé sous
 `.scratch/pageindex-prototype-store-WIPE-ME` pour éviter de repayer chaque run.
 
-Dans le terminal : `g` lance Graphify, `b` le préfixe 2 000 caractères, `i`
-PageIndex et `r` la revue aveugle. Chaque élément reçoit quatre notes de 0 à 3.
+Dans le terminal : `g` lance Graphify (si `AUTO_ESSAY_GRAPHIFY_GRAPH` pointe
+vers un graphe produit pour ces mêmes PDF), `b` le préfixe 2 000 caractères,
+`i` PageIndex et `r` la revue aveugle. Chaque élément reçoit quatre notes de 0 à 3.
 Les extraits PageIndex sont vérifiés contre les pages et marqués
 `verified_exact`, `verified_normalized` ou `rejected`.
 
