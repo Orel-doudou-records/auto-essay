@@ -1,9 +1,8 @@
 {
   "documents": [
-    { "sourceId": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_william_tenn", "path": "/CHEMIN/ABSOLU/william-tenn.pdf" },
-    { "sourceId": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_wandering_stars", "path": "/CHEMIN/ABSOLU/wandering-stars.pdf" },
-    { "sourceId": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_star_trek", "path": "/CHEMIN/ABSOLU/star-trek.pdf" },
-    { "sourceId": "jewish_fantasy_worldwide_trends_in_speculative_sto_s047_on_venus_have_we_got_a_rabbi", "path": "/CHEMIN/ABSOLU/on-venus.pdf" },
-    { "sourceId": "dialnetjewsinspaceahistoryofextraterrestrialdiasp_daniel_boyarin", "path": "/CHEMIN/ABSOLU/daniel-boyarin.pdf" }
+    { "sourceId": "colonialite-ruptures", "path": "/CHEMIN/ABSOLU/COLONI~1.PDF" },
+    { "sourceId": "schaub-histoire-politique-race", "path": "/CHEMIN/ABSOLU/pour-une-histoire-politique-de-la-race.pdf" },
+    { "sourceId": "schaub-race-histoire-occidentale", "path": "/CHEMIN/ABSOLU/race-et-histoire-dans-les-societes-occidentales.pdf" },
+    { "sourceId": "conversos-moriscos", "path": "/CHEMIN/ABSOLU/conversos-and-moriscos.pdf" }
   ]
 }
