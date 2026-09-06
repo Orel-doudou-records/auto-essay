@@ -10,6 +10,8 @@ vi.mock("@/api", () => ({ exportProject: vi.fn() }));
 
 const useProjectUnits = vi.mocked(useUnits);
 const updateUnit = vi.fn();
+const splitUnit = vi.fn();
+const mergeNextUnit = vi.fn();
 
 const preparedUnit: DraftUnit = {
   id: "unit-prepared",
@@ -48,6 +50,8 @@ describe("EditorPage", () => {
       add: vi.fn(),
       update: updateUnit,
       generate: vi.fn(),
+      split: splitUnit,
+      mergeNext: mergeNextUnit,
       reviseChat: vi.fn(),
       evaluate: vi.fn(),
       evaluateIntegrated: vi.fn(),
@@ -69,6 +73,37 @@ describe("EditorPage", () => {
     );
 
     expect(await screen.findByRole("heading", { name: "Unité préparée" })).toBeInTheDocument();
+  });
+
+  it("lets the author explicitly split an imported section after it is saved", async () => {
+    const importedUnit = {
+      ...preparedUnit,
+      id: "unit-imported",
+      granularity: "section" as const,
+      thesis: "Ouverture",
+      content: "Premier paragraphe.\n\nDeuxième paragraphe.",
+      appliedDecisionIds: [],
+      appliedArticulationIds: [],
+    };
+    const firstParagraph = { ...importedUnit, id: "paragraph-1", granularity: "paragraph" as const, content: "Premier paragraphe." };
+    const secondParagraph = { ...importedUnit, id: "paragraph-2", granularity: "paragraph" as const, content: "Deuxième paragraphe." };
+    splitUnit.mockResolvedValue({ units: [firstParagraph, secondParagraph], unitIds: [firstParagraph.id, secondParagraph.id] });
+    useProjectUnits.mockReturnValue({
+      units: [importedUnit], loading: false, error: null, reload: vi.fn(), add: vi.fn(), update: updateUnit,
+      generate: vi.fn(), split: splitUnit, mergeNext: mergeNextUnit, reviseChat: vi.fn(), evaluate: vi.fn(), evaluateIntegrated: vi.fn(), verify: vi.fn(),
+    });
+    render(
+      <MemoryRouter initialEntries={["/projects/project-1/editor?unitId=unit-imported"]}>
+        <Routes><Route path="/projects/:projectId/editor" element={<EditorPage />} /></Routes>
+      </MemoryRouter>
+    );
+
+    const split = await screen.findByRole("button", { name: "Scinder en paragraphes" });
+    expect(split).toBeEnabled();
+    fireEvent.click(split);
+
+    await vi.waitFor(() => expect(splitUnit).toHaveBeenCalledWith("unit-imported"));
+    expect(await screen.findByRole("textbox", { name: "Manuscrit : Ouverture" })).toHaveValue("Premier paragraphe.");
   });
 
   it("saves after a short pause and keeps the author informed", async () => {
@@ -187,6 +222,8 @@ describe("EditorPage", () => {
       add: vi.fn(),
       update: updateUnit,
       generate: vi.fn(),
+      split: splitUnit,
+      mergeNext: mergeNextUnit,
       reviseChat: vi.fn(),
       evaluate: vi.fn(),
       evaluateIntegrated: vi.fn(),
@@ -217,6 +254,7 @@ describe("EditorPage", () => {
     const add = vi.fn().mockResolvedValue(preparedUnit);
     useProjectUnits.mockReturnValue({
       units: [], loading: false, error: null, reload: vi.fn(), add, update: updateUnit, generate: vi.fn(),
+      split: splitUnit, mergeNext: mergeNextUnit,
       reviseChat: vi.fn(), evaluate: vi.fn(), evaluateIntegrated: vi.fn(), verify: vi.fn(),
     });
     render(
@@ -239,6 +277,7 @@ describe("EditorPage", () => {
     const add = vi.fn().mockRejectedValue(new Error("offline"));
     useProjectUnits.mockReturnValue({
       units: [], loading: false, error: null, reload: vi.fn(), add, update: updateUnit, generate: vi.fn(),
+      split: splitUnit, mergeNext: mergeNextUnit,
       reviseChat: vi.fn(), evaluate: vi.fn(), evaluateIntegrated: vi.fn(), verify: vi.fn(),
     });
     render(
@@ -267,6 +306,7 @@ describe("EditorPage", () => {
     useProjectUnits.mockReturnValue({
       units: [preparedUnit], loading: false, error: null, reload: vi.fn(), add: vi.fn(), update: updateUnit,
       generate: vi.fn(), reviseChat, evaluate: vi.fn(), evaluateIntegrated: vi.fn(), verify: vi.fn(),
+      split: splitUnit, mergeNext: mergeNextUnit,
     });
     render(<MemoryRouter initialEntries={["/projects/project-1/editor?unitId=unit-prepared"]}><Routes><Route path="/projects/:projectId/editor" element={<EditorPage />} /></Routes></MemoryRouter>);
     const manuscript = await screen.findByRole("textbox", { name: "Manuscrit : Unité préparée" });

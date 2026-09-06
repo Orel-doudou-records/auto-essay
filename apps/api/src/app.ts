@@ -12,6 +12,7 @@ import { diffractRoutes } from "./routes/diffract.js";
 import { demoRoutes } from "./routes/demo.js";
 import { editorialRoutes } from "./routes/editorial.js";
 import { manuscriptImportRoutes } from "./routes/manuscriptImport.js";
+import { manuscriptGranularityRoutes } from "./routes/manuscriptGranularity.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { createModelClientFactory, type ModelClientFactory } from "./llm/client.js";
 import { DEFAULT_JUDGE_ROUTING_POLICY, type JudgeRoutingPolicy } from "@auto-essay/core";
@@ -42,6 +43,7 @@ export function createApp(options: AppOptions = {}): Hono {
   app.route("/api/projects", projectsRoutes());
   app.route("/api/projects/:projectId/sources", sourcesRoutes());
   app.route("/api/projects/:projectId/manuscript-import", manuscriptImportRoutes());
+  app.route("/api/projects/:projectId/manuscript", manuscriptGranularityRoutes());
   app.route("/api/projects/:projectId/units", unitsRoutes(modelClientFactory));
   app.route("/api/projects/:projectId/units/:unitId/generate", generateRoutes(modelClientFactory));
   app.route("/api/projects/:projectId/units/:unitId/revise-chat", reviseChatRoutes(modelClientFactory));

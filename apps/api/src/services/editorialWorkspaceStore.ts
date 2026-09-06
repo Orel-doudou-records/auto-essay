@@ -17,6 +17,7 @@ import {
 } from "@auto-essay/core";
 import { HTTPException } from "hono/http-exception";
 import { getDataDir } from "../config.js";
+import { withProjectWriteLock } from "./projectWriteLock.js";
 
 const ReadingScopeSchema = z.discriminatedUnion("kind", [
   z.object({
@@ -70,6 +71,13 @@ export const EditorialWorkspaceSchema = z.object({
 export type EditorialWorkspace = z.infer<typeof EditorialWorkspaceSchema>;
 
 export async function putWorkspace(
+  projectId: string,
+  input: Pick<EditorialWorkspace, "manuscript" | "distribution" | "profiles" | "articulations">
+): Promise<EditorialWorkspace> {
+  return withProjectWriteLock(projectId, () => putWorkspaceWhileLocked(projectId, input));
+}
+
+export async function putWorkspaceWhileLocked(
   projectId: string,
   input: Pick<EditorialWorkspace, "manuscript" | "distribution" | "profiles" | "articulations">
 ): Promise<EditorialWorkspace> {
@@ -182,6 +190,13 @@ export async function acceptDecision(
 }
 
 export async function mutateWorkspace<T>(
+  projectId: string,
+  mutator: (workspace: EditorialWorkspace) => T
+): Promise<T> {
+  return withProjectWriteLock(projectId, () => mutateWorkspaceWhileLocked(projectId, mutator));
+}
+
+async function mutateWorkspaceWhileLocked<T>(
   projectId: string,
   mutator: (workspace: EditorialWorkspace) => T
 ): Promise<T> {

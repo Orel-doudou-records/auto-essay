@@ -83,6 +83,8 @@ function mockUnits(
     generate:
       overrides.generate ??
       vi.fn<Parameters<UnitsHook["generate"]>, ReturnType<UnitsHook["generate"]>>(),
+    split: vi.fn(),
+    mergeNext: vi.fn(),
     reviseChat: overrides.reviseChat ?? vi.fn(),
     evaluate:
       overrides.evaluate ??

@@ -16,7 +16,7 @@ import {
 } from "@auto-essay/core";
 import mammoth from "mammoth";
 import { ConfirmManuscriptImportBodySchema, PreviewManuscriptImportBodySchema } from "../schemas/manuscriptImport.js";
-import { getWorkspace, putWorkspace } from "../services/editorialWorkspaceStore.js";
+import { getWorkspace, putWorkspaceWhileLocked } from "../services/editorialWorkspaceStore.js";
 import { getProject } from "../services/projectStore.js";
 import { listUnits, replaceUnitsWhileLocked } from "../services/unitStore.js";
 import { withProjectWriteLock } from "../services/projectWriteLock.js";
@@ -113,7 +113,7 @@ export function manuscriptImportRoutes(): Hono {
 
       await replaceUnitsWhileLocked(projectId, units);
       try {
-        await putWorkspace(projectId, {
+        await putWorkspaceWhileLocked(projectId, {
           manuscript,
           distribution: [],
           profiles: [],

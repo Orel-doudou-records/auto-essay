@@ -585,6 +585,37 @@ export async function createUnit(
   return data.unit as DraftUnit;
 }
 
+export interface ManuscriptGranularityPayload {
+  units: DraftUnit[];
+  unitIds: string[];
+}
+
+export async function splitManuscriptUnit(
+  projectId: string,
+  unitId: string
+): Promise<ManuscriptGranularityPayload> {
+  return changeManuscriptGranularity(projectId, unitId, "split");
+}
+
+export async function mergeManuscriptUnitWithNext(
+  projectId: string,
+  unitId: string
+): Promise<ManuscriptGranularityPayload> {
+  return changeManuscriptGranularity(projectId, unitId, "merge-next");
+}
+
+async function changeManuscriptGranularity(
+  projectId: string,
+  unitId: string,
+  action: "split" | "merge-next"
+): Promise<ManuscriptGranularityPayload> {
+  const res = await fetch(`${API}/projects/${projectId}/manuscript/units/${unitId}/${action}`, {
+    method: "POST",
+  });
+  if (!res.ok) throw new Error(await responseMessage(res));
+  return res.json() as Promise<ManuscriptGranularityPayload>;
+}
+
 function arrayBufferToBase64(content: ArrayBuffer): string {
   const bytes = new Uint8Array(content);
   let binary = "";

@@ -33,7 +33,7 @@ describe("ProjectEntryPage", () => {
   it("offers import and starting to write with equal prominence for an empty project", () => {
     useProjectUnits.mockReturnValue({
       units: [], loading: false, error: null, reload: vi.fn(), add: vi.fn(), update: vi.fn(),
-      generate: vi.fn(), reviseChat: vi.fn(), evaluate: vi.fn(), evaluateIntegrated: vi.fn(), verify: vi.fn(),
+      generate: vi.fn(), split: vi.fn(), mergeNext: vi.fn(), reviseChat: vi.fn(), evaluate: vi.fn(), evaluateIntegrated: vi.fn(), verify: vi.fn(),
     });
     renderEntry();
 
@@ -50,7 +50,7 @@ describe("ProjectEntryPage", () => {
     const recent = makeUnit("unit-recent", "2026-09-02T10:00:00.000Z");
     useProjectUnits.mockReturnValue({
       units: [older, recent], loading: false, error: null, reload: vi.fn(), add: vi.fn(), update: vi.fn(),
-      generate: vi.fn(), reviseChat: vi.fn(), evaluate: vi.fn(), evaluateIntegrated: vi.fn(), verify: vi.fn(),
+      generate: vi.fn(), split: vi.fn(), mergeNext: vi.fn(), reviseChat: vi.fn(), evaluate: vi.fn(), evaluateIntegrated: vi.fn(), verify: vi.fn(),
     });
     renderEntry();
 

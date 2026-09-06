@@ -1,6 +1,8 @@
 import {
   fetchUnits,
   createUnit,
+  mergeManuscriptUnitWithNext,
+  splitManuscriptUnit,
   updateUnit,
   generateUnit,
   reviseUnitChat,
@@ -64,6 +66,26 @@ export function useUnits(projectId: string | undefined) {
     [projectId]
   );
 
+  const split = useCallback(
+    async (unitId: string) => {
+      if (!projectId) return;
+      const result = await splitManuscriptUnit(projectId, unitId);
+      setUnits(result.units);
+      return result;
+    },
+    [projectId]
+  );
+
+  const mergeNext = useCallback(
+    async (unitId: string) => {
+      if (!projectId) return;
+      const result = await mergeManuscriptUnitWithNext(projectId, unitId);
+      setUnits(result.units);
+      return result;
+    },
+    [projectId]
+  );
+
   const reviseChat = useCallback(
     async (unitId: string, instruction: string) => {
       if (!projectId) return;
@@ -106,6 +128,8 @@ export function useUnits(projectId: string | undefined) {
     add,
     update,
     generate,
+    split,
+    mergeNext,
     reviseChat,
     evaluate,
     evaluateIntegrated,

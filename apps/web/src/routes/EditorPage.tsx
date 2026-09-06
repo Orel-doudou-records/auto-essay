@@ -17,7 +17,7 @@ const SAVE_DELAY_MS = 600;
 export function EditorPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const [searchParams] = useSearchParams();
-  const { units, loading, error, add, update, generate, reviseChat } = useUnits(projectId);
+  const { units, loading, error, add, update, generate, reviseChat, split, mergeNext } = useUnits(projectId);
   const [selectedUnit, setSelectedUnit] = useState<DraftUnit | null>(null);
   const [newSection, setNewSection] = useState("");
   const [isCreating, setCreating] = useState(false);
@@ -26,6 +26,8 @@ export function EditorPage() {
   const [isInspectorOpen, setInspectorOpen] = useState(false);
   const [draftContent, setDraftContent] = useState("");
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const [granularityBusy, setGranularityBusy] = useState(false);
+  const [granularityError, setGranularityError] = useState<string>();
   const saveTimer = useRef<number>();
   const saveSequence = useRef(0);
   const selectedUnitId = useRef<string | null>(null);
@@ -122,6 +124,21 @@ export function EditorPage() {
     if (generated) selectUnit(generated);
   }
 
+  async function changeGranularity(action: (unitId: string) => ReturnType<typeof split>) {
+    if (!selectedUnit || granularityBusy || saveStatus !== "saved") return;
+    setGranularityBusy(true);
+    setGranularityError(undefined);
+    try {
+      const result = await action(selectedUnit.id);
+      const nextUnit = result && result.units.find((unit) => unit.id === result.unitIds[0]);
+      if (nextUnit) selectUnit(nextUnit);
+    } catch (error) {
+      setGranularityError(error instanceof Error ? error.message : "La granularité ne peut pas être modifiée.");
+    } finally {
+      setGranularityBusy(false);
+    }
+  }
+
   return (
     <AppShell projectId={projectId}>
       <section {...stylex.props(styles.workspace)} aria-label="Espace d’écriture">
@@ -209,6 +226,10 @@ export function EditorPage() {
                 content={draftContent}
                 saveStatus={saveStatus}
                 onChange={queueSave}
+                onSplit={() => void changeGranularity(split)}
+                onMergeNext={() => void changeGranularity(mergeNext)}
+                granularityBusy={granularityBusy}
+                granularityError={granularityError}
               />
             ) : requestedNewUnit && !loading && units.length === 0 ? (
               <StartWritingForm
@@ -304,19 +325,38 @@ function UnitEditor({
   content,
   saveStatus,
   onChange,
+  onSplit,
+  onMergeNext,
+  granularityBusy,
+  granularityError,
 }: {
   unit: DraftUnit;
   content: string;
   saveStatus: SaveStatus;
   onChange: (content: string) => void;
+  onSplit: () => void;
+  onMergeNext: () => void;
+  granularityBusy: boolean;
+  granularityError?: string;
 }) {
   const title = unit.thesis || unit.contextInPlan?.section || "Sans titre";
   return (
     <article {...stylex.props(styles.manuscript)}>
       <header {...stylex.props(styles.manuscriptHeader)}>
-        <h1 {...stylex.props(styles.manuscriptTitle)}>{title}</h1>
+        <div>
+          <h1 {...stylex.props(styles.manuscriptTitle)}>{title}</h1>
+          <div {...stylex.props(styles.granularityActions)}>
+            <Button type="button" variant="ghost" size="sm" onClick={onSplit} disabled={unit.granularity !== "section" || saveStatus !== "saved" || granularityBusy}>
+              {granularityBusy ? "Modification…" : "Scinder en paragraphes"}
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={onMergeNext} disabled={saveStatus !== "saved" || granularityBusy}>
+              Fusionner avec la suivante
+            </Button>
+          </div>
+        </div>
         <SaveIndicator status={saveStatus} />
       </header>
+      {granularityError && <p role="alert" {...stylex.props(styles.errorMessage)}>{granularityError}</p>}
       <textarea
         {...stylex.props(styles.manuscriptField)}
         aria-label={`Manuscrit : ${title}`}
@@ -639,6 +679,12 @@ const styles = stylex.create({
     letterSpacing: "-0.03em",
     lineHeight: 1.15,
     margin: "0.5rem 0 0",
+  },
+  granularityActions: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "0.25rem",
+    marginTop: "0.5rem",
   },
   saveIndicator: {
     color: themeVars.textSubtle,
