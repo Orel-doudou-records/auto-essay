@@ -16,6 +16,9 @@ export * from "./draftUnit";
 export * from "./manuscript";
 export * from "./manuscriptStatus";
 
+// Arcs narratifs généralisés : personnages, relations, lieux, milieux, institutions
+export * from "./narrativeArc";
+
 // Projets essayistiques
 export * from "./essayProject";
 
