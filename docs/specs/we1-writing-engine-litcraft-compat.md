@@ -2,15 +2,15 @@
 
 ## Status
 
-Ready for ticketing after Ponytail review.
+Ready for ticketing. Audited against AutoEssay `feat/init-core-engine` and challenged with Ponytail.
 
 ## Problem Statement
 
-AutoEssay already contains a production Literacraft implementation with essay-specific schemas, analyzers, articulations, author governance, writer traces and editorial evaluation. Writing Engine now contains a smaller domain-neutral Litcraft foundation that is intended to be shared with AutoFiction.
+AutoEssay already contains a production Literacraft implementation with essay-specific schemas, analyzers, articulations, author governance, writer traces and editorial evaluation. Writing Engine now contains a smaller domain-neutral Litcraft foundation intended to be shared with AutoFiction.
 
 The migration must prove that AutoEssay can consume those shared semantics without weakening its richer essay-domain validation, changing its current execution path, or silently reinterpreting persisted data.
 
-The first migration slice is therefore compatibility-only. AutoEssay remains authoritative while a thin adapter projects existing AutoEssay artifacts into Writing Engine contracts and parity tests compare the two representations.
+The first migration phase is therefore compatibility-only. AutoEssay remains authoritative while a thin adapter projects existing AutoEssay artifacts into Writing Engine contracts and parity tests compare the two representations.
 
 ## Solution
 
@@ -19,8 +19,6 @@ Pin Writing Engine as an exact Git dependency at:
 `bc0613e649c9bff6db52114c3b5db6d48d2a177a`
 
 Add one pure compatibility module owned by AutoEssay. It maps existing AutoEssay Literacraft artifacts into Writing Engine Litcraft artifacts. It does not replace AutoEssay schemas or services in this phase.
-
-Target shape:
 
 ```text
 AutoEssay canonical artifact
@@ -36,13 +34,13 @@ No Writing Engine object becomes canonical AutoEssay state during this spec.
 
 ## User Stories
 
-- As the AutoEssay maintainer, I can install a reproducible Writing Engine revision without publishing a package registry release.
+- As the AutoEssay maintainer, I can install a reproducible Writing Engine revision without publishing a registry release.
 - As an author, existing Literacraft behavior and governance remain unchanged during the migration.
 - As a developer, I can project an AutoEssay `StyleObservation` into the shared `StyleObservation` without losing its identity, evidence, mechanism, effects, confidence, maturity or provenance.
 - As a developer, I can prove the shared `AuthorStyleConstellation` derivation is semantically equivalent to AutoEssay's current derivation for representative observations.
 - As a developer, I can project an AutoEssay transformation declaration into a shared `TransformationTrace` without treating the declaration as proof of success.
-- As a developer, I can project an AutoEssay editorial criterion result into `EvaluatedStyleEffect` and then into the existing shared Diffract `ContextBlock` without moving AutoEssay's scores or gates.
-- As a maintainer, I can remove no historical implementation until parity has been demonstrated and a later ticket explicitly switches a caller.
+- As a developer, I can project an AutoEssay editorial criterion result into `EvaluatedStyleEffect` and then into the shared Diffract `ContextBlock` without moving AutoEssay's scores or gates.
+- As a maintainer, I remove no historical implementation until parity has been demonstrated and a later ticket explicitly switches a caller.
 
 ## Implementation Decisions
 
@@ -54,7 +52,7 @@ The dependency is a migration bridge. No registry publication or release workflo
 
 ### 2. One compatibility module
 
-Use one module, for example:
+Use one module:
 
 `src/editorial/writingEngineLitcraftAdapter.ts`
 
@@ -95,7 +93,7 @@ Do not collapse effect kinds into free text.
 
 ### 4. Constellation parity
 
-The adapter may expose a small helper that maps observations/declarations and calls Writing Engine's `deriveAuthorStyleConstellation`.
+Parity tests compose the observation adapter directly with Writing Engine's existing `deriveAuthorStyleConstellation`; no extra constellation wrapper is introduced.
 
 Parity is semantic, not timestamp identity. Tests compare:
 
@@ -133,14 +131,14 @@ The shared trace remains a declaration only.
 
 ### 6. Editorial effect mapping
 
-Map one AutoEssay `EditorialCriterionResult` plus evaluation context to one shared `EvaluatedStyleEffect`.
+Map one AutoEssay `EditorialCriterionResult` plus its evaluation metadata to one shared `EvaluatedStyleEffect`.
 
 Preserve:
 
-- criterion/result identity through a stable shared id;
+- criterion identity as the shared effect id;
 - unit/version scope reference;
-- directive/trace provenance references where available;
-- the exact status;
+- directive and trace references;
+- exact status;
 - textual evidence;
 - unintended effects;
 - repair suggestion;
@@ -149,12 +147,12 @@ Preserve:
 Represent findings as shared effects without moving product scores:
 
 ```text
-contentFindings -> observed effect kind "content"
-formFindings    -> observed effect kind "form"
-unintendedEffects -> unintended effect kind "unintended"
+contentFindings    -> observed effect kind "content"
+formFindings       -> observed effect kind "form"
+unintendedEffects  -> unintended effect kind "unintended"
 ```
 
-Expected/intended effects may be supplied from the evaluator projection criterion when the caller has them. The adapter must not infer missing intent from scores.
+Set `intendedEffects` to an empty array in this compatibility phase. Do not pull evaluator-projection data into the adapter solely to enrich this field, and do not infer intent from scores.
 
 `contentScore`, `formScore`, `contentFormCoherence`, `overallEditorialScore`, documentary integrity and final essay verdict stay AutoEssay-only.
 
@@ -197,7 +195,7 @@ Tests must prove:
 
 Use representative observations from one author plus a foreign author, multiple confidence levels, duplicate effects, declarations and explicit signatures/tensions/drifts.
 
-Compare AutoEssay's current derivation with the shared derivation after adapter mapping, excluding `derivedAt` only.
+Compare AutoEssay's current derivation with Writing Engine's derivation after observation mapping, excluding `derivedAt` only.
 
 ### Slice C — trace/effect feedback parity
 
@@ -240,4 +238,4 @@ The migration succeeds by proving a seam, not by maximizing shared code in one p
 
 ## Ponytail challenge
 
-The minimal migration is one exact dependency plus one pure adapter module and parity tests. Do not rewrite existing services, create dual-write persistence, add feature flags, introduce a plugin architecture, or delete the current implementation in the same phase.
+The minimal migration is one exact dependency, one pure adapter module and parity tests. Removed from the earlier draft: a constellation wrapper and optional intended-effect enrichment. Do not rewrite existing services, create dual-write persistence, add feature flags, introduce a plugin architecture, or delete the current implementation in the same phase.
