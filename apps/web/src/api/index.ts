@@ -6,6 +6,8 @@ import type {
   Source,
   DraftUnit,
   ManuscriptImportPreview,
+  ManuscriptReimportAction,
+  ManuscriptReimportComparison,
   RevisionProposal,
   JudgeAssignment,
   IntegratedEvaluationHistoryEntry,
@@ -565,6 +567,43 @@ export async function confirmManuscriptImport(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ preview }),
+  });
+  if (!res.ok) throw new Error(await responseMessage(res));
+  return res.json();
+}
+
+export type ManuscriptReimportPreviewPayload = {
+  preview: ManuscriptImportPreview;
+  warnings: string[];
+  comparison: ManuscriptReimportComparison;
+};
+
+export async function previewManuscriptReimport(
+  projectId: string,
+  name: string,
+  content: string | ArrayBuffer
+): Promise<ManuscriptReimportPreviewPayload> {
+  const res = await fetch(`${API}/projects/${projectId}/manuscript-import/reimport-preview`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(
+      typeof content === "string" ? { name, content } : { name, contentBase64: arrayBufferToBase64(content) }
+    ),
+  });
+  if (!res.ok) throw new Error(await responseMessage(res));
+  return res.json() as Promise<ManuscriptReimportPreviewPayload>;
+}
+
+export async function confirmManuscriptReimport(
+  projectId: string,
+  preview: ManuscriptImportPreview,
+  manuscriptUpdatedAt: string,
+  actions: ManuscriptReimportAction[]
+): Promise<{ manuscript: { id: string; projectId: string; title: string }; units: Array<{ id: string }>; unitIds: string[] }> {
+  const res = await fetch(`${API}/projects/${projectId}/manuscript-import/reimport-confirm`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ preview, manuscriptUpdatedAt, actions }),
   });
   if (!res.ok) throw new Error(await responseMessage(res));
   return res.json();

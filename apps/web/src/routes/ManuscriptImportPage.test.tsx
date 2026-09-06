@@ -1,16 +1,20 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
-import { confirmManuscriptImport, previewManuscriptImport } from "@/api";
+import { confirmManuscriptImport, confirmManuscriptReimport, previewManuscriptImport, previewManuscriptReimport } from "@/api";
 import { ManuscriptImportPage } from "./ManuscriptImportPage";
 
 vi.mock("@/api", () => ({
   previewManuscriptImport: vi.fn(),
   confirmManuscriptImport: vi.fn(),
+  previewManuscriptReimport: vi.fn(),
+  confirmManuscriptReimport: vi.fn(),
 }));
 
 const previewImport = vi.mocked(previewManuscriptImport);
 const confirmImport = vi.mocked(confirmManuscriptImport);
+const previewReimport = vi.mocked(previewManuscriptReimport);
+const confirmReimport = vi.mocked(confirmManuscriptReimport);
 
 describe("ManuscriptImportPage", () => {
   it("lets the author correct a Markdown preview before confirming it", async () => {
@@ -124,5 +128,52 @@ describe("ManuscriptImportPage", () => {
 
     expect(await screen.findByRole("heading", { name: "Aperçu à corriger" })).toBeInTheDocument();
     expect(previewImport).toHaveBeenCalledWith("project-1", "essai.odt", content);
+  });
+
+  it("requires an explicit choice before applying a reimport", async () => {
+    previewReimport.mockResolvedValue({
+      preview: {
+        title: "Essai en cours",
+        sections: [{ id: "incoming-opening", title: "Ouverture", content: "Version reprise.", level: 1, annotations: [] }],
+      },
+      warnings: [],
+      comparison: {
+        manuscriptUpdatedAt: "2026-09-06T12:00:00.000Z",
+        targets: [{ id: "opening", title: "Ouverture", unitCount: 2 }],
+        suggestions: [{ sectionId: "incoming-opening", action: "replace", targetSectionId: "opening" }],
+      },
+    });
+    confirmReimport.mockResolvedValue({
+      manuscript: { id: "manuscript-1", projectId: "project-1", title: "Essai en cours" },
+      units: [{ id: "unit-new" }],
+      unitIds: ["unit-new"],
+    });
+    const file = new File(["# Ouverture"], "essai.md", { type: "text/markdown" });
+    Object.defineProperty(file, "text", { value: vi.fn().mockResolvedValue("# Ouverture") });
+
+    render(
+      <MemoryRouter initialEntries={["/projects/project-1/reimport"]}>
+        <Routes>
+          <Route path="/projects/:projectId/reimport" element={<ManuscriptImportPage mode="reimport" />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    fireEvent.change(screen.getByLabelText("Fichier Markdown, Word ou LibreOffice"), { target: { files: [file] } });
+    fireEvent.click(screen.getByRole("button", { name: "Préparer l’aperçu" }));
+
+    expect(await screen.findByRole("heading", { name: "Aperçu comparé à appliquer" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Appliquer la réimportation" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Action"), { target: { value: "replace" } });
+    fireEvent.change(screen.getByLabelText("Section à remplacer"), { target: { value: "opening" } });
+    fireEvent.click(screen.getByRole("button", { name: "Appliquer la réimportation" }));
+
+    expect(confirmReimport).toHaveBeenCalledWith(
+      "project-1",
+      expect.objectContaining({ title: "Essai en cours" }),
+      "2026-09-06T12:00:00.000Z",
+      [{ sectionId: "incoming-opening", action: "replace", targetSectionId: "opening" }]
+    );
+    expect(await screen.findByText("Réimportation terminée : 1 section examinée.")).toBeInTheDocument();
   });
 });

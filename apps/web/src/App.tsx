@@ -21,6 +21,7 @@ function App() {
         <Route path="/projects/:projectId" element={<ProjectEntryPage />} />
         <Route path="/projects/:projectId/cadrage" element={<ProjectPage />} />
         <Route path="/projects/:projectId/import" element={<ManuscriptImportPage />} />
+        <Route path="/projects/:projectId/reimport" element={<ManuscriptImportPage mode="reimport" />} />
         <Route path="/projects/:projectId/sources" element={<SourcesPage />} />
         <Route path="/projects/:projectId/editor" element={<EditorPage />} />
         <Route path="/projects/:projectId/atelier" element={<AuthorWorkshopPage />} />

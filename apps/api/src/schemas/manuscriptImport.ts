@@ -17,3 +17,15 @@ export const PreviewManuscriptImportBodySchema = z.union([
 export const ConfirmManuscriptImportBodySchema = z.object({
   preview: ManuscriptImportPreviewSchema,
 });
+
+const ManuscriptReimportActionSchema = z.object({
+  sectionId: z.string().min(1).max(255),
+  action: z.enum(["add", "replace", "ignore"]),
+  targetSectionId: z.string().min(1).max(255).optional(),
+});
+
+export const ConfirmManuscriptReimportBodySchema = z.object({
+  preview: ManuscriptImportPreviewSchema,
+  manuscriptUpdatedAt: z.string().datetime(),
+  actions: z.array(ManuscriptReimportActionSchema).min(1).max(500),
+});

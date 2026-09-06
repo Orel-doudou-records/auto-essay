@@ -157,6 +157,7 @@ export function EditorPage() {
             <p {...stylex.props(styles.eyebrow)}>Écriture</p>
           </div>
           <div {...stylex.props(styles.toolbarCluster)}>
+            <Link to={`/projects/${projectId}/reimport`} {...stylex.props(styles.toolbarLink)}>Réimporter</Link>
             <Button type="button" variant="ghost" size="sm" onClick={handleExport}>
               Exporter
             </Button>
@@ -493,6 +494,11 @@ const styles = stylex.create({
     alignItems: "center",
     display: "flex",
     gap: "0.625rem",
+  },
+  toolbarLink: {
+    color: themeVars.textSecondary,
+    fontSize: "0.875rem",
+    textDecoration: "none",
   },
   eyebrow: {
     color: themeVars.textSubtle,

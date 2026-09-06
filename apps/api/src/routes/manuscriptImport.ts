@@ -5,6 +5,8 @@ import {
   createManuscript,
   createManuscriptLeaf,
   createManuscriptNode,
+  applyManuscriptReimport,
+  compareManuscriptReimport,
   previewDocxHtml,
   previewMarkdownManuscript,
   previewOdtDocument,
@@ -15,7 +17,11 @@ import {
   type ManuscriptNode,
 } from "@auto-essay/core";
 import mammoth from "mammoth";
-import { ConfirmManuscriptImportBodySchema, PreviewManuscriptImportBodySchema } from "../schemas/manuscriptImport.js";
+import {
+  ConfirmManuscriptImportBodySchema,
+  ConfirmManuscriptReimportBodySchema,
+  PreviewManuscriptImportBodySchema,
+} from "../schemas/manuscriptImport.js";
 import { getWorkspace, putWorkspaceWhileLocked } from "../services/editorialWorkspaceStore.js";
 import { getProject } from "../services/projectStore.js";
 import { listUnits, replaceUnitsWhileLocked } from "../services/unitStore.js";
@@ -30,48 +36,31 @@ export function manuscriptImportRoutes(): Hono {
     await getProject(projectId);
     const parsed = PreviewManuscriptImportBodySchema.safeParse(await c.req.json());
     if (!parsed.success) throw new HTTPException(400, { message: "Le fichier dépasse 5 Mo ou son nom est invalide." });
-    const body = parsed.data;
     try {
-      if (body.name.toLowerCase().endsWith(".md") && "content" in body) {
-        if (!body.content.trim()) throw new Error("Le manuscrit est vide.");
-        return c.json({ preview: previewMarkdownManuscript(body.name, body.content), warnings: [] });
-      }
-      if (body.name.toLowerCase().endsWith(".docx") && "contentBase64" in body) {
-        let ignoredImages = 0;
-        const converted = await mammoth.convertToHtml(
-          { buffer: decodeDocx(body.contentBase64) },
-          {
-            styleMap: ["comment-reference => sup"],
-            includeEmbeddedStyleMap: false,
-            externalFileAccess: false,
-            convertImage: mammoth.images.imgElement(async () => {
-              ignoredImages += 1;
-              return { src: "" };
-            }),
-            idPrefix: "auto-essay-docx-",
-          }
-        );
-        return c.json({
-          preview: previewDocxHtml(body.name, converted.value),
-          warnings: [
-            ...converted.messages.map((message) => message.message),
-            ...(ignoredImages > 0
-              ? [`${ignoredImages} image${ignoredImages > 1 ? "s" : ""} a été ignorée${ignoredImages > 1 ? "s" : ""}.`]
-              : []),
-          ],
-        });
-      }
-      if (body.name.toLowerCase().endsWith(".odt") && "contentBase64" in body) {
-        const archive = decodeDocumentArchive(body.contentBase64);
-        const entries = readSafeZipEntries(archive, ["mimetype", "content.xml"]);
-        if (entries.mimetype.toString("utf8") !== "application/vnd.oasis.opendocument.text") {
-          throw new Error("Le fichier LibreOffice est invalide.");
-        }
-        const result = previewOdtDocument(body.name, entries["content.xml"].toString("utf8"));
-        return c.json(result);
-      }
-      throw new Error("Choisissez un fichier Markdown (.md), Word (.docx) ou LibreOffice (.odt).");
+      return c.json(await preparePreview(parsed.data));
     } catch (error) {
+      throw new HTTPException(400, {
+        message: error instanceof Error ? error.message : "Le manuscrit ne peut pas être lu.",
+      });
+    }
+  });
+
+  app.post("/reimport-preview", async (c) => {
+    const projectId = c.req.param("projectId") as string;
+    await getProject(projectId);
+    const parsed = PreviewManuscriptImportBodySchema.safeParse(await c.req.json());
+    if (!parsed.success) throw new HTTPException(400, { message: "Le fichier dépasse 5 Mo ou son nom est invalide." });
+    try {
+      const workspace = await getWorkspace(projectId);
+      const prepared = await preparePreview(parsed.data);
+      return c.json({
+        ...prepared,
+        comparison: compareManuscriptReimport(workspace.manuscript, prepared.preview),
+      });
+    } catch (error) {
+      if (error instanceof HTTPException && error.status === 404) {
+        throw new HTTPException(409, { message: "Importez d’abord un manuscrit avant de réimporter une version." });
+      }
       throw new HTTPException(400, {
         message: error instanceof Error ? error.message : "Le manuscrit ne peut pas être lu.",
       });
@@ -128,7 +117,96 @@ export function manuscriptImportRoutes(): Hono {
     });
   });
 
+  app.post("/reimport-confirm", async (c) => {
+    const projectId = c.req.param("projectId") as string;
+    await getProject(projectId);
+    const parsed = ConfirmManuscriptReimportBodySchema.safeParse(await c.req.json());
+    if (!parsed.success) {
+      throw new HTTPException(400, { message: "Choisissez une action valide pour chaque section de l’aperçu." });
+    }
+    const { preview, actions, manuscriptUpdatedAt } = parsed.data;
+    return withProjectWriteLock(projectId, async () => {
+      const workspace = await getWorkspace(projectId);
+      if (workspace.manuscript.updatedAt !== manuscriptUpdatedAt) {
+        throw new HTTPException(409, { message: "La structure du manuscrit a changé. Préparez un nouvel aperçu avant de réimporter." });
+      }
+      const existingUnits = await listUnits(projectId);
+      let result;
+      try {
+        result = applyManuscriptReimport(workspace.manuscript, existingUnits, preview, actions);
+      } catch (error) {
+        throw new HTTPException(400, {
+          message: error instanceof Error ? error.message : "La réimportation ne peut pas être appliquée.",
+        });
+      }
+      if (
+        workspace.readings.some(
+          (reading) => reading.scope?.kind === "paragraph" && result.replacedUnitIds.includes(reading.scope.unitId)
+        )
+      ) {
+        throw new HTTPException(400, {
+          message: "Une section choisie contient déjà une lecture éditoriale : conservez-la ou réimportez-la comme nouvelle section.",
+        });
+      }
+
+      await replaceUnitsWhileLocked(projectId, result.units);
+      try {
+        await putWorkspaceWhileLocked(projectId, {
+          manuscript: result.manuscript,
+          distribution: workspace.distribution,
+          profiles: workspace.profiles,
+          articulations: workspace.articulations,
+        });
+      } catch (error) {
+        await replaceUnitsWhileLocked(projectId, existingUnits);
+        throw error;
+      }
+      return c.json({ manuscript: result.manuscript, units: result.units, unitIds: result.unitIds });
+    });
+  });
+
   return app;
+}
+
+async function preparePreview(body: { name: string; content?: string; contentBase64?: string }) {
+  if (body.name.toLowerCase().endsWith(".md") && typeof body.content === "string") {
+    if (!body.content.trim()) throw new Error("Le manuscrit est vide.");
+    return { preview: previewMarkdownManuscript(body.name, body.content), warnings: [] };
+  }
+  if (body.name.toLowerCase().endsWith(".docx") && typeof body.contentBase64 === "string") {
+    let ignoredImages = 0;
+    const converted = await mammoth.convertToHtml(
+      { buffer: decodeDocx(body.contentBase64) },
+      {
+        styleMap: ["comment-reference => sup"],
+        includeEmbeddedStyleMap: false,
+        externalFileAccess: false,
+        convertImage: mammoth.images.imgElement(async () => {
+          ignoredImages += 1;
+          return { src: "" };
+        }),
+        idPrefix: "auto-essay-docx-",
+      }
+    );
+    return {
+      preview: previewDocxHtml(body.name, converted.value),
+      warnings: [
+        ...converted.messages.map((message) => message.message),
+        ...(ignoredImages > 0
+          ? [`${ignoredImages} image${ignoredImages > 1 ? "s" : ""} a été ignorée${ignoredImages > 1 ? "s" : ""}.`]
+          : []),
+      ],
+    };
+  }
+  if (body.name.toLowerCase().endsWith(".odt") && typeof body.contentBase64 === "string") {
+    const archive = decodeDocumentArchive(body.contentBase64);
+    const entries = readSafeZipEntries(archive, ["mimetype", "content.xml"]);
+    if (entries.mimetype.toString("utf8") !== "application/vnd.oasis.opendocument.text") {
+      throw new Error("Le fichier LibreOffice est invalide.");
+    }
+    return previewOdtDocument(body.name, entries["content.xml"].toString("utf8"));
+  }
+  throw new Error("Choisissez un fichier Markdown (.md), Word (.docx) ou LibreOffice (.odt).");
 }
 
 function decodeDocx(contentBase64: string): Buffer {

@@ -1,7 +1,13 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import type { ManuscriptImportPreview, ManuscriptImportSection } from "@auto-essay/core";
-import { confirmManuscriptImport, previewManuscriptImport } from "@/api";
+import type { ManuscriptImportPreview, ManuscriptImportSection, ManuscriptReimportAction, ManuscriptReimportComparison } from "@auto-essay/core";
+import {
+  confirmManuscriptImport,
+  confirmManuscriptReimport,
+  previewManuscriptImport,
+  previewManuscriptReimport,
+  type ManuscriptReimportPreviewPayload,
+} from "@/api";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,16 +17,31 @@ import { Textarea } from "@/components/ui/textarea";
 
 const MAX_MANUSCRIPT_BYTES = 5_000_000;
 
-export function ManuscriptImportPage() {
+export function ManuscriptImportPage({ mode = "import" }: { mode?: "import" | "reimport" }) {
   const { projectId } = useParams<{ projectId: string }>();
+  const reimport = mode === "reimport";
   const [file, setFile] = useState<File>();
   const [preview, setPreview] = useState<ManuscriptImportPreview>();
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [comparison, setComparison] = useState<ManuscriptReimportComparison>();
+  const [actions, setActions] = useState<Record<string, Partial<ManuscriptReimportAction>>>({});
   const [status, setStatus] = useState<"idle" | "loading" | "confirming" | "done">("idle");
   const [error, setError] = useState<string>();
   const [firstUnitId, setFirstUnitId] = useState<string>();
   const isValidPreview = Boolean(
     preview?.title.trim() && preview.sections.every((section) => section.title.trim())
+  );
+  const reimportIsComplete = Boolean(
+    !reimport ||
+      (preview && comparison && preview.sections.every((section) => {
+        const choice = actions[section.id];
+        return choice?.action && (choice.action !== "replace" || Boolean(choice.targetSectionId));
+      }) &&
+        new Set(
+          Object.values(actions)
+            .filter((choice) => choice.action === "replace")
+            .map((choice) => choice.targetSectionId)
+        ).size === Object.values(actions).filter((choice) => choice.action === "replace").length)
   );
 
   async function preparePreview(event: React.FormEvent) {
@@ -33,13 +54,14 @@ export function ManuscriptImportPage() {
     setError(undefined);
     setStatus("loading");
     try {
-      const result = await previewManuscriptImport(
-        projectId,
-        file.name,
-        /\.(docx|odt)$/i.test(file.name) ? await file.arrayBuffer() : await file.text()
-      );
+      const content = /\.(docx|odt)$/i.test(file.name) ? await file.arrayBuffer() : await file.text();
+      const result = reimport
+        ? await previewManuscriptReimport(projectId, file.name, content)
+        : await previewManuscriptImport(projectId, file.name, content);
       setPreview(result.preview);
       setWarnings(result.warnings);
+      setComparison(isReimportPreview(result) ? result.comparison : undefined);
+      setActions({});
       setStatus("idle");
     } catch (reason) {
       setError(messageFor(reason));
@@ -77,13 +99,31 @@ export function ManuscriptImportPage() {
     }));
   }
 
+  function updateAction(sectionId: string, action: ManuscriptReimportAction["action"]) {
+    setActions((current) => ({
+      ...current,
+      [sectionId]: { sectionId, action, targetSectionId: action === "replace" ? current[sectionId]?.targetSectionId : undefined },
+    }));
+  }
+
+  function updateReplacementTarget(sectionId: string, targetSectionId: string) {
+    setActions((current) => ({ ...current, [sectionId]: { ...current[sectionId], sectionId, action: "replace", targetSectionId } }));
+  }
+
   async function confirmImport() {
     if (!projectId || !preview || preview.sections.length === 0) return;
     setError(undefined);
     setStatus("confirming");
     try {
-      const result = await confirmManuscriptImport(projectId, preview);
-      setFirstUnitId(result.units[0]?.id);
+      const result: { units: Array<{ id: string }>; unitIds?: string[] } = reimport && comparison
+        ? await confirmManuscriptReimport(
+            projectId,
+            preview,
+            comparison.manuscriptUpdatedAt,
+            preview.sections.map((section) => actions[section.id] as ManuscriptReimportAction)
+          )
+        : await confirmManuscriptImport(projectId, preview);
+      setFirstUnitId(result.unitIds?.[0] ?? result.units[0]?.id);
       setStatus("done");
     } catch (reason) {
       setError(messageFor(reason));
@@ -94,8 +134,8 @@ export function ManuscriptImportPage() {
   return (
     <AppShell projectId={projectId}>
       <section>
-        <h1>Importer un manuscrit</h1>
-        <p>Le fichier reste un aperçu modifiable jusqu’à votre confirmation.</p>
+        <h1>{reimport ? "Réimporter une version" : "Importer un manuscrit"}</h1>
+        <p>{reimport ? "Comparez le fichier au manuscrit courant, puis choisissez explicitement le sort de chaque section." : "Le fichier reste un aperçu modifiable jusqu’à votre confirmation."}</p>
 
         {!preview && status !== "done" && (
           <form onSubmit={preparePreview}>
@@ -122,14 +162,18 @@ export function ManuscriptImportPage() {
         </p>
 
         {preview && (
-          <section aria-label="Aperçu du manuscrit" aria-busy={status === "confirming"}>
+          <section aria-label={reimport ? "Aperçu comparé du manuscrit" : "Aperçu du manuscrit"} aria-busy={status === "confirming"}>
             {status === "done" ? (
               <Card>
                 <CardHeader>
-                  <CardTitle>Import terminé</CardTitle>
+                  <CardTitle>{reimport ? "Réimportation terminée" : "Import terminé"}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p aria-live="polite">Import terminé : {preview.sections.length} unité{preview.sections.length > 1 ? "s" : ""} créée{preview.sections.length > 1 ? "s" : ""}.</p>
+                  <p aria-live="polite">
+                    {reimport
+                      ? `Réimportation terminée : ${preview.sections.length} section${preview.sections.length > 1 ? "s" : ""} examinée${preview.sections.length > 1 ? "s" : ""}.`
+                      : `Import terminé : ${preview.sections.length} unité${preview.sections.length > 1 ? "s" : ""} créée${preview.sections.length > 1 ? "s" : ""}.`}
+                  </p>
                   {firstUnitId && (
                     <Link to={`/projects/${projectId}/editor?unitId=${firstUnitId}`}>
                       Ouvrir la première section
@@ -139,7 +183,7 @@ export function ManuscriptImportPage() {
               </Card>
             ) : (
               <>
-                <h2>Aperçu à corriger</h2>
+                <h2>{reimport ? "Aperçu comparé à appliquer" : "Aperçu à corriger"}</h2>
                 {warnings.length > 0 && (
                   <div role="status">
                     <h3>Points à vérifier avant l’import</h3>
@@ -189,21 +233,32 @@ export function ManuscriptImportPage() {
                           </ul>
                         </div>
                       )}
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        disabled={preview.sections.length === 1}
-                        onClick={() => removeSection(index)}
-                      >
-                        Retirer cette section
-                      </Button>
+                      {reimport && comparison ? (
+                        <ReimportDecision
+                          section={section}
+                          comparison={comparison}
+                          choice={actions[section.id]}
+                          onAction={updateAction}
+                          onTarget={updateReplacementTarget}
+                        />
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          disabled={preview.sections.length === 1}
+                          onClick={() => removeSection(index)}
+                        >
+                          Retirer cette section
+                        </Button>
+                      )}
                     </CardContent>
                   </Card>
                 ))}
-                <Button type="button" variant="outline" onClick={addSection}>Ajouter une section</Button>
+                {!reimport && <Button type="button" variant="outline" onClick={addSection}>Ajouter une section</Button>}
                 {!isValidPreview && <p role="alert">Donnez un titre au manuscrit et à chaque section avant de confirmer.</p>}
-                <Button type="button" onClick={() => void confirmImport()} disabled={status === "confirming" || !isValidPreview}>
-                  {status === "confirming" ? "Import…" : "Confirmer l’import"}
+                {reimport && !reimportIsComplete && <p role="alert">Choisissez une action pour chaque section et une seule cible par remplacement.</p>}
+                <Button type="button" onClick={() => void confirmImport()} disabled={status === "confirming" || !isValidPreview || !reimportIsComplete}>
+                  {status === "confirming" ? "Application…" : reimport ? "Appliquer la réimportation" : "Confirmer l’import"}
                 </Button>
               </>
             )}
@@ -214,6 +269,67 @@ export function ManuscriptImportPage() {
   );
 }
 
+function ReimportDecision({
+  section,
+  comparison,
+  choice,
+  onAction,
+  onTarget,
+}: {
+  section: ManuscriptImportSection;
+  comparison: ManuscriptReimportComparison;
+  choice?: Partial<ManuscriptReimportAction>;
+  onAction: (sectionId: string, action: ManuscriptReimportAction["action"]) => void;
+  onTarget: (sectionId: string, targetSectionId: string) => void;
+}) {
+  const suggestion = comparison.suggestions.find((item) => item.sectionId === section.id);
+  const suggestedTarget = suggestion?.targetSectionId
+    ? comparison.targets.find((target) => target.id === suggestion.targetSectionId)
+    : undefined;
+  return (
+    <fieldset>
+      <legend>Décision pour « {section.title} »</legend>
+      <p>
+        {suggestedTarget
+          ? `Correspondance suggérée : « ${suggestedTarget.title} » (${suggestedTarget.unitCount} unité${suggestedTarget.unitCount > 1 ? "s" : ""}).`
+          : "Aucune correspondance sûre n’a été trouvée."}
+      </p>
+      <Label htmlFor={`reimport-action-${section.id}`}>Action</Label>
+      <select
+        id={`reimport-action-${section.id}`}
+        value={choice?.action ?? ""}
+        onChange={(event) => onAction(section.id, event.target.value as ManuscriptReimportAction["action"])}
+      >
+        <option value="">Choisir une action</option>
+        <option value="add">Ajouter comme nouvelle section</option>
+        <option value="replace">Remplacer une section existante</option>
+        <option value="ignore">Ignorer cette section</option>
+      </select>
+      {choice?.action === "replace" && (
+        <>
+          <Label htmlFor={`reimport-target-${section.id}`}>Section à remplacer</Label>
+          <select
+            id={`reimport-target-${section.id}`}
+            value={choice.targetSectionId ?? ""}
+            onChange={(event) => onTarget(section.id, event.target.value)}
+          >
+            <option value="">Choisir une section</option>
+            {comparison.targets.map((target) => (
+              <option key={target.id} value={target.id}>{target.title} ({target.unitCount} unité{target.unitCount > 1 ? "s" : ""})</option>
+            ))}
+          </select>
+        </>
+      )}
+    </fieldset>
+  );
+}
+
 function messageFor(reason: unknown): string {
   return reason instanceof Error ? reason.message : "L’import a échoué. Réessayez.";
+}
+
+function isReimportPreview(
+  result: { preview: ManuscriptImportPreview; warnings: string[] } | ManuscriptReimportPreviewPayload
+): result is ManuscriptReimportPreviewPayload {
+  return "comparison" in result;
 }
