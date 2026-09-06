@@ -133,12 +133,33 @@ The shared trace remains a declaration only.
 
 Map one AutoEssay `EditorialCriterionResult` plus its evaluation metadata to one shared `EvaluatedStyleEffect`.
 
+Writing Engine exposes only one generic `operationRef` while an AutoEssay criterion can cover multiple directives. Do not drop or arbitrarily select a directive. Use the criterion itself as the shared operation anchor:
+
+```text
+operationRef = { kind: "editorial-criterion", id: criterionId }
+```
+
+The criterion remains canonical in AutoEssay and retains its directive ids there.
+
+Writing Engine's evaluated effect has no separate unit-version field. Preserve versioned scope without changing the shared engine by using one stable reference:
+
+```text
+scopeRef = {
+  kind: "draft-unit-version",
+  id: `${unitId}@${unitVersion}`
+}
+```
+
+Use a collision-resistant shared effect id composed from the evaluation and criterion identities:
+
+```text
+id = `${evaluationId}:${criterionId}`
+```
+
 Preserve:
 
-- criterion identity as the shared effect id;
-- unit/version scope reference;
-- directive and trace references;
 - exact status;
+- trace references as `{ kind: "transformation-trace", id }`;
 - textual evidence;
 - unintended effects;
 - repair suggestion;
@@ -203,6 +224,8 @@ Tests must prove:
 
 - trace provenance survives as typed generic references;
 - a trace remains `declared` and contains no effectiveness score;
+- a multi-directive criterion maps to one `editorial-criterion` operation reference without selecting a directive;
+- unit version survives in the stable `draft-unit-version` scope reference;
 - criterion result status/evidence/repair/unintended findings map correctly;
 - AutoEssay scores/gates are absent from the shared result;
 - the shared effect becomes a `style-effect` Diffract `ContextBlock`;
@@ -238,4 +261,4 @@ The migration succeeds by proving a seam, not by maximizing shared code in one p
 
 ## Ponytail challenge
 
-The minimal migration is one exact dependency, one pure adapter module and parity tests. Removed from the earlier draft: a constellation wrapper and optional intended-effect enrichment. Do not rewrite existing services, create dual-write persistence, add feature flags, introduce a plugin architecture, or delete the current implementation in the same phase.
+The minimal migration is one exact dependency, one pure adapter module and parity tests. Removed from the earlier draft: a constellation wrapper, optional intended-effect enrichment and any lossy attempt to squeeze multiple AutoEssay directives into one shared operation reference. Do not rewrite existing services, create dual-write persistence, add feature flags, introduce a plugin architecture, or delete the current implementation in the same phase.
