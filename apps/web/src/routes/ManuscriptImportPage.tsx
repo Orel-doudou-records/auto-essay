@@ -15,6 +15,7 @@ export function ManuscriptImportPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const [file, setFile] = useState<File>();
   const [preview, setPreview] = useState<ManuscriptImportPreview>();
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [status, setStatus] = useState<"idle" | "loading" | "confirming" | "done">("idle");
   const [error, setError] = useState<string>();
   const [firstUnitId, setFirstUnitId] = useState<string>();
@@ -32,7 +33,13 @@ export function ManuscriptImportPage() {
     setError(undefined);
     setStatus("loading");
     try {
-      setPreview(await previewManuscriptImport(projectId, file.name, await file.text()));
+      const result = await previewManuscriptImport(
+        projectId,
+        file.name,
+        file.name.toLowerCase().endsWith(".docx") ? await file.arrayBuffer() : await file.text()
+      );
+      setPreview(result.preview);
+      setWarnings(result.warnings);
       setStatus("idle");
     } catch (reason) {
       setError(messageFor(reason));
@@ -92,11 +99,11 @@ export function ManuscriptImportPage() {
 
         {!preview && status !== "done" && (
           <form onSubmit={preparePreview}>
-            <Label htmlFor="manuscript-file">Fichier Markdown</Label>
+            <Label htmlFor="manuscript-file">Fichier Markdown ou Word</Label>
             <Input
               id="manuscript-file"
               type="file"
-              accept=".md,text/markdown"
+              accept=".md,.docx,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               onChange={(event) => {
                 setFile(event.target.files?.[0]);
                 setError(undefined);
@@ -133,6 +140,14 @@ export function ManuscriptImportPage() {
             ) : (
               <>
                 <h2>Aperçu à corriger</h2>
+                {warnings.length > 0 && (
+                  <div role="status">
+                    <h3>Points à vérifier avant l’import</h3>
+                    <ul>
+                      {warnings.map((warning, index) => <li key={`${warning}-${index}`}>{warning}</li>)}
+                    </ul>
+                  </div>
+                )}
                 <Label htmlFor="manuscript-title">Titre du manuscrit</Label>
                 <Input
                   id="manuscript-title"

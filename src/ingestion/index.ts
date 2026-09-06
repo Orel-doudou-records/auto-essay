@@ -4,4 +4,5 @@
  */
 
 export * from "./importers";
+export * from "./docxImport";
 export * from "./manuscriptImport";

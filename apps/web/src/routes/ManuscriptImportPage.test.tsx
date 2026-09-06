@@ -15,16 +15,19 @@ const confirmImport = vi.mocked(confirmManuscriptImport);
 describe("ManuscriptImportPage", () => {
   it("lets the author correct a Markdown preview before confirming it", async () => {
     previewImport.mockResolvedValue({
-      title: "Essai en cours",
-      sections: [
-        {
-          id: "section-1",
-          title: "Ouverture",
-          content: "Texte initial.",
-          level: 1,
-          annotations: [{ kind: "link", label: "Repère", url: "https://example.test" }],
-        },
-      ],
+      preview: {
+        title: "Essai en cours",
+        sections: [
+          {
+            id: "section-1",
+            title: "Ouverture",
+            content: "Texte initial.",
+            level: 1,
+            annotations: [{ kind: "link", label: "Repère", url: "https://example.test" }],
+          },
+        ],
+      },
+      warnings: [],
     });
     confirmImport.mockResolvedValue({
       manuscript: { id: "manuscript-1", projectId: "project-1", title: "Essai en cours" },
@@ -41,7 +44,7 @@ describe("ManuscriptImportPage", () => {
       </MemoryRouter>
     );
 
-    fireEvent.change(screen.getByLabelText("Fichier Markdown"), { target: { files: [file] } });
+    fireEvent.change(screen.getByLabelText("Fichier Markdown ou Word"), { target: { files: [file] } });
     fireEvent.click(screen.getByRole("button", { name: "Préparer l’aperçu" }));
 
     expect(await screen.findByRole("heading", { name: "Aperçu à corriger" })).toBeInTheDocument();
@@ -64,5 +67,35 @@ describe("ManuscriptImportPage", () => {
       "href",
       "/projects/project-1/editor?unitId=unit-1"
     );
+  });
+
+  it("shows Word conversion warnings before the author confirms", async () => {
+    previewImport.mockResolvedValue({
+      preview: {
+        title: "Essai en cours",
+        sections: [{ id: "section-1", title: "Ouverture", content: "Texte.", level: 1, annotations: [] }],
+      },
+      warnings: ["Le style « Citation » a été simplifié."],
+    });
+    const content = new Uint8Array([80, 75, 3, 4]).buffer;
+    const file = new File([content], "essai.docx", {
+      type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    });
+    Object.defineProperty(file, "arrayBuffer", { value: vi.fn().mockResolvedValue(content) });
+
+    render(
+      <MemoryRouter initialEntries={["/projects/project-1/import"]}>
+        <Routes>
+          <Route path="/projects/:projectId/import" element={<ManuscriptImportPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    fireEvent.change(screen.getByLabelText("Fichier Markdown ou Word"), { target: { files: [file] } });
+    fireEvent.click(screen.getByRole("button", { name: "Préparer l’aperçu" }));
+
+    expect(await screen.findByRole("heading", { name: "Points à vérifier avant l’import" })).toBeInTheDocument();
+    expect(screen.getByText("Le style « Citation » a été simplifié.")).toBeInTheDocument();
+    expect(previewImport).toHaveBeenCalledWith("project-1", "essai.docx", content);
   });
 });

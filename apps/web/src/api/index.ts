@@ -540,16 +540,21 @@ export async function fetchUnits(projectId: string): Promise<DraftUnit[]> {
 export async function previewManuscriptImport(
   projectId: string,
   name: string,
-  content: string
-): Promise<ManuscriptImportPreview> {
+  content: string | ArrayBuffer
+): Promise<{ preview: ManuscriptImportPreview; warnings: string[] }> {
   const res = await fetch(`${API}/projects/${projectId}/manuscript-import/preview`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, content }),
+    body: JSON.stringify(
+      typeof content === "string" ? { name, content } : { name, contentBase64: arrayBufferToBase64(content) }
+    ),
   });
   if (!res.ok) throw new Error(await responseMessage(res));
   const data = await res.json();
-  return data.preview as ManuscriptImportPreview;
+  return {
+    preview: data.preview as ManuscriptImportPreview,
+    warnings: data.warnings as string[],
+  };
 }
 
 export async function confirmManuscriptImport(
@@ -578,6 +583,15 @@ export async function createUnit(
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
   return data.unit as DraftUnit;
+}
+
+function arrayBufferToBase64(content: ArrayBuffer): string {
+  const bytes = new Uint8Array(content);
+  let binary = "";
+  for (let offset = 0; offset < bytes.length; offset += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
+  }
+  return btoa(binary);
 }
 
 export async function updateUnit(
