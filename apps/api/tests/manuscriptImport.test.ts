@@ -101,7 +101,7 @@ describe("manuscript import routes", () => {
     });
     expect(unsupported.status).toBe(400);
     await expect(unsupported.json()).resolves.toMatchObject({
-      message: "Choisissez un fichier Markdown (.md) ou Word (.docx).",
+      message: "Choisissez un fichier Markdown (.md), Word (.docx) ou LibreOffice (.odt).",
     });
   });
 

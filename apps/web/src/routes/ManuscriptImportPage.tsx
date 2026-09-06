@@ -36,7 +36,7 @@ export function ManuscriptImportPage() {
       const result = await previewManuscriptImport(
         projectId,
         file.name,
-        file.name.toLowerCase().endsWith(".docx") ? await file.arrayBuffer() : await file.text()
+        /\.(docx|odt)$/i.test(file.name) ? await file.arrayBuffer() : await file.text()
       );
       setPreview(result.preview);
       setWarnings(result.warnings);
@@ -99,11 +99,11 @@ export function ManuscriptImportPage() {
 
         {!preview && status !== "done" && (
           <form onSubmit={preparePreview}>
-            <Label htmlFor="manuscript-file">Fichier Markdown ou Word</Label>
+            <Label htmlFor="manuscript-file">Fichier Markdown, Word ou LibreOffice</Label>
             <Input
               id="manuscript-file"
               type="file"
-              accept=".md,.docx,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              accept=".md,.docx,.odt,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.oasis.opendocument.text"
               onChange={(event) => {
                 setFile(event.target.files?.[0]);
                 setError(undefined);

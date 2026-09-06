@@ -6,3 +6,4 @@
 export * from "./importers";
 export * from "./docxImport";
 export * from "./manuscriptImport";
+export * from "./odtImport";

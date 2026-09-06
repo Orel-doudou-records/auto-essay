@@ -1,29 +1,29 @@
 import { readFile } from "node:fs/promises";
 import { deflateRawSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
-import { assertSafeDocxArchive } from "../src/routes/manuscriptImport.js";
+import { assertSafeZipArchive } from "../src/services/safeZipArchive.js";
 
-describe("assertSafeDocxArchive", () => {
+describe("assertSafeZipArchive", () => {
   it("accepts a normal Word archive", async () => {
     const document = await readFile(new URL("../../../node_modules/mammoth/test/test-data/comments.docx", import.meta.url));
-    expect(() => assertSafeDocxArchive(document)).not.toThrow();
+    expect(() => assertSafeZipArchive(document)).not.toThrow();
   });
 
   it("accepts a small archive", () => {
-    expect(() => assertSafeDocxArchive(createZip([Buffer.alloc(1_000)]))).not.toThrow();
+    expect(() => assertSafeZipArchive(createZip([Buffer.alloc(1_000)]))).not.toThrow();
   });
 
   it("rejects archives with too many internal files", () => {
     const archive = createZip(Array.from({ length: 2_001 }, () => Buffer.alloc(0)));
-    expect(() => assertSafeDocxArchive(archive)).toThrow(
-      "Le document Word contient trop de fichiers internes."
+    expect(() => assertSafeZipArchive(archive)).toThrow(
+      "Le document contient trop de fichiers internes."
     );
   });
 
   it("uses the decompressed bytes instead of the ZIP metadata", () => {
     const compressed = deflateRawSync(Buffer.alloc(25_000_001));
-    expect(() => assertSafeDocxArchive(createZip([{ content: compressed, method: 8, declaredSize: 1 }]))).toThrow(
-      "Le document Word est trop volumineux après décompression."
+    expect(() => assertSafeZipArchive(createZip([{ content: compressed, method: 8, declaredSize: 1 }]))).toThrow(
+      "Le document est trop volumineux après décompression."
     );
   });
 });
