@@ -1,4 +1,3 @@
-import { cliOutput } from "../observability/cliOutput.js";
 import { readFileSync } from "node:fs";
 import {
   buildDiffractiveRequest,
@@ -16,13 +15,9 @@ import {
 } from "@auto-essay/core";
 import { createModelClient } from "../llm/client.js";
 import { StructuredClientAdapter } from "../llm/structuredAdapter.js";
+import { loadEnvironmentFile, readJson, runCli } from "./cliSupport.js";
 
-// Charge .env (OLLAMA_API_KEY / OLLAMA_MODEL) — sans dépendance externe.
-try {
-  process.loadEnvFile();
-} catch {
-  // Pas de .env : on utilise l'environnement existant.
-}
+loadEnvironmentFile();
 
 /**
  * Entrée de commande générique : lecture diffractive d'un fragment posé
@@ -38,11 +33,6 @@ try {
  *     --bibliography /chemin/library.json \
  *     --graph /chemin/graph.json --graph-terms asimov,star trek,diaspora
  */
-function readJson(path: string | undefined): unknown {
-  if (!path) return undefined;
-  return JSON.parse(readFileSync(path, "utf8"));
-}
-
 async function main(): Promise<void> {
   const args = parseDiffractArgs(process.argv.slice(2));
 
@@ -82,7 +72,4 @@ async function main(): Promise<void> {
   process.stdout.write(formatReading(reading) + "\n");
 }
 
-main().catch((error: unknown) => {
-  cliOutput.error(error instanceof Error ? error.message : String(error));
-  process.exitCode = 1;
-});
+runCli(main);

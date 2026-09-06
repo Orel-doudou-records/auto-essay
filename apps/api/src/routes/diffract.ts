@@ -1,7 +1,7 @@
 import { Hono } from "hono";
+import { createDiffractiveBatchRunner, createDiffractivePipeline, type StructuredModelClient } from "@auto-essay/core";
 import type { ModelClientFactory } from "../llm/client.js";
 import { StructuredClientAdapter } from "../llm/structuredAdapter.js";
-import { DiffractionService } from "../services/diffractionService.js";
 import {
   DiffractBatchBodySchema,
   DiffractBodySchema,
@@ -12,15 +12,15 @@ export function diffractRoutes(modelClientFactory: ModelClientFactory): Hono {
 
   app.post("/", async (c) => {
     const body = DiffractBodySchema.parse(await c.req.json());
-    const service = await makeService(modelClientFactory);
-    const reading = await service.diffract(body);
+    const pipeline = createDiffractivePipeline(await makeClient(modelClientFactory));
+    const reading = await pipeline.diffractRequest(body);
     return c.json(reading);
   });
 
   app.post("/batch", async (c) => {
     const body = DiffractBatchBodySchema.parse(await c.req.json());
-    const service = await makeService(modelClientFactory);
-    const result = await service.diffractBatch(body);
+    const batch = createDiffractiveBatchRunner(await makeClient(modelClientFactory));
+    const result = await batch.run(body);
     return c.json(result);
   });
 
@@ -28,7 +28,7 @@ export function diffractRoutes(modelClientFactory: ModelClientFactory): Hono {
   return app;
 }
 
-async function makeService(modelClientFactory: ModelClientFactory): Promise<DiffractionService> {
+async function makeClient(modelClientFactory: ModelClientFactory): Promise<StructuredModelClient> {
   const client = await modelClientFactory();
-  return new DiffractionService(new StructuredClientAdapter(client));
+  return new StructuredClientAdapter(client);
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { DiffractionService } from "../src/services/diffractionService.js";
+import { createDiffractivePipeline } from "@auto-essay/core";
 import { DiffractBodySchema } from "../src/schemas/diffract.js";
 
 function readingOutput() {
@@ -20,26 +20,28 @@ function readingOutput() {
   };
 }
 
-describe("DiffractionService — plan du livre", () => {
+describe("lecture diffractive — plan du livre", () => {
   it("passe bookPlan au lecteur diffractif", async () => {
     const prompts: string[] = [];
-    const service = new DiffractionService({
+    const pipeline = createDiffractivePipeline({
       generateJson: async (prompt: string) => {
         prompts.push(prompt);
         return readingOutput();
       },
     });
 
-    await service.diffract({
-      statement: "s",
-      bookPlan: [
+    await pipeline.diffract(
+      { statement: "s" },
+      {
+        bookPlan: [
         {
           partId: "chap-2",
           partTitle: "Chapitre 2",
           entries: [{ id: "e1", subject: "Le salon", preview: "La scène." }],
         },
-      ],
-    });
+        ],
+      }
+    );
 
     expect(prompts[0]).toContain("## Le plan du livre");
     expect(prompts[0]).toContain("[e1] Le salon");

@@ -1,5 +1,3 @@
-import { cliOutput } from "../observability/cliOutput.js";
-import { readFileSync, writeFileSync } from "node:fs";
 import {
   applyPlanPreviews,
   diffractPlan,
@@ -11,23 +9,9 @@ import {
 } from "@auto-essay/core";
 import { createModelClient } from "../llm/client.js";
 import { StructuredClientAdapter } from "../llm/structuredAdapter.js";
+import { loadEnvironmentFile, readJson, readOptions, runCli, writeJson } from "./cliSupport.js";
 
-// Charge .env (OLLAMA_API_KEY / OLLAMA_MODEL) — sans dépendance externe.
-try {
-  process.loadEnvFile();
-} catch {
-  // Pas de .env : on utilise l'environnement existant.
-}
-
-function readJsonArray(path: string | undefined): unknown {
-  if (!path) return undefined;
-  return JSON.parse(readFileSync(path, "utf8"));
-}
-
-function flag(argv: string[], name: string): string | undefined {
-  const index = argv.indexOf(name);
-  return index >= 0 ? argv[index + 1] : undefined;
-}
+loadEnvironmentFile();
 
 /**
  * Entrée de commande : élaboration et diffraction du plan d'ébauche.
@@ -41,19 +25,19 @@ function flag(argv: string[], name: string): string | undefined {
  * Pas de fichier de sortie → le résultat est écrit sur stdout.
  */
 async function main(): Promise<void> {
-  const argv = process.argv.slice(2);
-  const planPath = flag(argv, "--plan");
-  const bookPartsPath = flag(argv, "--book-parts");
-  const cutsPath = flag(argv, "--cuts");
-  const outPath = flag(argv, "--out");
+  const options = readOptions(process.argv.slice(2));
+  const planPath = options.plan;
+  const bookPartsPath = options["book-parts"];
+  const cutsPath = options.cuts;
+  const outPath = options.out;
 
   if (!planPath) {
     throw new Error("Missing required --plan <fichier.json>");
   }
 
-  const plan = extractBookPlan(readJsonArray(planPath)) as BookPlanInput[];
-  const bookParts = extractBookParts(readJsonArray(bookPartsPath));
-  const existingCuts = extractExistingCuts(readJsonArray(cutsPath));
+  const plan = extractBookPlan(readJson(planPath)) as BookPlanInput[];
+  const bookParts = extractBookParts(readJson(bookPartsPath));
+  const existingCuts = extractExistingCuts(readJson(cutsPath));
 
   const client = await createModelClient();
   const structured = new StructuredClientAdapter(client);
@@ -69,15 +53,7 @@ async function main(): Promise<void> {
   );
 
   const result = { previews, reading };
-  const output = JSON.stringify(result, null, 2);
-  if (outPath) {
-    writeFileSync(outPath, output);
-  } else {
-    process.stdout.write(output + "\n");
-  }
+  writeJson(result, outPath);
 }
 
-main().catch((error: unknown) => {
-  cliOutput.error(error instanceof Error ? error.message : String(error));
-  process.exitCode = 1;
-});
+runCli(main);

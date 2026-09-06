@@ -49,7 +49,7 @@ contexte). Budget de voisinage : 9 termes × BFS depth 2 / 30 nœuds = voisinage
 
 ```
 web (DemoPage)  →  GET /api/demo/judeofuturisme   →  contexte prêt à poster
-                →  POST /api/diffract             →  DiffractionService
+                →  POST /api/diffract             →  pipeline diffractif du core
                                                      └─ DiffractivePipeline.diffract
                                                         └─ DiffractiveReader
                                                            ├─ prompt : état du livre

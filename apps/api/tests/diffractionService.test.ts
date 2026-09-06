@@ -1,9 +1,10 @@
 import { describe, it, expect } from "vitest";
 import {
+  createDiffractiveBatchRunner,
+  createDiffractivePipeline,
   createContentStyleArticulation,
   type PlannedStylisticOperationInput,
 } from "@auto-essay/core";
-import { DiffractionService } from "../src/services/diffractionService.js";
 
 function readingOutput() {
   return {
@@ -40,13 +41,13 @@ function candidateArticulation() {
   });
 }
 
-describe("DiffractionService", () => {
+describe("diffractive core APIs", () => {
   it("diffracts a single fragment", async () => {
-    const service = new DiffractionService({
+    const pipeline = createDiffractivePipeline({
       generateJson: async () => readingOutput(),
     });
 
-    const reading = await service.diffract({ statement: "s", claimIds: ["c1"] });
+    const reading = await pipeline.diffract({ statement: "s", claimIds: ["c1"] });
 
     expect(reading.verdict).toBe("integrate_now");
     expect(reading.fragment.claimIds).toEqual(["c1"]);
@@ -54,9 +55,9 @@ describe("DiffractionService", () => {
 
   it("batches fragments and collects failures", async () => {
     const generateJson = async () => readingOutput();
-    const service = new DiffractionService({ generateJson });
+    const batch = createDiffractiveBatchRunner({ generateJson });
 
-    const result = await service.diffractBatch({
+    const result = await batch.run({
       fragments: [{ statement: "f1" }, { statement: "f2" }],
     });
 

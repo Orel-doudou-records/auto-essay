@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { DiffractionService } from "../src/services/diffractionService.js";
+import { createDiffractivePipeline } from "@auto-essay/core";
 import { DiffractBodySchema } from "../src/schemas/diffract.js";
 
 function readingOutput() {
@@ -20,25 +20,27 @@ function readingOutput() {
   };
 }
 
-describe("DiffractionService — état du livre", () => {
+describe("lecture diffractive — état du livre", () => {
   it("passe bookParts et existingCuts au lecteur diffractif", async () => {
     const prompts: string[] = [];
-    const service = new DiffractionService({
+    const pipeline = createDiffractivePipeline({
       generateJson: async (prompt: string) => {
         prompts.push(prompt);
         return readingOutput();
       },
     });
 
-    await service.diffract({
-      statement: "s",
-      bookParts: [
+    await pipeline.diffract(
+      { statement: "s" },
+      {
+        bookParts: [
         { id: "c1", title: "Chapitre 1", status: "drafting", text: "Ébauche." },
-      ],
-      existingCuts: [
+        ],
+        existingCuts: [
         { scope: "chapitre 2", verdict: "integrate_now", cut: "coupe" },
-      ],
-    });
+        ],
+      }
+    );
 
     expect(prompts[0]).toContain("## État du livre en cours");
     expect(prompts[0]).toContain("[ÉBAUCHE] Chapitre 1 (c1)");

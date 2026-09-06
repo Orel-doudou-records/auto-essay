@@ -1,4 +1,3 @@
-import { cliOutput } from "../observability/cliOutput.js";
 import { readFileSync } from "node:fs";
 import { z } from "zod";
 import {
@@ -12,29 +11,15 @@ import {
 } from "@auto-essay/core";
 import { createModelClient } from "../llm/client.js";
 import { StructuredClientAdapter } from "../llm/structuredAdapter.js";
+import { loadEnvironmentFile, readJson, readOptions, runCli } from "./cliSupport.js";
 
-// Charge .env (OLLAMA_API_KEY / OLLAMA_MODEL) — sans dépendance externe.
-try {
-  process.loadEnvFile();
-} catch {
-  // Pas de .env : on utilise l'environnement existant.
-}
+loadEnvironmentFile();
 
 const FragmentSchema = z.object({
   statement: z.string().min(1),
   claimIds: z.array(z.string().min(1)).optional(),
   sourceIds: z.array(z.string().min(1)).optional(),
 });
-
-function readJsonArray(path: string | undefined): unknown {
-  if (!path) return undefined;
-  return JSON.parse(readFileSync(path, "utf8"));
-}
-
-function flag(argv: string[], name: string): string | undefined {
-  const index = argv.indexOf(name);
-  return index >= 0 ? argv[index + 1] : undefined;
-}
 
 /**
  * Entrée de commande générique : lecture diffractive par lot.
@@ -47,30 +32,30 @@ function flag(argv: string[], name: string): string | undefined {
  *     --book-parts bookParts.json --cuts cuts.json
  */
 async function main(): Promise<void> {
-  const argv = process.argv.slice(2);
-  const fragmentsPath = flag(argv, "--fragments");
-  const bookPath = flag(argv, "--book-file");
-  const conceptsPath = flag(argv, "--concepts");
-  const tensionsPath = flag(argv, "--tensions");
-  const bookPartsPath = flag(argv, "--book-parts");
-  const cutsPath = flag(argv, "--cuts");
-  const bookPlanPath = flag(argv, "--book-plan");
+  const options = readOptions(process.argv.slice(2));
+  const fragmentsPath = options.fragments;
+  const bookPath = options["book-file"];
+  const conceptsPath = options.concepts;
+  const tensionsPath = options.tensions;
+  const bookPartsPath = options["book-parts"];
+  const cutsPath = options.cuts;
+  const bookPlanPath = options["book-plan"];
 
   if (!fragmentsPath) {
     throw new Error("Missing required --fragments <fichier.json>");
   }
 
-  const rawFragments = readJsonArray(fragmentsPath);
+  const rawFragments = readJson(fragmentsPath);
   const fragments = z
     .array(FragmentSchema)
     .min(1)
     .parse(rawFragments) as DiffractiveBatchFragment[];
   const book = bookPath ? readFileSync(bookPath, "utf8") : undefined;
-  const concepts = extractConcepts(readJsonArray(conceptsPath));
-  const tensions = extractTensions(readJsonArray(tensionsPath));
-  const bookParts = extractBookParts(readJsonArray(bookPartsPath));
-  const existingCuts = extractExistingCuts(readJsonArray(cutsPath));
-  const bookPlan = extractBookPlan(readJsonArray(bookPlanPath));
+  const concepts = extractConcepts(readJson(conceptsPath));
+  const tensions = extractTensions(readJson(tensionsPath));
+  const bookParts = extractBookParts(readJson(bookPartsPath));
+  const existingCuts = extractExistingCuts(readJson(cutsPath));
+  const bookPlan = extractBookPlan(readJson(bookPlanPath));
 
   const client = await createModelClient();
   const structured = new StructuredClientAdapter(client);
@@ -88,7 +73,4 @@ async function main(): Promise<void> {
   process.stdout.write(JSON.stringify(result, null, 2) + "\n");
 }
 
-main().catch((error: unknown) => {
-  cliOutput.error(error instanceof Error ? error.message : String(error));
-  process.exitCode = 1;
-});
+runCli(main);

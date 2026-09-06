@@ -34,6 +34,8 @@ export interface DiffractiveContext {
   tensions?: Array<{ label: string; description: string }>;
 }
 
+export type DiffractiveRequest = DiffractivePipelineFragment & DiffractiveContext;
+
 /**
  * Pipeline de lecture du « moteur de pensée ». Il diffracte un fragment et
  * peut attacher cette trace de raisonnement à une articulation candidate.
@@ -71,6 +73,17 @@ export class DiffractivePipeline {
       concepts: context.concepts,
       tensions: context.tensions,
     });
+  }
+
+  async diffractRequest(request: DiffractiveRequest): Promise<DiffractiveReading> {
+    return this.diffract(
+      {
+        statement: request.statement,
+        claimIds: request.claimIds,
+        sourceIds: request.sourceIds,
+      },
+      request
+    );
   }
 
   /** 2. Attache la lecture à une articulation (immutable, statut conservé). */

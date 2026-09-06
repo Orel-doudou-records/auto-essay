@@ -24,7 +24,7 @@ comme s'il était déjà clôturé ».
 
 Le prompt rend la section « État du livre en cours ». Branchement complet :
 CLI (`--book-parts`, `--cuts`), batch, pipeline, API (schémas zod +
-`DiffractionService`).
+`DiffractivePipeline` du core).
 
 ## Décisions de modélisation D (toutes actées par l'auteur le 2026-08-24)
 

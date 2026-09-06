@@ -1,6 +1,7 @@
 import { Hono, type Context } from "hono";
 import { HTTPException } from "hono/http-exception";
 import {
+  createDiffractivePipeline,
   createEditorialDecisionService,
   projectBibliography,
   setAutomaticDiffractiveReadingReviewStatus,
@@ -12,6 +13,7 @@ import {
   type ContentStyleArticulation,
   type EditorialDecision,
   type ManuscriptChild,
+  type StructuredModelClient,
 } from "@auto-essay/core";
 import type { ModelClientFactory } from "../llm/client.js";
 import { StructuredClientAdapter } from "../llm/structuredAdapter.js";
@@ -28,7 +30,6 @@ import {
   ReviewAutomaticDiffractiveReadingBodySchema,
   UpdateDiffractiveReadingModeBodySchema,
 } from "../schemas/editorial.js";
-import { DiffractionService } from "../services/diffractionService.js";
 import {
   acceptDecision,
   getDiffractiveReadingMode,
@@ -386,8 +387,8 @@ async function createStoredAuthorReading(input: {
     throw new HTTPException(400, { message: "proposal does not belong to this section" });
   }
 
-  const service = await makeDiffractionService(input.modelClientFactory);
-  const reading = await service.diffract({
+  const pipeline = createDiffractivePipeline(await makeStructuredClient(input.modelClientFactory));
+  const reading = await pipeline.diffractRequest({
     statement: input.statement,
     claimIds: input.claimIds,
     sourceIds: input.sourceIds,
@@ -740,7 +741,7 @@ function isNode(child: ManuscriptChild): child is Extract<ManuscriptChild, { kin
   return child.kind === "node";
 }
 
-async function makeDiffractionService(modelClientFactory: ModelClientFactory): Promise<DiffractionService> {
+async function makeStructuredClient(modelClientFactory: ModelClientFactory): Promise<StructuredModelClient> {
   const client = await modelClientFactory();
-  return new DiffractionService(new StructuredClientAdapter(client));
+  return new StructuredClientAdapter(client);
 }

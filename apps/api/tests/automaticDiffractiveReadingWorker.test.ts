@@ -3,7 +3,7 @@ import {
   createAutomaticDiffractiveReading,
   supersedeAutomaticDiffractiveReading,
 } from "@auto-essay/core";
-import { AutomaticDiffractiveReadingWorker } from "../src/services/automaticDiffractiveReadingWorker.js";
+import { processAutomaticDiffractiveReading } from "../src/services/automaticDiffractiveReadingWorker.js";
 import {
   listAutomaticDiffractiveReadings,
   storeAutomaticDiffractiveReading,
@@ -36,9 +36,9 @@ describe("automatic diffractive reading worker", () => {
       supersedeAutomaticDiffractiveReading(current)
     );
     const executeReading = vi.fn();
-    const worker = new AutomaticDiffractiveReadingWorker(executeReading);
-
-    await expect(worker.process("project-1", request.id)).resolves.toBeUndefined();
+    await expect(
+      processAutomaticDiffractiveReading("project-1", request.id, executeReading)
+    ).resolves.toBeUndefined();
 
     expect(executeReading).not.toHaveBeenCalled();
     await expect(listAutomaticDiffractiveReadings("project-1", "section-1")).resolves.toMatchObject([

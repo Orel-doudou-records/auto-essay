@@ -22,7 +22,7 @@ import {
   storeAutomaticDiffractiveReading,
   updateAutomaticDiffractiveReading,
 } from "./automaticDiffractiveReadingStore.js";
-import { createAutomaticDiffractiveReadingWorker } from "./automaticDiffractiveReadingWorker.js";
+import { processAutomaticDiffractiveReading } from "./automaticDiffractiveReadingWorker.js";
 import { listSources } from "./sourceStore.js";
 import { listUnits } from "./unitStore.js";
 
@@ -67,9 +67,8 @@ export async function enqueueAutomaticDiffractiveReading(input: {
     readingInput,
   });
   await storeAutomaticDiffractiveReading(input.projectId, request);
-  const worker = createAutomaticDiffractiveReadingWorker(input.modelClientFactory);
   setTimeout(() => {
-    void worker.process(input.projectId, request.id).catch(() => undefined);
+    void processAutomaticDiffractiveReading(input.projectId, request.id, input.modelClientFactory).catch(() => undefined);
   }, 0);
   return request;
 }
