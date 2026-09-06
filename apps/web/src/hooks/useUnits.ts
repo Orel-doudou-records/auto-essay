@@ -13,7 +13,7 @@ import type { DraftUnit } from "@auto-essay/core";
 
 export function useUnits(projectId: string | undefined) {
   const [units, setUnits] = useState<DraftUnit[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(Boolean(projectId));
   const [error, setError] = useState<Error | null>(null);
 
   const load = useCallback(async () => {

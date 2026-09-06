@@ -4,3 +4,4 @@
  */
 
 export * from "./importers";
+export * from "./manuscriptImport";

@@ -29,7 +29,7 @@ export function AppShell({ projectId, children }: AppShellProps) {
 
   const projectLinks = projectId
     ? [
-        { to: `/projects/${projectId}`, label: "Projet" },
+        { to: `/projects/${projectId}/cadrage`, label: "Cadrage" },
         { to: `/projects/${projectId}/sources`, label: "Sources" },
         { to: `/projects/${projectId}/editor`, label: "Éditeur" },
         { to: `/projects/${projectId}/atelier`, label: "Atelier" },
@@ -56,14 +56,21 @@ export function AppShell({ projectId, children }: AppShellProps) {
       data-theme={theme}
     >
       <aside {...stylex.props(styles.sidebar)}>
-        <div {...stylex.props(styles.brand)}>auto-essay</div>
+        <Link to="/" {...stylex.props(styles.brand)} aria-label="Auto Essay — projets">
+          auto-essay
+        </Link>
         <nav {...stylex.props(styles.navigation)} aria-label="Navigation principale">
           {links.map((link) => {
-            const active = location.pathname === link.to;
+            const active = location.pathname === link.to || (
+              projectId !== undefined &&
+              link.to === `/projects/${projectId}/cadrage` &&
+              location.pathname === `/projects/${projectId}/import`
+            );
             return (
               <Link
                 key={link.to}
                 to={link.to}
+                aria-current={active ? "page" : undefined}
                 {...stylex.props(styles.navigationLink, active && styles.navigationLinkActive)}
               >
                 {link.label}
@@ -99,9 +106,16 @@ const styles = stylex.create({
   },
   brand: {
     color: themeVars.textPrimary,
+    outline: {
+      ':focus-visible': `2px solid ${themeVars.focus}`,
+    },
+    outlineOffset: {
+      ':focus-visible': "2px",
+    },
     fontSize: "1.0625rem",
     fontWeight: 650,
     letterSpacing: "-0.02em",
+    textDecoration: "none",
   },
   navigation: {
     display: "flex",

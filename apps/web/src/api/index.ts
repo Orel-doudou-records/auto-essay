@@ -5,12 +5,22 @@ import type {
   EssayProject,
   Source,
   DraftUnit,
+  ManuscriptImportPreview,
   RevisionProposal,
   JudgeAssignment,
   IntegratedEvaluationHistoryEntry,
 } from "@auto-essay/core";
 
 const API = "/api";
+
+async function responseMessage(res: Response): Promise<string> {
+  try {
+    const body = (await res.json()) as { message?: string };
+    return body.message ?? `HTTP ${res.status}`;
+  } catch {
+    return `HTTP ${res.status}`;
+  }
+}
 
 export interface DemoContextPayload {
   id: string;
@@ -525,6 +535,34 @@ export async function fetchUnits(projectId: string): Promise<DraftUnit[]> {
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const data = await res.json();
   return data.units as DraftUnit[];
+}
+
+export async function previewManuscriptImport(
+  projectId: string,
+  name: string,
+  content: string
+): Promise<ManuscriptImportPreview> {
+  const res = await fetch(`${API}/projects/${projectId}/manuscript-import/preview`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, content }),
+  });
+  if (!res.ok) throw new Error(await responseMessage(res));
+  const data = await res.json();
+  return data.preview as ManuscriptImportPreview;
+}
+
+export async function confirmManuscriptImport(
+  projectId: string,
+  preview: ManuscriptImportPreview
+): Promise<{ manuscript: { id: string; projectId: string; title: string }; units: Array<{ id: string }> }> {
+  const res = await fetch(`${API}/projects/${projectId}/manuscript-import/confirm`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ preview }),
+  });
+  if (!res.ok) throw new Error(await responseMessage(res));
+  return res.json();
 }
 
 export async function createUnit(

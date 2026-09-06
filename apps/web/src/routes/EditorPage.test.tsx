@@ -213,6 +213,50 @@ describe("EditorPage", () => {
     expect(screen.getByRole("navigation", { name: "Unités du manuscrit" })).toBeInTheDocument();
   });
 
+  it("creates the first editable section from the project entry path", async () => {
+    const add = vi.fn().mockResolvedValue(preparedUnit);
+    useProjectUnits.mockReturnValue({
+      units: [], loading: false, error: null, reload: vi.fn(), add, update: updateUnit, generate: vi.fn(),
+      reviseChat: vi.fn(), evaluate: vi.fn(), evaluateIntegrated: vi.fn(), verify: vi.fn(),
+    });
+    render(
+      <MemoryRouter initialEntries={["/projects/project-1/editor?new=1"]}>
+        <Routes>
+          <Route path="/projects/:projectId/editor" element={<EditorPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    expect(screen.getByRole("heading", { name: "Commencer à écrire" })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Titre de votre première section"), { target: { value: "Ouverture" } });
+    fireEvent.click(screen.getByRole("button", { name: "Créer et écrire" }));
+
+    await vi.waitFor(() => expect(add).toHaveBeenCalledWith("Ouverture"));
+    expect(await screen.findByRole("textbox", { name: "Manuscrit : Unité préparée" })).toBeInTheDocument();
+  });
+
+  it("prevents duplicate creation and reports a failed first section", async () => {
+    const add = vi.fn().mockRejectedValue(new Error("offline"));
+    useProjectUnits.mockReturnValue({
+      units: [], loading: false, error: null, reload: vi.fn(), add, update: updateUnit, generate: vi.fn(),
+      reviseChat: vi.fn(), evaluate: vi.fn(), evaluateIntegrated: vi.fn(), verify: vi.fn(),
+    });
+    render(
+      <MemoryRouter initialEntries={["/projects/project-1/editor?new=1"]}>
+        <Routes>
+          <Route path="/projects/:projectId/editor" element={<EditorPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    fireEvent.change(screen.getByLabelText("Titre de votre première section"), { target: { value: "Ouverture" } });
+    fireEvent.click(screen.getByRole("button", { name: "Créer et écrire" }));
+    fireEvent.click(screen.getByRole("button", { name: "Création…" }));
+
+    await vi.waitFor(() => expect(add).toHaveBeenCalledTimes(1));
+    expect(await screen.findByRole("alert")).toHaveTextContent("La section n’a pas pu être créée. Réessayez.");
+  });
+
   it("keeps a revision proposal separate, editable, explicit and stale after manuscript changes", async () => {
     const proposal: RevisionProposal = {
       id: "proposal-1", projectId: "project-1", unitId: "unit-prepared", sourceVersion: 1,

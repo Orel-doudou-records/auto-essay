@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import * as stylex from "@stylexjs/stylex";
 import type { DiffractiveReading } from "@auto-essay/core";
 import { AppShell } from "@/components/layout/AppShell";
@@ -54,6 +54,8 @@ function WorkshopCard({ title, children }: { title: string; children: React.Reac
 
 export function AuthorWorkshopPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const [searchParams] = useSearchParams();
+  const requestedSectionId = searchParams.get("sectionId")?.trim() ?? "";
   const [sectionId, setSectionId] = useState("");
   const [context, setContext] = useState<EditorialSectionContextPayload | null>(null);
   const [contextLoading, setContextLoading] = useState(false);
@@ -106,8 +108,7 @@ export function AuthorWorkshopPage() {
     }
   }
 
-  async function loadContext() {
-    const scope = sectionId.trim();
+  async function loadContext(scope = sectionId.trim()) {
     if (!projectId || !scope || contextLoading) return;
     setContextLoading(true);
     setContextError(null);
@@ -121,6 +122,12 @@ export function AuthorWorkshopPage() {
       setContextLoading(false);
     }
   }
+
+  useEffect(() => {
+    if (!requestedSectionId) return;
+    setSectionId(requestedSectionId);
+    void loadContext(requestedSectionId);
+  }, [projectId, requestedSectionId]);
 
   function selectProposal(id: string) {
     setProposalId(id);

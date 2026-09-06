@@ -36,4 +36,11 @@ describe("AppShell", () => {
     expect(document.documentElement).toHaveAttribute("data-theme", "dark");
     expect(screen.getAllByRole("button", { name: "Activer le thème clair" })).toHaveLength(2);
   });
+
+  it("keeps a conventional return path and marks the current workspace", () => {
+    renderShell();
+
+    expect(screen.getByRole("link", { name: "Auto Essay — projets" })).toHaveAttribute("href", "/");
+    expect(screen.getByRole("link", { name: "Éditeur" })).toHaveAttribute("aria-current", "page");
+  });
 });

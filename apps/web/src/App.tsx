@@ -8,6 +8,8 @@ import { DemoPage } from "@/routes/DemoPage";
 import { AuthorWorkshopPage } from "@/routes/AuthorWorkshopPage";
 import { ChapterWorkshopPage } from "@/routes/ChapterWorkshopPage";
 import { WorkspaceLandingPage } from "@/routes/WorkspaceLandingPage";
+import { ManuscriptImportPage } from "@/routes/ManuscriptImportPage";
+import { ProjectEntryPage } from "@/routes/ProjectEntryPage";
 
 function App() {
   return (
@@ -16,7 +18,9 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/demo" element={<DemoPage />} />
         <Route path="/espace" element={<WorkspaceLandingPage />} />
-        <Route path="/projects/:projectId" element={<ProjectPage />} />
+        <Route path="/projects/:projectId" element={<ProjectEntryPage />} />
+        <Route path="/projects/:projectId/cadrage" element={<ProjectPage />} />
+        <Route path="/projects/:projectId/import" element={<ManuscriptImportPage />} />
         <Route path="/projects/:projectId/sources" element={<SourcesPage />} />
         <Route path="/projects/:projectId/editor" element={<EditorPage />} />
         <Route path="/projects/:projectId/atelier" element={<AuthorWorkshopPage />} />

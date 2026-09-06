@@ -13,6 +13,7 @@ export function ProjectPage() {
   const { project, loading, error, update } = useProject(projectId);
   const [title, setTitle] = useState("");
   const [thesisSeed, setThesisSeed] = useState("");
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
   useEffect(() => {
     if (project) {
@@ -23,7 +24,13 @@ export function ProjectPage() {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    await update({ title, thesisSeed });
+    setSaveStatus("saving");
+    try {
+      await update({ title, thesisSeed });
+      setSaveStatus("saved");
+    } catch {
+      setSaveStatus("error");
+    }
   }
 
   if (loading) return <AppShell projectId={projectId}>Chargement…</AppShell>;
@@ -37,7 +44,7 @@ export function ProjectPage() {
   return (
     <AppShell projectId={projectId}>
       <div>
-        <h1>Projet</h1>
+        <h1>Cadrage</h1>
         <form onSubmit={handleSave}>
           <Card>
             <CardHeader>
@@ -49,7 +56,10 @@ export function ProjectPage() {
                 <Input
                   id="title"
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  onChange={(e) => {
+                    setTitle(e.target.value);
+                    setSaveStatus("idle");
+                  }}
                 />
               </div>
               <div>
@@ -57,11 +67,23 @@ export function ProjectPage() {
                 <Textarea
                   id="thesisSeed"
                   value={thesisSeed}
-                  onChange={(e) => setThesisSeed(e.target.value)}
+                  onChange={(e) => {
+                    setThesisSeed(e.target.value);
+                    setSaveStatus("idle");
+                  }}
                   rows={4}
                 />
               </div>
-              <Button type="submit">Enregistrer</Button>
+              <Button type="submit" disabled={saveStatus === "saving"}>
+                {saveStatus === "saving" ? "Enregistrement…" : "Enregistrer"}
+              </Button>
+              <p aria-live="polite" role={saveStatus === "error" ? "alert" : undefined}>
+                {saveStatus === "saved"
+                  ? "Cadrage enregistré."
+                  : saveStatus === "error"
+                    ? "L’enregistrement a échoué. Réessayez."
+                    : ""}
+              </p>
             </CardContent>
           </Card>
         </form>

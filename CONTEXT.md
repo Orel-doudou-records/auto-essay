@@ -55,6 +55,28 @@ l'implémentation.
 - **Statut de rédaction** (`DraftUnitStatus`) : état d'une partie ou d'une
   unité — `drafting` (ébauche), `reviewing` (en révision), `revising`
   (en réécriture), `verified` (rédigé/validé), `published`, `archived`.
+- **Reprise de manuscrit** : entrée normale d’un projet déjà commencé. Elle
+  rend à l’auteur la dernière unité de rédaction travaillée, sans lui imposer
+  de repasser par le cadrage ou par une vue de pilotage.
+- **Entrée d’un projet vide** : moment où l’auteur choisit explicitement entre
+  importer un manuscrit existant et commencer à écrire. Ces deux voies sont
+  proposées à égalité.
+- **Aperçu d’import de manuscrit** : structure provisoire issue d’un fichier,
+  que l’auteur peut corriger avant toute création de parties ou d’unités. Elle
+  ne devient un manuscrit qu’après confirmation explicite.
+- **Granularité progressive du manuscrit** : l’import crée d’abord une unité
+  éditable par section. Après l’import, l’auteur peut scinder une section en
+  unités de paragraphe ou fusionner ces unités ; la granularité résulte de son
+  travail, jamais d’une découpe imposée par le fichier.
+- **Annotation d’import** : note, commentaire ou lien extrait d’un manuscrit
+  importé et laissé visible à l’auteur pour révision. Une annotation n’altère
+  ni le texte, ni les sources, ni les décisions tant que l’auteur n’agit pas.
+- **Section provisoire** : unique section créée pour un fichier dont aucun
+  titre fiable ne peut être reconnu. L’auteur peut la découper dans l’aperçu
+  d’import ou ultérieurement dans l’éditeur.
+- **Réimportation de manuscrit** : nouvel aperçu comparé au manuscrit existant,
+  dont l’auteur choisit explicitement les ajouts, remplacements ou exclusions.
+  Elle n’écrase jamais une unité existante par défaut.
 - **Coupe déjà édictée** (`ExistingCut`) : engagement de l'auteur déjà pris
   (scope + verdict + coupe) avec lequel le lecteur diffractif compose — il ne
   recommande pas de la réédicter, il ne la contredit pas en silence.

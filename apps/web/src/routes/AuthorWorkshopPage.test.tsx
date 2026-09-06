@@ -108,9 +108,9 @@ const reading = {
   createdAt: "2026-08-26T12:00:00.000Z",
 };
 
-function renderPage() {
+function renderPage(entry = "/projects/project-1/atelier") {
   return render(
-    <MemoryRouter initialEntries={["/projects/project-1/atelier"]}>
+    <MemoryRouter initialEntries={[entry]}>
       <Routes>
         <Route path="/projects/:projectId/atelier" element={<AuthorWorkshopPage />} />
       </Routes>
@@ -157,6 +157,15 @@ describe("AuthorWorkshopPage", () => {
         articulationId: "proposal-1",
       });
     });
+  });
+
+  it("opens the requested section directly from a chapter link", async () => {
+    fetchContext.mockResolvedValue(context);
+    renderPage("/projects/project-1/atelier?sectionId=section-1");
+
+    expect(await screen.findByRole("heading", { name: "Section réelle" })).toBeInTheDocument();
+    expect(screen.getByLabelText("ID de section")).toHaveValue("section-1");
+    expect(fetchContext).toHaveBeenCalledWith("project-1", "section-1");
   });
 
   it("lets the author explicitly read a section or one of its paragraphs in strict mode", async () => {

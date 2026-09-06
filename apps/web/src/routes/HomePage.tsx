@@ -71,8 +71,8 @@ export function HomePage() {
               </CardHeader>
               <CardContent>
                 <div {...stylex.props(workshopStyles.actionRow)}>
-                <Link to={`/projects/${project.id}/editor`}>
-                  <Button variant="outline" size="sm">Éditer</Button>
+                <Link to={`/projects/${project.id}`}>
+                  <Button variant="outline" size="sm">Ouvrir</Button>
                 </Link>
                 <Button
                   variant="destructive"

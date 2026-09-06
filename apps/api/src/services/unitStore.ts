@@ -3,6 +3,7 @@ import path from "node:path";
 import { getDataDir } from "../config.js";
 import { createDraftUnit, DraftUnitSchema, type DraftUnit } from "@auto-essay/core";
 import { z } from "zod";
+import { withProjectWriteLock } from "./projectWriteLock.js";
 
 const UnitsFileSchema = z.object({
   units: z.array(DraftUnitSchema),
@@ -25,15 +26,17 @@ export async function createUnit(
     targetWordCount?: number;
   }
 ): Promise<DraftUnit> {
-  const units = await listUnits(projectId);
-  const args = { ...draft, projectId } as Parameters<typeof createDraftUnit>[0];
-  if (args.targetWordCount === undefined) {
-    delete args.targetWordCount;
-  }
-  const unit = createDraftUnit(args);
-  units.push(unit);
-  await setUnits(projectId, units);
-  return unit;
+  return withProjectWriteLock(projectId, async () => {
+    const units = await listUnits(projectId);
+    const args = { ...draft, projectId } as Parameters<typeof createDraftUnit>[0];
+    if (args.targetWordCount === undefined) {
+      delete args.targetWordCount;
+    }
+    const unit = createDraftUnit(args);
+    units.push(unit);
+    await writeUnits(projectId, units);
+    return unit;
+  });
 }
 
 export async function updateUnit(
@@ -41,17 +44,19 @@ export async function updateUnit(
   unitId: string,
   patch: Partial<Pick<DraftUnit, "content" | "status" | "targetWordCount" | "thesis" | "contextInPlan" | "evidencePack" | "editorialPlanId" | "transformationTraceIds" | "version">>
 ): Promise<DraftUnit | undefined> {
-  const units = await listUnits(projectId);
-  const idx = units.findIndex((u) => u.id === unitId);
-  if (idx < 0) return undefined;
-  const updated = {
-    ...units[idx],
-    ...patch,
-    updatedAt: new Date().toISOString(),
-  };
-  units[idx] = DraftUnitSchema.parse(updated);
-  await setUnits(projectId, units);
-  return units[idx];
+  return withProjectWriteLock(projectId, async () => {
+    const units = await listUnits(projectId);
+    const idx = units.findIndex((u) => u.id === unitId);
+    if (idx < 0) return undefined;
+    const updated = {
+      ...units[idx],
+      ...patch,
+      updatedAt: new Date().toISOString(),
+    };
+    units[idx] = DraftUnitSchema.parse(updated);
+    await writeUnits(projectId, units);
+    return units[idx];
+  });
 }
 
 export async function bumpUnitVersion(
@@ -68,14 +73,24 @@ export async function bumpUnitVersion(
 }
 
 export async function deleteUnit(projectId: string, unitId: string): Promise<boolean> {
-  const units = await listUnits(projectId);
-  const next = units.filter((u) => u.id !== unitId);
-  if (next.length === units.length) return false;
-  await setUnits(projectId, next);
-  return true;
+  return withProjectWriteLock(projectId, async () => {
+    const units = await listUnits(projectId);
+    const next = units.filter((u) => u.id !== unitId);
+    if (next.length === units.length) return false;
+    await writeUnits(projectId, next);
+    return true;
+  });
 }
 
 export async function setUnits(projectId: string, units: DraftUnit[]): Promise<void> {
+  await withProjectWriteLock(projectId, () => writeUnits(projectId, units));
+}
+
+export async function replaceUnitsWhileLocked(projectId: string, units: DraftUnit[]): Promise<void> {
+  await writeUnits(projectId, units);
+}
+
+async function writeUnits(projectId: string, units: DraftUnit[]): Promise<void> {
   await writeUnitsFile(projectId, { units });
 }
 

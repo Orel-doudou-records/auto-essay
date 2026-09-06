@@ -20,6 +20,8 @@ export function EditorPage() {
   const { units, loading, error, add, update, generate, reviseChat } = useUnits(projectId);
   const [selectedUnit, setSelectedUnit] = useState<DraftUnit | null>(null);
   const [newSection, setNewSection] = useState("");
+  const [isCreating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string>();
   const [isNavigationOpen, setNavigationOpen] = useState(false);
   const [isInspectorOpen, setInspectorOpen] = useState(false);
   const [draftContent, setDraftContent] = useState("");
@@ -28,6 +30,7 @@ export function EditorPage() {
   const saveSequence = useRef(0);
   const selectedUnitId = useRef<string | null>(null);
   const requestedUnitId = searchParams.get("unitId");
+  const requestedNewUnit = searchParams.get("new") === "1";
 
   function clearPendingSave() {
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
@@ -52,12 +55,20 @@ export function EditorPage() {
 
   async function handleAddUnit(event: React.FormEvent) {
     event.preventDefault();
-    if (!newSection.trim()) return;
-    const unit = await add(newSection);
-    if (unit) {
-      setNewSection("");
-      selectUnit(unit);
-      setNavigationOpen(false);
+    if (!newSection.trim() || isCreating) return;
+    setCreating(true);
+    setCreateError(undefined);
+    try {
+      const unit = await add(newSection);
+      if (unit) {
+        setNewSection("");
+        selectUnit(unit);
+        setNavigationOpen(false);
+      }
+    } catch {
+      setCreateError("La section n’a pas pu être créée. Réessayez.");
+    } finally {
+      setCreating(false);
     }
   }
 
@@ -160,10 +171,11 @@ export function EditorPage() {
                     placeholder="Nouvelle unité"
                     aria-label="Nouvelle unité"
                   />
-                  <Button type="submit" size="sm" disabled={!newSection.trim()}>
-                    Créer
+                  <Button type="submit" size="sm" disabled={!newSection.trim() || isCreating}>
+                    {isCreating ? "Création…" : "Créer"}
                   </Button>
                 </form>
+                {createError && <p role="alert" {...stylex.props(styles.errorMessage)}>{createError}</p>}
                 {loading && <p {...stylex.props(styles.panelMessage)}>Chargement…</p>}
                 {error && <p {...stylex.props(styles.errorMessage)}>{error.message}</p>}
                 <div {...stylex.props(styles.unitList)}>
@@ -198,6 +210,14 @@ export function EditorPage() {
                 saveStatus={saveStatus}
                 onChange={queueSave}
               />
+            ) : requestedNewUnit && !loading && units.length === 0 ? (
+              <StartWritingForm
+                section={newSection}
+                onChange={setNewSection}
+                onSubmit={handleAddUnit}
+                isCreating={isCreating}
+                error={createError}
+              />
             ) : (
               <EmptyEditorState
                 onCreate={() => setNavigationOpen(true)}
@@ -226,6 +246,40 @@ export function EditorPage() {
         </div>
       </section>
     </AppShell>
+  );
+}
+
+function StartWritingForm({
+  section,
+  onChange,
+  onSubmit,
+  isCreating,
+  error,
+}: {
+  section: string;
+  onChange: (section: string) => void;
+  onSubmit: (event: React.FormEvent) => Promise<void>;
+  isCreating: boolean;
+  error?: string;
+}) {
+  return (
+    <section {...stylex.props(styles.emptyState)} aria-label="Commencer à écrire">
+      <p {...stylex.props(styles.eyebrow)}>Manuscrit</p>
+      <h1 {...stylex.props(styles.emptyTitle)}>Commencer à écrire</h1>
+      <p {...stylex.props(styles.emptyDescription)}>Donnez un titre à la première section : vous pourrez écrire dès sa création.</p>
+      <form {...stylex.props(styles.createForm)} onSubmit={(event) => void onSubmit(event)}>
+        <Input
+          value={section}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder="Première section"
+          aria-label="Titre de votre première section"
+        />
+        <Button type="submit" disabled={!section.trim() || isCreating}>
+          {isCreating ? "Création…" : "Créer et écrire"}
+        </Button>
+      </form>
+      {error && <p role="alert" {...stylex.props(styles.errorMessage)}>{error}</p>}
+    </section>
   );
 }
 
