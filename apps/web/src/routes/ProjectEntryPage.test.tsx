@@ -40,7 +40,7 @@ describe("ProjectEntryPage", () => {
     expect(screen.getByRole("link", { name: "Importer un manuscrit" })).toHaveAttribute(
       "href", "/projects/project-1/import"
     );
-    expect(screen.getByRole("link", { name: "Commencer à écrire" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Créer la première section" })).toHaveAttribute(
       "href", "/projects/project-1/editor?new=1"
     );
   });

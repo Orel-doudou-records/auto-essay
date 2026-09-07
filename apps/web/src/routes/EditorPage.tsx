@@ -166,7 +166,7 @@ export function EditorPage() {
             <p {...stylex.props(styles.eyebrow)}>Écriture</p>
           </div>
           <div {...stylex.props(styles.toolbarCluster)}>
-            <Link to={`/projects/${projectId}/reimport`} {...stylex.props(styles.toolbarLink)}>Réimporter</Link>
+            <Link to={`/projects/${projectId}/reimport`} {...stylex.props(styles.toolbarLink)}>Comparer un nouveau fichier</Link>
             <Button type="button" variant="ghost" size="sm" onClick={handleExport}>
               Exporter
             </Button>
@@ -186,17 +186,16 @@ export function EditorPage() {
         <div {...stylex.props(styles.body)}>
           {isNavigationOpen && (
             <aside {...stylex.props(styles.navigationPanel)}>
-              <nav id="manuscript-navigation" aria-label="Unités du manuscrit">
+              <nav id="manuscript-navigation" aria-label="Structure du manuscrit">
                 <div {...stylex.props(styles.panelHeader)}>
                   <h2 {...stylex.props(styles.panelTitle)}>Manuscrit</h2>
-                  <span {...stylex.props(styles.panelMeta)}>{units.length} unité{units.length > 1 ? "s" : ""}</span>
                 </div>
                 <form {...stylex.props(styles.createForm)} onSubmit={handleAddUnit}>
                   <Input
                     value={newSection}
                     onChange={(event) => setNewSection(event.target.value)}
-                    placeholder="Nouvelle unité"
-                    aria-label="Nouvelle unité"
+                    placeholder="Nouvelle section"
+                    aria-label="Nouvelle section"
                   />
                   <Button type="submit" size="sm" disabled={!newSection.trim() || isCreating}>
                     {isCreating ? "Création…" : "Créer"}
@@ -402,14 +401,14 @@ function StartWritingForm({
 
 function EmptyEditorState({ onCreate, onChoose }: { onCreate: () => void; onChoose: () => void }) {
   return (
-    <section {...stylex.props(styles.emptyState)} aria-label="Aucune unité sélectionnée">
+    <section {...stylex.props(styles.emptyState)} aria-label="Aucune section sélectionnée">
       <p {...stylex.props(styles.eyebrow)}>Manuscrit</p>
       <h1 {...stylex.props(styles.emptyTitle)}>Un espace pour écrire.</h1>
       <p {...stylex.props(styles.emptyDescription)}>
-        Créez une unité ou retrouvez un passage du manuscrit pour commencer.
+        Créez une section ou retrouvez un passage du manuscrit pour commencer.
       </p>
       <div {...stylex.props(styles.emptyActions)}>
-        <Button type="button" onClick={onCreate}>Créer une unité</Button>
+        <Button type="button" onClick={onCreate}>Ajouter une section</Button>
         <Button type="button" variant="outline" onClick={onChoose}>Choisir dans le manuscrit</Button>
       </div>
     </section>
@@ -511,6 +510,7 @@ function ChatPanel({
   }
 
   const isStale = proposal !== null && (proposal.unitId !== unit.id || manuscript !== proposal.before);
+  const levelLabel = unit.granularity === "paragraph" ? "Paragraphe" : "Section";
 
   function applyProposal() {
     if (!proposal || isStale) return;
@@ -522,7 +522,7 @@ function ChatPanel({
   return (
     <section {...stylex.props(styles.inspectorContent)}>
       <header>
-        <p {...stylex.props(styles.eyebrow)}>Unité · {unit.status}</p>
+        <p {...stylex.props(styles.eyebrow)}>{levelLabel} · {unit.status}</p>
         <h2 {...stylex.props(styles.inspectorTitle)}>Révision assistée</h2>
       </header>
       <Button type="button" variant="outline" size="sm" onClick={onGenerate} fullWidth>
@@ -558,7 +558,7 @@ function ChatPanel({
       )}
 
       <Link {...stylex.props(styles.evaluationLink)} to={`/projects/${projectId}/evaluate/${unit.id}`}>
-        Évaluer cette unité
+        Évaluer ce {levelLabel.toLocaleLowerCase("fr-FR")}
       </Link>
     </section>
   );
