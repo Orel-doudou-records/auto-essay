@@ -68,7 +68,7 @@ describe("Lunette Ronde evaluator", () => {
     ).toMatchObject({
       workType: "lunette_ronde_review",
       judge: {
-        id: "judge-lunette-ronde",
+        id: "judge-editorial",
         role: "judge",
         specialty: "lunette_ronde_review",
       },
