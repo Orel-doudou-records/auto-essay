@@ -35,13 +35,7 @@ export const DEFAULT_JUDGE_ROUTING_POLICY: JudgeRoutingPolicy = {
       id: "judge-editorial",
       role: "judge",
       model: "editorial-judge-model",
-      specialties: ["editorial_effect_evaluation"],
-    },
-    {
-      id: "judge-lunette-ronde",
-      role: "judge",
-      model: "editorial-judge-model",
-      specialties: ["lunette_ronde_review"],
+      specialties: ["editorial_effect_evaluation", "lunette_ronde_review"],
     },
   ],
 };
