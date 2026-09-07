@@ -17,6 +17,11 @@ import {
 import { passesMechanicalChecks } from "./mechanicalChecks";
 import { EditorialEffectEvaluator } from "./editorialEffectEvaluator";
 import {
+  LunetteRondeEvaluator,
+  type LunetteRondeMode,
+  type LunetteRondeReview,
+} from "./lunetteRondeEvaluator";
+import {
   DEFAULT_JUDGE_ROUTING_POLICY,
   selectJudgeAssignment,
   type JudgeRoutingPolicy,
@@ -75,14 +80,12 @@ export class EssayEvaluator {
   async evaluate(context: EvaluationContext): Promise<EssayEvaluation> {
     validateEditorialContext(context);
 
-    // Étape 1: Vérifications mécaniques (sans LLM)
     const mechanicalResult = passesMechanicalChecks(
       context.unit.content,
-      0, // 0 erreur tolérée
-      10 // 10 warnings max
+      0,
+      10
     );
 
-    // Si échec mécanique critique, retourner une évaluation négative
     const criticalIssues = mechanicalResult.issues.filter(
       (i) => i.severity === "error"
     );
@@ -103,14 +106,10 @@ export class EssayEvaluator {
       });
     }
 
-    // Étape 2: Évaluation LLM (judge model)
     const prompt = this.buildEvaluationPrompt(context);
     const rawOutput = await this.client.generateJson(prompt);
-
-    // Étape 3: Parser et valider
     const evaluation = this.parseEvaluation(rawOutput);
 
-    // Étape 4: Fusionner avec issues mécaniques
     return EssayEvaluationSchema.parse({
       ...evaluation,
       weaknesses: [
@@ -155,6 +154,18 @@ export class EssayEvaluator {
     });
 
     return createIntegratedEvaluation(essay, editorial);
+  }
+
+  /**
+   * Lecture éditoriale advisory : produit des constats situés sans modifier
+   * l'unité ni participer au verdict documentaire/éditorial intégré.
+   */
+  async reviewLunetteRonde(
+    context: EvaluationContext,
+    mode: LunetteRondeMode = "full"
+  ): Promise<LunetteRondeReview> {
+    selectJudgeAssignment(this.judgeRoutingPolicy, "lunette_ronde_review");
+    return new LunetteRondeEvaluator(this.client).evaluate(context.unit, mode);
   }
 
   /**
@@ -320,59 +331,25 @@ Ne relève jamais un score documentaire parce qu'un effet formel semble réussi.
 Évalue de manière critique et précise. Ne sois pas indulgent.`;
   }
 
-  /**
-   * Parse la réponse d'évaluation
-   *
-   * Valide strictement la sortie du modèle via Zod. Toute réponse incomplète
-   * ou mal typée lève une erreur explicite au lieu d'être complétée
-   * silencieusement avec des valeurs par défaut.
-   */
-  private parseEvaluation(rawOutput: unknown): EssayEvaluation {
-    if (
-      typeof rawOutput !== "object" ||
-      rawOutput === null ||
-      Array.isArray(rawOutput)
-    ) {
-      throw new Error("Evaluation output must be a JSON object");
-    }
-
-    return EssayEvaluationSchema.parse({
-      ...rawOutput,
-      evaluatedAt: new Date().toISOString(),
-      evaluatorModel: this.judgeModel,
-    });
-  }
-
-  /**
-   * Compare deux évaluations pour détecter un plateau
-   */
-  hasPlateaued(current: EssayEvaluation, previous: EssayEvaluation): boolean {
-    const delta = Math.abs(current.overallScore - previous.overallScore);
-    return delta < QUALITY_THRESHOLDS.IMPROVEMENT_DELTA;
+  private parseEvaluation(raw: unknown): EssayEvaluation {
+    return EssayEvaluationSchema.parse(raw);
   }
 }
 
 function validateEditorialContext(context: EvaluationContext): void {
-  if (!context.editorialProjection) {
-    if ((context.transformationTraces ?? []).length > 0) {
-      throw new Error(
-        "Transformation traces require an evaluator editorial projection"
-      );
-    }
-    return;
-  }
+  if (!context.editorialProjection) return;
 
   if (
     context.editorialProjection.unitId !== context.unit.id ||
     context.editorialProjection.unitVersion !== context.unit.version
   ) {
-    throw new Error("Evaluator projection does not match the evaluated unit");
+    throw new Error("Editorial projection does not match evaluation unit");
   }
 
   if (
     context.unit.editorialPlanId !== undefined &&
     context.unit.editorialPlanId !== context.editorialProjection.planId
   ) {
-    throw new Error("Evaluator projection plan does not match the unit plan");
+    throw new Error("Editorial projection plan does not match unit plan");
   }
 }
