@@ -18,6 +18,8 @@ export const ConfirmManuscriptImportBodySchema = z.object({
   preview: ManuscriptImportPreviewSchema,
 });
 
+export const ConfirmPlanImportBodySchema = ConfirmManuscriptImportBodySchema;
+
 const ManuscriptReimportActionSchema = z.object({
   sectionId: z.string().min(1).max(255),
   action: z.enum(["add", "replace", "ignore"]),

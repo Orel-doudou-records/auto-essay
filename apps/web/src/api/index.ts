@@ -583,6 +583,35 @@ export async function confirmManuscriptImport(
   return res.json();
 }
 
+export async function previewPlanImport(
+  projectId: string,
+  name: string,
+  content: string | ArrayBuffer
+): Promise<{ preview: ManuscriptImportPreview; warnings: string[] }> {
+  const res = await fetch(`${API}/projects/${projectId}/manuscript-import/plan-preview`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(
+      typeof content === "string" ? { name, content } : { name, contentBase64: arrayBufferToBase64(content) }
+    ),
+  });
+  if (!res.ok) throw new Error(await responseMessage(res));
+  return res.json();
+}
+
+export async function confirmPlanImport(
+  projectId: string,
+  preview: ManuscriptImportPreview
+): Promise<{ manuscript: { id: string; title: string; tree: Array<{ kind: "node"; id: string }> }; units: [] }> {
+  const res = await fetch(`${API}/projects/${projectId}/manuscript-import/plan-confirm`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ preview }),
+  });
+  if (!res.ok) throw new Error(await responseMessage(res));
+  return res.json();
+}
+
 export type ManuscriptReimportPreviewPayload = {
   preview: ManuscriptImportPreview;
   warnings: string[];

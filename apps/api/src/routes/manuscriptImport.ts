@@ -5,6 +5,7 @@ import {
   createManuscript,
   createManuscriptLeaf,
   createManuscriptNode,
+  createPlanEntry,
   applyManuscriptReimport,
   compareManuscriptReimport,
   previewDocxHtml,
@@ -19,6 +20,7 @@ import {
 import mammoth from "mammoth";
 import {
   ConfirmManuscriptImportBodySchema,
+  ConfirmPlanImportBodySchema,
   ConfirmManuscriptReimportBodySchema,
   PreviewManuscriptImportBodySchema,
 } from "../schemas/manuscriptImport.js";
@@ -63,6 +65,20 @@ export function manuscriptImportRoutes(): Hono {
       }
       throw new HTTPException(400, {
         message: error instanceof Error ? error.message : "Le manuscrit ne peut pas être lu.",
+      });
+    }
+  });
+
+  app.post("/plan-preview", async (c) => {
+    const projectId = c.req.param("projectId") as string;
+    await getProject(projectId);
+    const parsed = PreviewManuscriptImportBodySchema.safeParse(await c.req.json());
+    if (!parsed.success) throw new HTTPException(400, { message: "Le fichier dépasse 5 Mo ou son nom est invalide." });
+    try {
+      return c.json(await preparePreview(parsed.data));
+    } catch (error) {
+      throw new HTTPException(400, {
+        message: error instanceof Error ? error.message : "Le plan ne peut pas être lu.",
       });
     }
   });
@@ -114,6 +130,35 @@ export function manuscriptImportRoutes(): Hono {
       }
 
       return c.json({ manuscript, units }, 201);
+    });
+  });
+
+  app.post("/plan-confirm", async (c) => {
+    const projectId = c.req.param("projectId") as string;
+    await getProject(projectId);
+    const parsed = ConfirmPlanImportBodySchema.safeParse(await c.req.json());
+    if (!parsed.success) {
+      throw new HTTPException(400, { message: "L’aperçu doit contenir un titre de plan et une partie, un chapitre ou une section." });
+    }
+    const { preview } = parsed.data;
+    return withProjectWriteLock(projectId, async () => {
+      const existingUnits = await listUnits(projectId);
+      const workspaceExists = await hasWorkspace(projectId);
+      if (existingUnits.length > 0 || workspaceExists) {
+        throw new HTTPException(409, { message: "Le projet contient déjà un manuscrit ou des sections." });
+      }
+      const manuscript = createManuscript({
+        projectId,
+        title: preview.title,
+        tree: buildPlannedManuscriptTree(preview),
+      });
+      await putWorkspaceWhileLocked(projectId, {
+        manuscript,
+        distribution: [],
+        profiles: [],
+        articulations: [],
+      });
+      return c.json({ manuscript, units: [] }, 201);
     });
   });
 
@@ -256,6 +301,28 @@ function buildManuscriptTree(preview: ManuscriptImportPreview, units: DraftUnit[
     else roots.push(node);
     ancestors.push({ level: section.level, node });
   });
+
+  return roots;
+}
+
+function buildPlannedManuscriptTree(preview: ManuscriptImportPreview): ManuscriptChild[] {
+  const roots: ManuscriptChild[] = [];
+  const ancestors: Array<{ level: number; node: ManuscriptNode }> = [];
+
+  for (const section of preview.sections) {
+    const node = createManuscriptNode({
+      id: section.id,
+      title: section.title,
+      plan: section.content.trim() ? [createPlanEntry(section.content.trim())] : [],
+    });
+    while (ancestors.at(-1)?.level !== undefined && ancestors.at(-1)!.level >= section.level) {
+      ancestors.pop();
+    }
+    const parent = ancestors.at(-1)?.node;
+    if (parent) parent.children.push(node);
+    else roots.push(node);
+    ancestors.push({ level: section.level, node });
+  }
 
   return roots;
 }

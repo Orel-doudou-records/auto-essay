@@ -10,6 +10,7 @@ import { ChapterWorkshopPage } from "@/routes/ChapterWorkshopPage";
 import { WorkspaceLandingPage } from "@/routes/WorkspaceLandingPage";
 import { ManuscriptImportPage } from "@/routes/ManuscriptImportPage";
 import { ProjectEntryPage } from "@/routes/ProjectEntryPage";
+import { PlanImportPage } from "@/routes/PlanImportPage";
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
         <Route path="/projects/:projectId" element={<ProjectEntryPage />} />
         <Route path="/projects/:projectId/cadrage" element={<ProjectPage />} />
         <Route path="/projects/:projectId/import" element={<ManuscriptImportPage />} />
+        <Route path="/projects/:projectId/plan-import" element={<PlanImportPage />} />
         <Route path="/projects/:projectId/reimport" element={<ManuscriptImportPage mode="reimport" />} />
         <Route path="/projects/:projectId/sources" element={<SourcesPage />} />
         <Route path="/projects/:projectId/editor" element={<EditorPage />} />
