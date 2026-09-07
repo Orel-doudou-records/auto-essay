@@ -99,6 +99,34 @@ export function editorialRoutes(modelClientFactory: ModelClientFactory): Hono {
     });
   });
 
+  app.get("/manuscript-navigation", async (c) => {
+    const projectId = c.req.param("projectId") as string;
+    await getProject(projectId);
+    const [workspace, units] = await Promise.all([
+      getWorkspace(projectId).catch((error) => {
+        if (error instanceof HTTPException && error.status === 404) return undefined;
+        throw error;
+      }),
+      listUnits(projectId),
+    ]);
+    const unitsById = new Map(units.map((unit) => [unit.id, unit]));
+    const tree = workspace?.manuscript.tree ?? [];
+    const mountedUnitIds = collectMountedUnitIds(tree);
+    const entries = [
+      ...toPublicManuscriptNavigation(tree, unitsById),
+      ...units
+        .filter((unit) => !mountedUnitIds.has(unit.id))
+        .map((unit) => ({
+          kind: "leaf" as const,
+          unitId: unit.id,
+          version: unit.version,
+          status: unit.status,
+          granularity: unit.granularity,
+        })),
+    ];
+    return c.json({ entries });
+  });
+
   app.get("/sections/:sectionId/context", async (c) => {
     const projectId = c.req.param("projectId") as string;
     const context = await loadSectionContext(projectId, c.req.param("sectionId") as string);
@@ -539,6 +567,38 @@ function toPublicChapterWorkspace(
       },
     })),
   };
+}
+
+function toPublicManuscriptNavigation(
+  children: ManuscriptChild[],
+  unitsById: Map<string, Awaited<ReturnType<typeof listUnits>>[number]>
+): Array<Record<string, unknown>> {
+  return children.map((child) => {
+    if (child.kind === "node") {
+      return {
+        kind: "node",
+        id: child.id,
+        title: child.title,
+        children: toPublicManuscriptNavigation(child.children, unitsById),
+      };
+    }
+    const unit = unitsById.get(child.unitId);
+    return {
+      kind: "leaf",
+      unitId: child.unitId,
+      version: child.version,
+      status: unit?.status ?? "drafting",
+      granularity: unit?.granularity ?? "paragraph",
+    };
+  });
+}
+
+function collectMountedUnitIds(children: ManuscriptChild[], unitIds = new Set<string>()): Set<string> {
+  for (const child of children) {
+    if (child.kind === "leaf") unitIds.add(child.unitId);
+    else collectMountedUnitIds(child.children, unitIds);
+  }
+  return unitIds;
 }
 
 async function loadSectionContext(projectId: string, sectionId: string) {

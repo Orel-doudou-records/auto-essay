@@ -147,6 +147,17 @@ export async function fetchEditorialSectionContext(
   return res.json() as Promise<EditorialSectionContextPayload>;
 }
 
+export type ManuscriptNavigationEntry =
+  | { kind: "node"; id: string; title: string; children: ManuscriptNavigationEntry[] }
+  | { kind: "leaf"; unitId: string; version: number; status: string; granularity: "section" | "paragraph" };
+
+export async function fetchManuscriptNavigation(projectId: string): Promise<ManuscriptNavigationEntry[]> {
+  const res = await fetch(`${API}/projects/${projectId}/editorial/manuscript-navigation`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const body = await res.json() as { entries: ManuscriptNavigationEntry[] };
+  return body.entries;
+}
+
 export interface ChapterEditorialWorkspacePayload {
   chapter: { id: string; title: string; writingStatus: string };
   sections: Array<{

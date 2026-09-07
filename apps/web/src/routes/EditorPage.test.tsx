@@ -3,12 +3,15 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DraftUnit, RevisionProposal } from "@auto-essay/core";
 import { useUnits } from "@/hooks/useUnits";
+import { useManuscriptNavigation } from "@/hooks/useManuscriptNavigation";
 import { EditorPage } from "./EditorPage";
 
 vi.mock("@/hooks/useUnits", () => ({ useUnits: vi.fn() }));
+vi.mock("@/hooks/useManuscriptNavigation", () => ({ useManuscriptNavigation: vi.fn() }));
 vi.mock("@/api", () => ({ exportProject: vi.fn() }));
 
 const useProjectUnits = vi.mocked(useUnits);
+const useProjectNavigation = vi.mocked(useManuscriptNavigation);
 const updateUnit = vi.fn();
 const splitUnit = vi.fn();
 const mergeNextUnit = vi.fn();
@@ -57,6 +60,7 @@ describe("EditorPage", () => {
       evaluateIntegrated: vi.fn(),
       verify: vi.fn(),
     });
+    useProjectNavigation.mockReturnValue({ entries: [], loading: false, error: null, reload: vi.fn() });
   });
 
   afterEach(() => {
@@ -356,5 +360,67 @@ describe("EditorPage", () => {
     expect(screen.getByRole("button", { name: "Générer une version" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Fermer les outils" }));
     expect(screen.queryByRole("complementary", { name: "Inspecteur éditorial" })).not.toBeInTheDocument();
+  });
+
+  it("shows the manuscript hierarchy and opens a chapter from its node", async () => {
+    useProjectNavigation.mockReturnValue({
+      entries: [{
+        kind: "node",
+        id: "chapter-1",
+        title: "Ouverture",
+        children: [{
+          kind: "node",
+          id: "section-1",
+          title: "Le point de départ",
+          children: [{
+            kind: "leaf",
+            unitId: "unit-prepared",
+            version: 1,
+            status: "drafting",
+            granularity: "paragraph",
+          }],
+        }],
+      }],
+      loading: false,
+      error: null,
+      reload: vi.fn(),
+    });
+    render(
+      <MemoryRouter initialEntries={["/projects/project-1/editor?unitId=unit-prepared"]}>
+        <Routes>
+          <Route path="/projects/:projectId/editor" element={<EditorPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Ouvrir la navigation" }));
+
+    const navigation = screen.getByRole("navigation", { name: "Unités du manuscrit" });
+    expect(within(navigation).getByRole("link", { name: "Ouverture" })).toHaveAttribute(
+      "href",
+      "/projects/project-1/chapitre?chapterId=chapter-1"
+    );
+    expect(within(navigation).getByText("Le point de départ")).toBeInTheDocument();
+    expect(within(navigation).queryByRole("link", { name: "Le point de départ" })).not.toBeInTheDocument();
+    expect(within(navigation).getByRole("button", { name: /Paragraphe 1/ })).toBeInTheDocument();
+  });
+
+  it("explains when manuscript navigation cannot be loaded", () => {
+    useProjectNavigation.mockReturnValue({
+      entries: [],
+      loading: false,
+      error: new Error("Navigation indisponible"),
+      reload: vi.fn(),
+    });
+    render(
+      <MemoryRouter initialEntries={["/projects/project-1/editor?unitId=unit-prepared"]}>
+        <Routes>
+          <Route path="/projects/:projectId/editor" element={<EditorPage />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Ouvrir la navigation" }));
+    expect(screen.getByText("Navigation indisponible")).toBeInTheDocument();
   });
 });

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import * as stylex from "@stylexjs/stylex";
 import { workshopStyles } from "../styles/workshopStyles";
 import { fetchChapterEditorialWorkspace, type ChapterEditorialWorkspacePayload } from "@/api";
@@ -12,18 +12,19 @@ import { ChapterOperationPanel } from "@/components/editorial/ChapterOperationPa
 
 export function ChapterWorkshopPage() {
   const { projectId } = useParams<{ projectId: string }>();
-  const [chapterId, setChapterId] = useState("");
+  const [searchParams] = useSearchParams();
+  const [chapterId, setChapterId] = useState(() => searchParams.get("chapterId") ?? "");
   const [workspace, setWorkspace] = useState<ChapterEditorialWorkspacePayload>();
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(false);
 
-  async function loadChapter() {
-    if (!projectId || !chapterId.trim()) return;
+  async function loadChapter(selectedChapterId = chapterId) {
+    if (!projectId || !selectedChapterId.trim()) return;
     setLoading(true);
     setError(undefined);
     setWorkspace(undefined);
     try {
-      setWorkspace(await fetchChapterEditorialWorkspace(projectId, chapterId.trim()));
+      setWorkspace(await fetchChapterEditorialWorkspace(projectId, selectedChapterId.trim()));
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Erreur inconnue");
     } finally {
@@ -31,12 +32,19 @@ export function ChapterWorkshopPage() {
     }
   }
 
+  useEffect(() => {
+    const selectedChapterId = searchParams.get("chapterId");
+    if (!selectedChapterId) return;
+    setChapterId(selectedChapterId);
+    void loadChapter(selectedChapterId);
+  }, [searchParams]);
+
   return (
     <AppShell projectId={projectId}>
       <div {...stylex.props(workshopStyles.page)}>
         <header {...stylex.props(workshopStyles.intro)}>
           <p {...stylex.props(workshopStyles.eyebrow)}>Manuscrit</p>
-          <h1 {...stylex.props(workshopStyles.title)}>Atelier de chapitre</h1>
+          <h1 {...stylex.props(workshopStyles.title)}>Plan du manuscrit</h1>
           <p {...stylex.props(workshopStyles.copy)}>
             Consultez l’état éditorial du chapitre, puis choisissez explicitement la section ou l’unité à poursuivre.
           </p>
@@ -47,15 +55,15 @@ export function ChapterWorkshopPage() {
             <CardContent>
               <div {...stylex.props(workshopStyles.formRow)}>
                 <div {...stylex.props(workshopStyles.field)}>
-                  <Label htmlFor="chapter-id">ID du chapitre</Label>
+                  <Label htmlFor="chapter-id">Chapitre</Label>
                   <Input
                 id="chapter-id"
                 value={chapterId}
                 onChange={(event) => setChapterId(event.target.value)}
-                placeholder="chapter-1"
+                placeholder="Choisissez un chapitre depuis le manuscrit"
                   />
                 </div>
-                <Button type="button" onClick={loadChapter} disabled={!chapterId.trim() || loading}>
+                <Button type="button" onClick={() => void loadChapter()} disabled={!chapterId.trim() || loading}>
                   {loading ? "Chargement…" : "Charger le chapitre"}
                 </Button>
               </div>
