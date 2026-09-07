@@ -32,7 +32,7 @@ const OpenQuestionFindingSchema = FindingBaseSchema.extend({
 });
 const KeepFindingSchema = FindingBaseSchema.extend({ kind: z.literal("keep") });
 
-export const LunetteRondeFindingSchema = z.union([
+const LunetteRondeFindingSchema = z.union([
   InterventionFindingSchema,
   OpenQuestionFindingSchema,
   KeepFindingSchema,
@@ -75,12 +75,6 @@ export class LunetteRondeEvaluator {
 
     return review;
   }
-}
-
-export function createLunetteRondeEvaluator(
-  client: StructuredModelClient
-): LunetteRondeEvaluator {
-  return new LunetteRondeEvaluator(client);
 }
 
 export function buildEssayLunetteRondePrompt(
