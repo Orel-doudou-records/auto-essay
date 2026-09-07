@@ -59,7 +59,7 @@ describe("Lunette Ronde evaluator", () => {
     expect(prompt).toContain("intervention minimale vient après la compréhension");
     expect(prompt).toContain("degré de certitude");
     expect(prompt).toContain("citations");
-    expect(prompt).toContain("n'invente ni fait, ni source, ni intention");
+    expect(prompt).toContain("N'invente ni fait, ni source, ni intention");
     expect(prompt).toContain("origine humaine ou IA");
     expect(prompt).toContain("Mode full");
 
