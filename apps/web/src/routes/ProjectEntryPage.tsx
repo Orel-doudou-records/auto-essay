@@ -39,10 +39,10 @@ export function ProjectEntryPage() {
             </CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle>Commencer à écrire</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Créer la première section</CardTitle></CardHeader>
             <CardContent>
               <p>Donnez un titre à votre première section, puis écrivez.</p>
-              <Link to={`/projects/${projectId}/editor?new=1`}>Commencer à écrire</Link>
+              <Link to={`/projects/${projectId}/editor?new=1`}>Créer la première section</Link>
             </CardContent>
           </Card>
         </div>

@@ -134,7 +134,7 @@ export function ManuscriptImportPage({ mode = "import" }: { mode?: "import" | "r
   return (
     <AppShell projectId={projectId}>
       <section>
-        <h1>{reimport ? "Réimporter une version" : "Importer un manuscrit"}</h1>
+        <h1>{reimport ? "Comparer un nouveau fichier" : "Importer un manuscrit"}</h1>
         <p>{reimport ? "Comparez le fichier au manuscrit courant, puis choisissez explicitement le sort de chaque section." : "Le fichier reste un aperçu modifiable jusqu’à votre confirmation."}</p>
 
         {!preview && status !== "done" && (
@@ -166,13 +166,13 @@ export function ManuscriptImportPage({ mode = "import" }: { mode?: "import" | "r
             {status === "done" ? (
               <Card>
                 <CardHeader>
-                  <CardTitle>{reimport ? "Réimportation terminée" : "Import terminé"}</CardTitle>
+                  <CardTitle>{reimport ? "Comparaison terminée" : "Import terminé"}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <p aria-live="polite">
                     {reimport
-                      ? `Réimportation terminée : ${preview.sections.length} section${preview.sections.length > 1 ? "s" : ""} examinée${preview.sections.length > 1 ? "s" : ""}.`
-                      : `Import terminé : ${preview.sections.length} unité${preview.sections.length > 1 ? "s" : ""} créée${preview.sections.length > 1 ? "s" : ""}.`}
+                      ? `Comparaison terminée : ${preview.sections.length} section${preview.sections.length > 1 ? "s" : ""} examinée${preview.sections.length > 1 ? "s" : ""}.`
+                      : `Import terminé : ${preview.sections.length} section${preview.sections.length > 1 ? "s" : ""} créée${preview.sections.length > 1 ? "s" : ""}.`}
                   </p>
                   {firstUnitId && (
                     <Link to={`/projects/${projectId}/editor?unitId=${firstUnitId}`}>
@@ -258,7 +258,7 @@ export function ManuscriptImportPage({ mode = "import" }: { mode?: "import" | "r
                 {!isValidPreview && <p role="alert">Donnez un titre au manuscrit et à chaque section avant de confirmer.</p>}
                 {reimport && !reimportIsComplete && <p role="alert">Choisissez une action pour chaque section et une seule cible par remplacement.</p>}
                 <Button type="button" onClick={() => void confirmImport()} disabled={status === "confirming" || !isValidPreview || !reimportIsComplete}>
-                  {status === "confirming" ? "Application…" : reimport ? "Appliquer la réimportation" : "Confirmer l’import"}
+                  {status === "confirming" ? "Application…" : reimport ? "Appliquer les changements choisis" : "Confirmer l’import"}
                 </Button>
               </>
             )}
@@ -291,7 +291,7 @@ function ReimportDecision({
       <legend>Décision pour « {section.title} »</legend>
       <p>
         {suggestedTarget
-          ? `Correspondance suggérée : « ${suggestedTarget.title} » (${suggestedTarget.unitCount} unité${suggestedTarget.unitCount > 1 ? "s" : ""}).`
+          ? `Correspondance suggérée : « ${suggestedTarget.title} » (${suggestedTarget.unitCount} passage${suggestedTarget.unitCount > 1 ? "s" : ""}).`
           : "Aucune correspondance sûre n’a été trouvée."}
       </p>
       <Label htmlFor={`reimport-action-${section.id}`}>Action</Label>
@@ -315,7 +315,7 @@ function ReimportDecision({
           >
             <option value="">Choisir une section</option>
             {comparison.targets.map((target) => (
-              <option key={target.id} value={target.id}>{target.title} ({target.unitCount} unité{target.unitCount > 1 ? "s" : ""})</option>
+              <option key={target.id} value={target.id}>{target.title} ({target.unitCount} passage{target.unitCount > 1 ? "s" : ""})</option>
             ))}
           </select>
         </>

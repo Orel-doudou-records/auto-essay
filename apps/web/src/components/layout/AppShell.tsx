@@ -28,12 +28,12 @@ export function AppShell({ projectId, children }: AppShellProps) {
   }, [theme]);
 
   const projectLinks = projectId
-    ? [
+      ? [
         { to: `/projects/${projectId}/cadrage`, label: "Cadrage" },
+        { to: `/projects/${projectId}/chapitre`, label: "Plan" },
         { to: `/projects/${projectId}/sources`, label: "Sources" },
-        { to: `/projects/${projectId}/editor`, label: "Éditeur" },
-        { to: `/projects/${projectId}/atelier`, label: "Atelier" },
-        { to: `/projects/${projectId}/chapitre`, label: "Chapitre" },
+        { to: `/projects/${projectId}/editor`, label: "Manuscrit" },
+        { to: `/projects/${projectId}/atelier`, label: "Lectures" },
       ]
     : [];
 
@@ -63,8 +63,9 @@ export function AppShell({ projectId, children }: AppShellProps) {
           {links.map((link) => {
             const active = location.pathname === link.to || (
               projectId !== undefined &&
-              link.to === `/projects/${projectId}/cadrage` &&
-              location.pathname === `/projects/${projectId}/import`
+              link.to === `/projects/${projectId}/editor` &&
+              (location.pathname === `/projects/${projectId}/import` ||
+                location.pathname === `/projects/${projectId}/reimport`)
             );
             return (
               <Link

@@ -41,6 +41,22 @@ describe("AppShell", () => {
     renderShell();
 
     expect(screen.getByRole("link", { name: "Auto Essay — projets" })).toHaveAttribute("href", "/");
-    expect(screen.getByRole("link", { name: "Éditeur" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Manuscrit" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Cadrage" })).toHaveAttribute(
+      "href",
+      "/projects/project-1/cadrage"
+    );
+    expect(screen.getByRole("link", { name: "Plan" })).toHaveAttribute(
+      "href",
+      "/projects/project-1/chapitre"
+    );
+    expect(screen.getByRole("link", { name: "Lectures" })).toHaveAttribute(
+      "href",
+      "/projects/project-1/atelier"
+    );
+    expect(screen.getByRole("link", { name: "Sources" })).toHaveAttribute(
+      "href",
+      "/projects/project-1/sources"
+    );
   });
 });

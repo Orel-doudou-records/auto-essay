@@ -241,17 +241,17 @@ describe("EditorPage", () => {
       </MemoryRouter>
     );
 
-    const emptyState = screen.getByRole("region", { name: "Aucune unité sélectionnée" });
+    const emptyState = screen.getByRole("region", { name: "Aucune section sélectionnée" });
     expect(within(emptyState).getByRole("heading", { name: "Un espace pour écrire." })).toBeInTheDocument();
     expect(within(emptyState).getAllByRole("button").map((button) => button.textContent)).toEqual([
-      "Créer une unité",
+      "Ajouter une section",
       "Choisir dans le manuscrit",
     ]);
 
     fireEvent.click(screen.getByRole("button", { name: "Ouvrir les outils" }));
     expect(screen.queryByRole("complementary", { name: "Inspecteur éditorial" })).not.toBeInTheDocument();
     fireEvent.click(within(emptyState).getByRole("button", { name: "Choisir dans le manuscrit" }));
-    expect(screen.getByRole("navigation", { name: "Unités du manuscrit" })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Structure du manuscrit" })).toBeInTheDocument();
   });
 
   it("creates the first editable section from the project entry path", async () => {
@@ -345,17 +345,18 @@ describe("EditorPage", () => {
     );
 
     await screen.findByRole("heading", { name: "Unité préparée" });
-    expect(screen.queryByRole("navigation", { name: "Unités du manuscrit" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Structure du manuscrit" })).not.toBeInTheDocument();
     expect(screen.queryByRole("complementary", { name: "Inspecteur éditorial" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Générer une version" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Ouvrir la navigation" }));
-    expect(screen.getByRole("navigation", { name: "Unités du manuscrit" })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Structure du manuscrit" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Fermer la navigation" }));
-    expect(screen.queryByRole("navigation", { name: "Unités du manuscrit" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Structure du manuscrit" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Ouvrir les outils" }));
     expect(screen.getByRole("complementary", { name: "Inspecteur éditorial" })).toBeInTheDocument();
+    expect(screen.getByText("Paragraphe · drafting")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Révision assistée" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Générer une version" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Fermer les outils" }));
@@ -395,7 +396,7 @@ describe("EditorPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Ouvrir la navigation" }));
 
-    const navigation = screen.getByRole("navigation", { name: "Unités du manuscrit" });
+    const navigation = screen.getByRole("navigation", { name: "Structure du manuscrit" });
     expect(within(navigation).getByRole("link", { name: "Ouverture" })).toHaveAttribute(
       "href",
       "/projects/project-1/chapitre?chapterId=chapter-1"

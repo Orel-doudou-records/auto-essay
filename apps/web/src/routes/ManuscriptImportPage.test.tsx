@@ -66,7 +66,7 @@ describe("ManuscriptImportPage", () => {
         expect.objectContaining({ title: "Ouverture corrigée", content: "Texte initial." }),
       ],
     });
-    expect(await screen.findByText("Import terminé : 1 unité créée.")).toBeInTheDocument();
+    expect(await screen.findByText("Import terminé : 1 section créée.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Ouvrir la première section" })).toHaveAttribute(
       "href",
       "/projects/project-1/editor?unitId=unit-1"
@@ -163,10 +163,10 @@ describe("ManuscriptImportPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Préparer l’aperçu" }));
 
     expect(await screen.findByRole("heading", { name: "Aperçu comparé à appliquer" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Appliquer la réimportation" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Appliquer les changements choisis" })).toBeDisabled();
     fireEvent.change(screen.getByLabelText("Action"), { target: { value: "replace" } });
     fireEvent.change(screen.getByLabelText("Section à remplacer"), { target: { value: "opening" } });
-    fireEvent.click(screen.getByRole("button", { name: "Appliquer la réimportation" }));
+    fireEvent.click(screen.getByRole("button", { name: "Appliquer les changements choisis" }));
 
     expect(confirmReimport).toHaveBeenCalledWith(
       "project-1",
@@ -174,6 +174,6 @@ describe("ManuscriptImportPage", () => {
       "2026-09-06T12:00:00.000Z",
       [{ sectionId: "incoming-opening", action: "replace", targetSectionId: "opening" }]
     );
-    expect(await screen.findByText("Réimportation terminée : 1 section examinée.")).toBeInTheDocument();
+    expect(await screen.findByText("Comparaison terminée : 1 section examinée.")).toBeInTheDocument();
   });
 });
