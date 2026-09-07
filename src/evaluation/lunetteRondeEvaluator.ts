@@ -7,7 +7,7 @@ const NonEmptyTextSchema = z.string().trim().min(1);
 export const LunetteRondeModeSchema = z.enum(["lite", "full", "ultra"]);
 export type LunetteRondeMode = z.infer<typeof LunetteRondeModeSchema>;
 
-export const LunetteRondeInterventionKindSchema = z.enum([
+const InterventionKindSchema = z.enum([
   "cut",
   "clarify",
   "concretize",
@@ -15,43 +15,27 @@ export const LunetteRondeInterventionKindSchema = z.enum([
   "genericity",
   "syntax",
 ]);
-
-export const LunetteRondeFindingKindSchema = z.enum([
-  ...LunetteRondeInterventionKindSchema.options,
-  "keep",
-  "open_question",
-]);
-
-export const LunetteRondeEvidenceSchema = z
-  .object({ excerpt: NonEmptyTextSchema })
-  .strict();
-
-const LunetteRondeFindingBaseSchema = z
+const EvidenceSchema = z.object({ excerpt: NonEmptyTextSchema }).strict();
+const FindingBaseSchema = z
   .object({
-    evidence: LunetteRondeEvidenceSchema,
+    evidence: EvidenceSchema,
     diagnosis: NonEmptyTextSchema,
   })
   .strict();
-
-export const LunetteRondeInterventionFindingSchema =
-  LunetteRondeFindingBaseSchema.extend({
-    kind: LunetteRondeInterventionKindSchema,
-    suggestion: NonEmptyTextSchema,
-  });
-
-export const LunetteRondeOpenQuestionFindingSchema =
-  LunetteRondeFindingBaseSchema.extend({
-    kind: z.literal("open_question"),
-    authorQuestion: NonEmptyTextSchema,
-  });
-
-export const LunetteRondeKeepFindingSchema =
-  LunetteRondeFindingBaseSchema.extend({ kind: z.literal("keep") });
+const InterventionFindingSchema = FindingBaseSchema.extend({
+  kind: InterventionKindSchema,
+  suggestion: NonEmptyTextSchema,
+});
+const OpenQuestionFindingSchema = FindingBaseSchema.extend({
+  kind: z.literal("open_question"),
+  authorQuestion: NonEmptyTextSchema,
+});
+const KeepFindingSchema = FindingBaseSchema.extend({ kind: z.literal("keep") });
 
 export const LunetteRondeFindingSchema = z.union([
-  LunetteRondeInterventionFindingSchema,
-  LunetteRondeOpenQuestionFindingSchema,
-  LunetteRondeKeepFindingSchema,
+  InterventionFindingSchema,
+  OpenQuestionFindingSchema,
+  KeepFindingSchema,
 ]);
 
 export const LunetteRondeReviewSchema = z
