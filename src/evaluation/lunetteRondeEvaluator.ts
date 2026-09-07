@@ -2,77 +2,57 @@ import { z } from "zod";
 import type { DraftUnit } from "../domain/draftUnit";
 import type { StructuredModelClient } from "./evaluateEssay";
 
+const NonEmptyTextSchema = z.string().trim().min(1);
+
 export const LunetteRondeModeSchema = z.enum(["lite", "full", "ultra"]);
 export type LunetteRondeMode = z.infer<typeof LunetteRondeModeSchema>;
 
-export const LunetteRondeFindingKindSchema = z.enum([
+export const LunetteRondeInterventionKindSchema = z.enum([
   "cut",
   "clarify",
   "concretize",
   "rhythm",
   "genericity",
   "syntax",
+]);
+
+export const LunetteRondeFindingKindSchema = z.enum([
+  ...LunetteRondeInterventionKindSchema.options,
   "keep",
   "open_question",
 ]);
 
 export const LunetteRondeEvidenceSchema = z
-  .object({ excerpt: z.string().trim().min(1) })
+  .object({ excerpt: NonEmptyTextSchema })
   .strict();
 
-export const LunetteRondeFindingSchema = z
+const LunetteRondeFindingBaseSchema = z
   .object({
-    kind: LunetteRondeFindingKindSchema,
     evidence: LunetteRondeEvidenceSchema,
-    diagnosis: z.string().trim().min(1),
-    suggestion: z.string().trim().min(1).optional(),
-    authorQuestion: z.string().trim().min(1).optional(),
+    diagnosis: NonEmptyTextSchema,
   })
-  .strict()
-  .superRefine((finding, context) => {
-    if (finding.kind === "open_question") {
-      if (finding.authorQuestion === undefined) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["authorQuestion"],
-          message: "an open question requires a precise author question",
-        });
-      }
-      if (finding.suggestion !== undefined) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ["suggestion"],
-          message: "an open question cannot prescribe an intervention",
-        });
-      }
-      return;
-    }
+  .strict();
 
-    if (finding.kind === "keep") {
-      if (finding.suggestion !== undefined || finding.authorQuestion !== undefined) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "a keep finding cannot prescribe an intervention",
-        });
-      }
-      return;
-    }
-
-    if (finding.suggestion === undefined) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["suggestion"],
-        message: "an intervention finding requires a situated suggestion",
-      });
-    }
-    if (finding.authorQuestion !== undefined) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["authorQuestion"],
-        message: "author questions are reserved for open_question findings",
-      });
-    }
+export const LunetteRondeInterventionFindingSchema =
+  LunetteRondeFindingBaseSchema.extend({
+    kind: LunetteRondeInterventionKindSchema,
+    suggestion: NonEmptyTextSchema,
   });
+
+export const LunetteRondeOpenQuestionFindingSchema =
+  LunetteRondeFindingBaseSchema.extend({
+    kind: z.literal("open_question"),
+    authorQuestion: NonEmptyTextSchema,
+  });
+
+export const LunetteRondeKeepFindingSchema =
+  LunetteRondeFindingBaseSchema.extend({ kind: z.literal("keep") });
+
+export const LunetteRondeFindingSchema = z.union([
+  LunetteRondeInterventionFindingSchema,
+  LunetteRondeOpenQuestionFindingSchema,
+  LunetteRondeKeepFindingSchema,
+]);
 
 export const LunetteRondeReviewSchema = z
   .object({
@@ -80,7 +60,6 @@ export const LunetteRondeReviewSchema = z
     findings: z.array(LunetteRondeFindingSchema).default([]),
   })
   .strict();
-
 export type LunetteRondeReview = z.infer<typeof LunetteRondeReviewSchema>;
 
 export class LunetteRondeEvaluator {
