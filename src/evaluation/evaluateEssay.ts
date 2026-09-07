@@ -14,6 +14,10 @@ import {
   createIntegratedEvaluation,
   type IntegratedEvaluation,
 } from "../domain/editorialEffectEvaluation";
+import type {
+  LunetteRondeMode,
+  LunetteRondeReview,
+} from "writing-engine";
 import { passesMechanicalChecks } from "./mechanicalChecks";
 import { EditorialEffectEvaluator } from "./editorialEffectEvaluator";
 import {
@@ -155,6 +159,46 @@ export class EssayEvaluator {
     });
 
     return createIntegratedEvaluation(essay, editorial);
+  }
+
+  /**
+   * Lecture éditoriale advisory. Elle reste séparée du verdict intégré.
+   */
+  async reviewLunetteRonde(
+    context: EvaluationContext,
+    mode: LunetteRondeMode = "full"
+  ): Promise<LunetteRondeReview> {
+    selectJudgeAssignment(this.judgeRoutingPolicy, "lunette_ronde_review");
+    const {
+      LunetteRondeModeSchema,
+      LunetteRondeReviewSchema,
+      buildLunetteRondeInstructions,
+    } = await import("writing-engine");
+    const resolvedMode = LunetteRondeModeSchema.parse(mode);
+    const raw = await this.client.generateJson(
+      buildEssayLunetteRondePrompt(
+        context.unit,
+        resolvedMode,
+        buildLunetteRondeInstructions(resolvedMode)
+      )
+    );
+    const review = LunetteRondeReviewSchema.parse(raw);
+
+    if (review.mode !== resolvedMode) {
+      throw new Error(
+        `Lunette Ronde returned mode ${review.mode} for ${resolvedMode}`
+      );
+    }
+
+    for (const finding of review.findings) {
+      if (!context.unit.content.includes(finding.evidence.excerpt)) {
+        throw new Error(
+          `Lunette Ronde evidence is absent from unit ${context.unit.id}: ${finding.evidence.excerpt}`
+        );
+      }
+    }
+
+    return review;
   }
 
   /**
@@ -375,4 +419,37 @@ function validateEditorialContext(context: EvaluationContext): void {
   ) {
     throw new Error("Evaluator projection plan does not match the unit plan");
   }
+}
+
+function buildEssayLunetteRondePrompt(
+  unit: DraftUnit,
+  mode: LunetteRondeMode,
+  instructions: string
+): string {
+  return `${instructions}
+
+Contexte AutoEssay :
+- Préserve les citations, les distinctions conceptuelles et le degré d'incertitude des assertions.
+- Ne transforme jamais une prudence justifiée en certitude.
+- N'invente ni fait, ni source, ni intention d'auteur.
+- Une amélioration formelle ne peut pas compenser une perte d'intégrité documentaire.
+
+## Texte
+\`\`\`
+${unit.content}
+\`\`\`
+
+## JSON strict
+{
+  "mode": "${mode}",
+  "findings": [
+    {
+      "kind": "cut|clarify|concretize|rhythm|genericity|syntax|keep|open_question",
+      "evidence": { "excerpt": "extrait exact" },
+      "diagnosis": "constat situé",
+      "suggestion": "obligatoire uniquement pour cut|clarify|concretize|rhythm|genericity|syntax",
+      "authorQuestion": "obligatoire uniquement pour open_question"
+    }
+  ]
+}`;
 }

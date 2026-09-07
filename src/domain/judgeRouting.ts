@@ -3,6 +3,7 @@ import { z } from "zod";
 export const JudgeWorkTypeSchema = z.enum([
   "documentary_evaluation",
   "editorial_effect_evaluation",
+  "lunette_ronde_review",
 ]);
 export type JudgeWorkType = z.infer<typeof JudgeWorkTypeSchema>;
 
@@ -34,7 +35,7 @@ export const DEFAULT_JUDGE_ROUTING_POLICY: JudgeRoutingPolicy = {
       id: "judge-editorial",
       role: "judge",
       model: "editorial-judge-model",
-      specialties: ["editorial_effect_evaluation"],
+      specialties: ["editorial_effect_evaluation", "lunette_ronde_review"],
     },
   ],
 };
