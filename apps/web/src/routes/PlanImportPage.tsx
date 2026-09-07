@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import type { ManuscriptImportPreview, ManuscriptImportSection } from "@auto-essay/core";
-import { confirmPlanImport, previewPlanImport } from "@/api";
+import { confirmPlanImport, previewPlanImport, proposePlan } from "@/api";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,13 +13,32 @@ const MAX_PLAN_BYTES = 5_000_000;
 
 export function PlanImportPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const [searchParams] = useSearchParams();
+  const fromFraming = searchParams.get("from") === "cadrage";
+  const proposalRequestedFor = useRef<string>();
   const [file, setFile] = useState<File>();
   const [preview, setPreview] = useState<ManuscriptImportPreview>();
   const [warnings, setWarnings] = useState<string[]>([]);
-  const [status, setStatus] = useState<"idle" | "loading" | "confirming" | "done">("idle");
+  const [status, setStatus] = useState<"idle" | "loading" | "confirming" | "done" | "discarded">("idle");
   const [error, setError] = useState<string>();
   const [firstNodeId, setFirstNodeId] = useState<string>();
   const isValidPreview = Boolean(preview?.title.trim() && preview.sections.every((section) => section.title.trim()));
+
+  useEffect(() => {
+    if (!fromFraming || !projectId || proposalRequestedFor.current === projectId) return;
+    proposalRequestedFor.current = projectId;
+    setPreview(undefined);
+    setWarnings([]);
+    setError(undefined);
+    setStatus("loading");
+    void proposePlan(projectId)
+      .then((result) => {
+        setPreview(result.preview);
+        setWarnings(result.warnings);
+      })
+      .catch((reason) => setError(reason instanceof Error ? reason.message : "La proposition ne peut pas être préparée."))
+      .finally(() => setStatus("idle"));
+  }, [fromFraming, projectId]);
 
   async function preparePreview(event: React.FormEvent) {
     event.preventDefault();
@@ -68,6 +87,7 @@ export function PlanImportPage() {
     setPreview(undefined);
     setWarnings([]);
     setError(undefined);
+    if (fromFraming) setStatus("discarded");
   }
 
   async function confirmPlan() {
@@ -87,9 +107,11 @@ export function PlanImportPage() {
   return (
     <AppShell projectId={projectId}>
       <section>
-        <h1>Importer un plan</h1>
-        <p>Le fichier reste un aperçu modifiable jusqu’à votre confirmation. Aucun texte rédigé ne sera créé.</p>
-        {!preview && status !== "done" && (
+        <h1>{fromFraming ? "Proposer un plan" : "Importer un plan"}</h1>
+        <p>Le plan reste un aperçu modifiable jusqu’à votre confirmation. Aucun texte rédigé ne sera créé.</p>
+        {status === "discarded" ? (
+          <Card><CardHeader><CardTitle>Proposition écartée</CardTitle></CardHeader><CardContent><Link to={`/projects/${projectId}/cadrage`}>Retour au cadrage</Link></CardContent></Card>
+        ) : !preview && status !== "done" && !fromFraming && (
           <form onSubmit={preparePreview}>
             <Label htmlFor="plan-file">Fichier Markdown, Word ou LibreOffice</Label>
             <Input
@@ -104,6 +126,8 @@ export function PlanImportPage() {
           </form>
         )}
         {error && <p role="alert">{error}</p>}
+        {fromFraming && error && !preview && <Link to={`/projects/${projectId}/cadrage`}>Retour au cadrage</Link>}
+        {fromFraming && status === "loading" && <p>Préparation de la proposition…</p>}
         {preview && (
           <section aria-label="Aperçu du plan" aria-busy={status === "confirming"}>
             {status === "done" ? (
@@ -144,7 +168,7 @@ export function PlanImportPage() {
                   </Card>
                 ))}
                 <Button type="button" variant="outline" onClick={addSection}>Ajouter une section</Button>
-                <Button type="button" variant="ghost" onClick={cancelPreview}>Annuler l’aperçu</Button>
+                <Button type="button" variant="ghost" onClick={cancelPreview}>{fromFraming ? "Écarter la proposition" : "Annuler l’aperçu"}</Button>
                 {!isValidPreview && <p role="alert">Donnez un titre au plan et à chaque partie, chapitre ou section avant de confirmer.</p>}
                 <Button type="button" onClick={() => void confirmPlan()} disabled={!isValidPreview || status === "confirming"}>
                   {status === "confirming" ? "Enregistrement…" : "Confirmer le plan"}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -87,6 +87,14 @@ export function ProjectPage() {
             </CardContent>
           </Card>
         </form>
+
+        <Card>
+          <CardHeader><CardTitle>Plan</CardTitle></CardHeader>
+          <CardContent>
+            <p>À partir de votre amorce de thèse, obtenez une proposition à corriger avant toute création dans le manuscrit.</p>
+            <Link to={`/projects/${projectId}/plan-import?from=cadrage`}>Proposer un plan</Link>
+          </CardContent>
+        </Card>
 
         {project?.argumentMap && (
           <Card>
