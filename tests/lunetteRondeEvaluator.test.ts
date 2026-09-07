@@ -1,15 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_JUDGE_ROUTING_POLICY,
+  EssayEvaluator,
   buildEssayLunetteRondePrompt,
   createDraftUnit,
-  createLunetteRondeEvaluator,
   selectJudgeAssignment,
   type StructuredModelClient,
 } from "../src/index";
 
 describe("Lunette Ronde evaluator", () => {
-  it("reviews without inventing, preserves documentary constraints and stays read-only", async () => {
+  it("reviews through the read-only essay harness without entering the verdict", async () => {
     const unit = createDraftUnit({
       projectId: "essay-1",
       granularity: "paragraph",
@@ -42,9 +42,12 @@ describe("Lunette Ronde evaluator", () => {
       })),
     };
 
+    const context = { unit, sources: [], claims: [] };
     const before = structuredClone(unit);
-    const evaluator = createLunetteRondeEvaluator(client);
-    const review = await evaluator.evaluate(unit, "full");
+    const review = await new EssayEvaluator(client).reviewLunetteRonde(
+      context,
+      "full"
+    );
 
     expect(review.findings.map((finding) => finding.kind)).toEqual([
       "cut",
@@ -89,7 +92,7 @@ describe("Lunette Ronde evaluator", () => {
     };
 
     await expect(
-      createLunetteRondeEvaluator(badClient).evaluate(unit)
+      new EssayEvaluator(badClient).reviewLunetteRonde(context)
     ).rejects.toThrow(/evidence is absent/);
 
     expect(buildEssayLunetteRondePrompt(unit, "ultra")).toContain("Mode ultra");
