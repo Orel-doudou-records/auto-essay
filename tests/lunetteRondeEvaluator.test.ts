@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_JUDGE_ROUTING_POLICY,
   EssayEvaluator,
-  buildEssayLunetteRondePrompt,
   createDraftUnit,
   selectJudgeAssignment,
   type StructuredModelClient,
@@ -62,6 +61,7 @@ describe("Lunette Ronde evaluator", () => {
     expect(prompt).toContain("citations");
     expect(prompt).toContain("n'invente ni fait, ni source, ni intention");
     expect(prompt).toContain("origine humaine ou IA");
+    expect(prompt).toContain("Mode full");
 
     expect(
       selectJudgeAssignment(
@@ -94,7 +94,5 @@ describe("Lunette Ronde evaluator", () => {
     await expect(
       new EssayEvaluator(badClient).reviewLunetteRonde(context)
     ).rejects.toThrow(/evidence is absent/);
-
-    expect(buildEssayLunetteRondePrompt(unit, "ultra")).toContain("Mode ultra");
   });
 });
