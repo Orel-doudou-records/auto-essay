@@ -3,12 +3,14 @@ import { AppShell } from "@/components/layout/AppShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useUnits } from "@/hooks/useUnits";
+import { useManuscriptNavigation } from "@/hooks/useManuscriptNavigation";
 
 export function ProjectEntryPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const { units, loading, error, reload } = useUnits(projectId);
+  const { entries, loading: navigationLoading } = useManuscriptNavigation(projectId);
 
-  if (loading) return <AppShell projectId={projectId}>Chargement du manuscrit…</AppShell>;
+  if (loading || navigationLoading) return <AppShell projectId={projectId}>Chargement du manuscrit…</AppShell>;
   if (error) {
     return (
       <AppShell projectId={projectId}>
@@ -24,6 +26,8 @@ export function ProjectEntryPage() {
     undefined
   );
   if (lastUnit) return <Navigate to={`/projects/${projectId}/editor?unitId=${lastUnit.id}`} replace />;
+  const firstChapter = entries.find((entry) => entry.kind === "node");
+  if (firstChapter) return <Navigate to={`/projects/${projectId}/chapitre?chapterId=${firstChapter.id}`} replace />;
 
   return (
     <AppShell projectId={projectId}>
@@ -36,6 +40,13 @@ export function ProjectEntryPage() {
             <CardContent>
               <p>Préparez puis corrigez un aperçu Markdown avant toute création.</p>
               <Link to={`/projects/${projectId}/import`}>Importer un manuscrit</Link>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle>Importer un plan</CardTitle></CardHeader>
+            <CardContent>
+              <p>Corrigez la structure avant de créer un plan sans texte rédigé.</p>
+              <Link to={`/projects/${projectId}/plan-import`}>Importer un plan</Link>
             </CardContent>
           </Card>
           <Card>
