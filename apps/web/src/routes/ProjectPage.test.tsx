@@ -55,6 +55,15 @@ describe("ProjectPage", () => {
     expect(update).toHaveBeenCalledWith({ title: "Essai en cours", thesisSeed: "Une amorce" });
   });
 
+  it("offers a plan proposal from the framing", () => {
+    renderPage();
+
+    expect(screen.getByRole("link", { name: "Proposer un plan" })).toHaveAttribute(
+      "href",
+      "/projects/project-1/plan-import?from=cadrage"
+    );
+  });
+
   it("explains when saving fails", async () => {
     update.mockRejectedValue(new Error("offline"));
     renderPage();

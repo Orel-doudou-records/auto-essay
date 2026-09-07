@@ -599,6 +599,14 @@ export async function previewPlanImport(
   return res.json();
 }
 
+export async function proposePlan(
+  projectId: string
+): Promise<{ preview: ManuscriptImportPreview; warnings: string[] }> {
+  const res = await fetch(`${API}/projects/${projectId}/manuscript-import/plan-proposal`, { method: "POST" });
+  if (!res.ok) throw new Error(await responseMessage(res));
+  return res.json();
+}
+
 export async function confirmPlanImport(
   projectId: string,
   preview: ManuscriptImportPreview

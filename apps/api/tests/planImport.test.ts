@@ -1,9 +1,40 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { getWorkspace } from "../src/services/editorialWorkspaceStore.js";
 import { listUnits } from "../src/services/unitStore.js";
 import { makeTempDataDir, makeTestApp, postJson } from "./helper.js";
 
 describe("plan import routes", () => {
+  it("returns a proposed plan from the framing without creating a manuscript", async () => {
+    const complete = vi.fn().mockResolvedValue("# Entrer dans le sujet\n\nPoser la question.\n\n## Déployer l’argument\n\nFaire avancer la thèse.");
+    const app = makeTestApp(makeTempDataDir(), {
+      modelClientFactory: async () => ({ complete, completeStream: vi.fn() }),
+    });
+    const created = await postJson(app, "/api/projects", { title: "Essai en cours", thesisSeed: "Une amorce à défendre" });
+    const { project } = (await created.json()) as { project: { id: string } };
+
+    const proposed = await postJson(app, `/api/projects/${project.id}/manuscript-import/plan-proposal`, {});
+
+    expect(proposed.status).toBe(200);
+    const { preview } = (await proposed.json()) as { preview: { title: string; sections: Array<{ title: string; content: string; level: number }> } };
+    expect({ preview }).toMatchObject({
+      preview: {
+        title: "Essai en cours",
+        sections: [
+          { title: "Entrer dans le sujet", content: "Poser la question.", level: 1 },
+          { title: "Déployer l’argument", content: "Faire avancer la thèse.", level: 2 },
+        ],
+      },
+    });
+    expect(complete).toHaveBeenCalledWith(expect.any(String), expect.stringContaining("Une amorce à défendre"));
+    expect(await listUnits(project.id)).toEqual([]);
+    await expect(getWorkspace(project.id)).rejects.toMatchObject({ status: 404 });
+
+    const confirmed = await postJson(app, `/api/projects/${project.id}/manuscript-import/plan-confirm`, { preview });
+    expect(confirmed.status).toBe(201);
+    expect(await listUnits(project.id)).toEqual([]);
+    await expect(getWorkspace(project.id)).resolves.toMatchObject({ manuscript: { title: "Essai en cours" } });
+  });
+
   it("keeps a Markdown preview transient, then creates only planned manuscript structure", async () => {
     const app = makeTestApp(makeTempDataDir());
     const created = await postJson(app, "/api/projects", { title: "Projet planifié" });

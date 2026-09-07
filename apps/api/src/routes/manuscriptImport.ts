@@ -29,8 +29,9 @@ import { getProject } from "../services/projectStore.js";
 import { listUnits, replaceUnitsWhileLocked } from "../services/unitStore.js";
 import { withProjectWriteLock } from "../services/projectWriteLock.js";
 import { assertSafeZipArchive, readSafeZipEntries } from "../services/safeZipArchive.js";
+import type { ModelClientFactory } from "../llm/client.js";
 
-export function manuscriptImportRoutes(): Hono {
+export function manuscriptImportRoutes(modelClientFactory: ModelClientFactory): Hono {
   const app = new Hono();
 
   app.post("/preview", async (c) => {
@@ -79,6 +80,27 @@ export function manuscriptImportRoutes(): Hono {
     } catch (error) {
       throw new HTTPException(400, {
         message: error instanceof Error ? error.message : "Le plan ne peut pas être lu.",
+      });
+    }
+  });
+
+  app.post("/plan-proposal", async (c) => {
+    const projectId = c.req.param("projectId") as string;
+    const project = await getProject(projectId);
+    if (!project.thesisSeed.trim()) {
+      throw new HTTPException(400, { message: "Renseignez d’abord l’amorce de thèse dans le Cadrage." });
+    }
+    try {
+      const client = await modelClientFactory();
+      const markdown = await client.complete(
+        "Propose un plan d’essai en Markdown. Utilise seulement des titres #, ## ou ### et un court paragraphe sous chaque titre. N’écris pas le manuscrit.",
+        `Titre : ${project.title}\nAmorce de thèse : ${project.thesisSeed}`
+      );
+      const preview = previewMarkdownManuscript("proposition-de-plan.md", markdown);
+      return c.json({ preview: { ...preview, title: project.title }, warnings: [] });
+    } catch (error) {
+      throw new HTTPException(400, {
+        message: error instanceof Error ? error.message : "La proposition de plan ne peut pas être préparée.",
       });
     }
   });

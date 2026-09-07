@@ -42,7 +42,7 @@ export function createApp(options: AppOptions = {}): Hono {
 
   app.route("/api/projects", projectsRoutes());
   app.route("/api/projects/:projectId/sources", sourcesRoutes());
-  app.route("/api/projects/:projectId/manuscript-import", manuscriptImportRoutes());
+  app.route("/api/projects/:projectId/manuscript-import", manuscriptImportRoutes(modelClientFactory));
   app.route("/api/projects/:projectId/manuscript", manuscriptGranularityRoutes());
   app.route("/api/projects/:projectId/units", unitsRoutes(modelClientFactory));
   app.route("/api/projects/:projectId/units/:unitId/generate", generateRoutes(modelClientFactory));
