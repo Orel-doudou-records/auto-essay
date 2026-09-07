@@ -16,15 +16,14 @@ export const LunetteRondeFindingKindSchema = z.enum([
   "open_question",
 ]);
 
+export const LunetteRondeEvidenceSchema = z
+  .object({ excerpt: z.string().trim().min(1) })
+  .strict();
+
 export const LunetteRondeFindingSchema = z
   .object({
     kind: LunetteRondeFindingKindSchema,
-    evidence: z
-      .object({
-        excerpt: z.string().trim().min(1),
-        ref: z.string().trim().min(1).optional(),
-      })
-      .strict(),
+    evidence: LunetteRondeEvidenceSchema,
     diagnosis: z.string().trim().min(1),
     suggestion: z.string().trim().min(1).optional(),
     authorQuestion: z.string().trim().min(1).optional(),
@@ -156,7 +155,7 @@ ${unit.content}
   "findings": [
     {
       "kind": "cut|clarify|concretize|rhythm|genericity|syntax|keep|open_question",
-      "evidence": { "excerpt": "extrait exact", "ref": "optionnel" },
+      "evidence": { "excerpt": "extrait exact" },
       "diagnosis": "constat situé",
       "suggestion": "obligatoire uniquement pour cut|clarify|concretize|rhythm|genericity|syntax",
       "authorQuestion": "obligatoire uniquement pour open_question"
