@@ -31,12 +31,22 @@ export const LunetteRondeFindingSchema = z
   })
   .strict()
   .superRefine((finding, context) => {
-    if (finding.kind === "open_question" && finding.authorQuestion === undefined) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["authorQuestion"],
-        message: "an open question requires a precise author question",
-      });
+    if (finding.kind === "open_question") {
+      if (finding.authorQuestion === undefined) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["authorQuestion"],
+          message: "an open question requires a precise author question",
+        });
+      }
+      if (finding.suggestion !== undefined) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["suggestion"],
+          message: "an open question cannot prescribe an intervention",
+        });
+      }
+      return;
     }
 
     if (finding.kind === "keep") {
@@ -49,11 +59,18 @@ export const LunetteRondeFindingSchema = z
       return;
     }
 
-    if (finding.kind !== "open_question" && finding.suggestion === undefined) {
+    if (finding.suggestion === undefined) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["suggestion"],
         message: "an intervention finding requires a situated suggestion",
+      });
+    }
+    if (finding.authorQuestion !== undefined) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["authorQuestion"],
+        message: "author questions are reserved for open_question findings",
       });
     }
   });
@@ -123,7 +140,7 @@ Cherche la cause, pas le symptôme : idée mal ordonnée, concept non défini, r
 Préserve le sens, les faits fournis, le degré de certitude, les citations, les distinctions conceptuelles, les contraintes éditoriales et la voix de l'auteur.
 Ne transforme jamais une prudence justifiée en certitude et n'invente ni fait, ni source, ni intention.
 Une phrase plus courte mais moins exacte est une mauvaise correction.
-Si une correction honnête exige une information absente ou une décision d'auteur, retourne open_question avec une question précise.
+Si une correction honnête exige une information absente ou une décision d'auteur, retourne open_question avec une question précise et sans suggestion de correction.
 keep est valide quand le passage tient déjà.
 Décris seulement des phénomènes observables ; ne déduis jamais une origine humaine ou IA.
 Mode ${resolvedMode}: ${modeGuidance[resolvedMode]}
@@ -141,8 +158,8 @@ ${unit.content}
       "kind": "cut|clarify|concretize|rhythm|genericity|syntax|keep|open_question",
       "evidence": { "excerpt": "extrait exact", "ref": "optionnel" },
       "diagnosis": "constat situé",
-      "suggestion": "obligatoire sauf keep/open_question",
-      "authorQuestion": "obligatoire pour open_question"
+      "suggestion": "obligatoire uniquement pour cut|clarify|concretize|rhythm|genericity|syntax",
+      "authorQuestion": "obligatoire uniquement pour open_question"
     }
   ]
 }`;
