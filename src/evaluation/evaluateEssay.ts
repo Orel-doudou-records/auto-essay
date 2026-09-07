@@ -14,12 +14,9 @@ import {
   createIntegratedEvaluation,
   type IntegratedEvaluation,
 } from "../domain/editorialEffectEvaluation";
-import {
-  LunetteRondeModeSchema,
-  LunetteRondeReviewSchema,
-  buildLunetteRondeInstructions,
-  type LunetteRondeMode,
-  type LunetteRondeReview,
+import type {
+  LunetteRondeMode,
+  LunetteRondeReview,
 } from "writing-engine";
 import { passesMechanicalChecks } from "./mechanicalChecks";
 import { EditorialEffectEvaluator } from "./editorialEffectEvaluator";
@@ -172,9 +169,18 @@ export class EssayEvaluator {
     mode: LunetteRondeMode = "full"
   ): Promise<LunetteRondeReview> {
     selectJudgeAssignment(this.judgeRoutingPolicy, "lunette_ronde_review");
+    const {
+      LunetteRondeModeSchema,
+      LunetteRondeReviewSchema,
+      buildLunetteRondeInstructions,
+    } = await import("writing-engine");
     const resolvedMode = LunetteRondeModeSchema.parse(mode);
     const raw = await this.client.generateJson(
-      buildEssayLunetteRondePrompt(context.unit, resolvedMode)
+      buildEssayLunetteRondePrompt(
+        context.unit,
+        resolvedMode,
+        buildLunetteRondeInstructions(resolvedMode)
+      )
     );
     const review = LunetteRondeReviewSchema.parse(raw);
 
@@ -417,9 +423,10 @@ function validateEditorialContext(context: EvaluationContext): void {
 
 function buildEssayLunetteRondePrompt(
   unit: DraftUnit,
-  mode: LunetteRondeMode
+  mode: LunetteRondeMode,
+  instructions: string
 ): string {
-  return `${buildLunetteRondeInstructions(mode)}
+  return `${instructions}
 
 Contexte AutoEssay :
 - Préserve les citations, les distinctions conceptuelles et le degré d'incertitude des assertions.
