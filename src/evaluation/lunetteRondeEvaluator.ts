@@ -1,50 +1,14 @@
-import { z } from "zod";
+import {
+  LunetteRondeModeSchema,
+  LunetteRondeReviewSchema,
+  buildLunetteRondeInstructions,
+  type LunetteRondeMode,
+  type LunetteRondeReview,
+} from "writing-engine";
 import type { DraftUnit } from "../domain/draftUnit";
 import type { StructuredModelClient } from "./evaluateEssay";
 
-const NonEmptyTextSchema = z.string().trim().min(1);
-
-export const LunetteRondeModeSchema = z.enum(["lite", "full", "ultra"]);
-export type LunetteRondeMode = z.infer<typeof LunetteRondeModeSchema>;
-
-const InterventionKindSchema = z.enum([
-  "cut",
-  "clarify",
-  "concretize",
-  "rhythm",
-  "genericity",
-  "syntax",
-]);
-const EvidenceSchema = z.object({ excerpt: NonEmptyTextSchema }).strict();
-const FindingBaseSchema = z
-  .object({
-    evidence: EvidenceSchema,
-    diagnosis: NonEmptyTextSchema,
-  })
-  .strict();
-const InterventionFindingSchema = FindingBaseSchema.extend({
-  kind: InterventionKindSchema,
-  suggestion: NonEmptyTextSchema,
-});
-const OpenQuestionFindingSchema = FindingBaseSchema.extend({
-  kind: z.literal("open_question"),
-  authorQuestion: NonEmptyTextSchema,
-});
-const KeepFindingSchema = FindingBaseSchema.extend({ kind: z.literal("keep") });
-
-const LunetteRondeFindingSchema = z.union([
-  InterventionFindingSchema,
-  OpenQuestionFindingSchema,
-  KeepFindingSchema,
-]);
-
-export const LunetteRondeReviewSchema = z
-  .object({
-    mode: LunetteRondeModeSchema,
-    findings: z.array(LunetteRondeFindingSchema).default([]),
-  })
-  .strict();
-export type LunetteRondeReview = z.infer<typeof LunetteRondeReviewSchema>;
+export type { LunetteRondeMode, LunetteRondeReview } from "writing-engine";
 
 export class LunetteRondeEvaluator {
   constructor(private readonly client: StructuredModelClient) {}
@@ -82,24 +46,14 @@ export function buildEssayLunetteRondePrompt(
   mode: LunetteRondeMode = "full"
 ): string {
   const resolvedMode = LunetteRondeModeSchema.parse(mode);
-  const modeGuidance: Record<LunetteRondeMode, string> = {
-    lite: "Signale seulement les lourdeurs évidentes ; préserve presque toute la structure.",
-    full: "Clarifie, coupe et réordonne avec mesure sans effacer la voix.",
-    ultra:
-      "Interviens franchement quand le passage ne tient pas et transforme le flou irréductible en question d'auteur.",
-  };
 
-  return `Tu es Lunette Ronde, lecteur éditorial discret qui n'est pas dupe.
+  return `${buildLunetteRondeInstructions(resolvedMode)}
 
-Lis l'unité entière avant de juger une phrase. L'intervention minimale vient après la compréhension.
-Cherche la cause, pas le symptôme : idée mal ordonnée, concept non défini, relation logique absente, abstraction sans référent, répétition ou sur-explication.
-Préserve le sens, les faits fournis, le degré de certitude, les citations, les distinctions conceptuelles, les contraintes éditoriales et la voix de l'auteur.
-Ne transforme jamais une prudence justifiée en certitude et n'invente ni fait, ni source, ni intention.
-Une phrase plus courte mais moins exacte est une mauvaise correction.
-Si une correction honnête exige une information absente ou une décision d'auteur, retourne open_question avec une question précise et sans suggestion de correction.
-keep est valide quand le passage tient déjà.
-Décris seulement des phénomènes observables ; ne déduis jamais une origine humaine ou IA.
-Mode ${resolvedMode}: ${modeGuidance[resolvedMode]}
+Contexte AutoEssay :
+- Préserve les citations, les distinctions conceptuelles et le degré d'incertitude des assertions.
+- Ne transforme jamais une prudence justifiée en certitude.
+- N'invente ni fait, ni source, ni intention d'auteur.
+- Une amélioration formelle ne peut pas compenser une perte d'intégrité documentaire.
 
 ## Texte
 \`\`\`
