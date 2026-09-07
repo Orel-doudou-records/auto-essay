@@ -81,9 +81,9 @@ const workspace = {
   ],
 };
 
-function renderPage() {
+function renderPage(entry = "/projects/project-1/chapitre") {
   return render(
-    <MemoryRouter initialEntries={["/projects/project-1/chapitre"]}>
+    <MemoryRouter initialEntries={[entry]}>
       <Routes>
         <Route path="/projects/:projectId/chapitre" element={<ChapterWorkshopPage />} />
       </Routes>
@@ -100,7 +100,7 @@ describe("ChapterWorkshopPage", () => {
     fetchChapter.mockResolvedValue(workspace);
     renderPage();
 
-    fireEvent.change(screen.getByLabelText("ID du chapitre"), { target: { value: "chapter-1" } });
+    fireEvent.change(screen.getByLabelText("Chapitre"), { target: { value: "chapter-1" } });
     fireEvent.click(screen.getByRole("button", { name: "Charger le chapitre" }));
 
     expect(await screen.findByRole("heading", { name: "Chapitre premier" })).toBeInTheDocument();
@@ -132,12 +132,19 @@ describe("ChapterWorkshopPage", () => {
       .mockRejectedValueOnce(new Error("HTTP 404"));
     renderPage();
 
-    fireEvent.change(screen.getByLabelText("ID du chapitre"), { target: { value: "empty" } });
+    fireEvent.change(screen.getByLabelText("Chapitre"), { target: { value: "empty" } });
     fireEvent.click(screen.getByRole("button", { name: "Charger le chapitre" }));
     expect(await screen.findByText("Ce chapitre ne contient encore aucune section.")).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("ID du chapitre"), { target: { value: "missing" } });
+    fireEvent.change(screen.getByLabelText("Chapitre"), { target: { value: "missing" } });
     fireEvent.click(screen.getByRole("button", { name: "Charger le chapitre" }));
     expect(await screen.findByText("Erreur : HTTP 404")).toBeInTheDocument();
+  });
+
+  it("opens a chapter selected from the manuscript navigation", async () => {
+    fetchChapter.mockResolvedValue(workspace);
+    renderPage("/projects/project-1/chapitre?chapterId=chapter-1");
+    expect(await screen.findByRole("heading", { name: "Chapitre premier" })).toBeInTheDocument();
+    expect(fetchChapter).toHaveBeenCalledWith("project-1", "chapter-1");
   });
 });

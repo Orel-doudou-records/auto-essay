@@ -2,12 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import * as stylex from "@stylexjs/stylex";
 import type { DraftUnit, RevisionProposal } from "@auto-essay/core";
-import { exportProject } from "@/api";
+import { exportProject, type ManuscriptNavigationEntry } from "@/api";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useUnits } from "@/hooks/useUnits";
+import { useManuscriptNavigation } from "@/hooks/useManuscriptNavigation";
 import { themeVars } from "../styles/tokens.stylex";
 
 type SaveStatus = "idle" | "dirty" | "saving" | "saved" | "error";
@@ -18,6 +19,12 @@ export function EditorPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const [searchParams] = useSearchParams();
   const { units, loading, error, add, update, generate, reviseChat, split, mergeNext } = useUnits(projectId);
+  const {
+    entries: navigationEntries,
+    loading: navigationLoading,
+    error: navigationError,
+    reload: reloadNavigation,
+  } = useManuscriptNavigation(projectId);
   const [selectedUnit, setSelectedUnit] = useState<DraftUnit | null>(null);
   const [newSection, setNewSection] = useState("");
   const [isCreating, setCreating] = useState(false);
@@ -65,6 +72,7 @@ export function EditorPage() {
       if (unit) {
         setNewSection("");
         selectUnit(unit);
+        void reloadNavigation();
         setNavigationOpen(false);
       }
     } catch {
@@ -132,6 +140,7 @@ export function EditorPage() {
       const result = await action(selectedUnit.id);
       const nextUnit = result && result.units.find((unit) => unit.id === result.unitIds[0]);
       if (nextUnit) selectUnit(nextUnit);
+      void reloadNavigation();
     } catch (error) {
       setGranularityError(error instanceof Error ? error.message : "La granularité ne peut pas être modifiée.");
     } finally {
@@ -194,27 +203,17 @@ export function EditorPage() {
                   </Button>
                 </form>
                 {createError && <p role="alert" {...stylex.props(styles.errorMessage)}>{createError}</p>}
-                {loading && <p {...stylex.props(styles.panelMessage)}>Chargement…</p>}
+                {(loading || navigationLoading) && <p {...stylex.props(styles.panelMessage)}>Chargement…</p>}
                 {error && <p {...stylex.props(styles.errorMessage)}>{error.message}</p>}
+                {navigationError && <p {...stylex.props(styles.errorMessage)}>{navigationError.message}</p>}
                 <div {...stylex.props(styles.unitList)}>
-                  {units.map((unit) => {
-                    const active = selectedUnit?.id === unit.id;
-                    return (
-                      <button
-                        key={unit.id}
-                        type="button"
-                        {...stylex.props(styles.unitButton, active && styles.unitButtonActive)}
-                        onClick={() => selectUnit(unit)}
-                      >
-                        <span {...stylex.props(styles.unitTitle)}>
-                          {unit.thesis || unit.contextInPlan?.section || "Sans titre"}
-                        </span>
-                        <span {...stylex.props(styles.unitMeta)}>
-                          {unit.status} · v{unit.version}
-                        </span>
-                      </button>
-                    );
-                  })}
+                  <ManuscriptNavigation
+                    entries={navigationEntries}
+                    projectId={projectId ?? ""}
+                    units={units}
+                    selectedUnitId={selectedUnit?.id}
+                    onSelectUnit={selectUnit}
+                  />
                 </div>
               </nav>
             </aside>
@@ -268,6 +267,102 @@ export function EditorPage() {
         </div>
       </section>
     </AppShell>
+  );
+}
+
+function ManuscriptNavigation({
+  entries,
+  projectId,
+  units,
+  selectedUnitId,
+  onSelectUnit,
+}: {
+  entries: ManuscriptNavigationEntry[];
+  projectId: string;
+  units: DraftUnit[];
+  selectedUnitId: string | undefined;
+  onSelectUnit: (unit: DraftUnit) => void;
+}) {
+  const unitsById = new Map(units.map((unit) => [unit.id, unit]));
+  return (
+    <ul {...stylex.props(styles.tree)}>
+      {entries.map((entry, index) => (
+        <ManuscriptNavigationEntryView
+          key={entry.kind === "node" ? entry.id : `${entry.unitId}:${entry.version}`}
+          entry={entry}
+          projectId={projectId}
+          unitsById={unitsById}
+          selectedUnitId={selectedUnitId}
+          onSelectUnit={onSelectUnit}
+          depth={0}
+          position={index}
+        />
+      ))}
+    </ul>
+  );
+}
+
+function ManuscriptNavigationEntryView({
+  entry,
+  projectId,
+  unitsById,
+  selectedUnitId,
+  onSelectUnit,
+  depth,
+  position,
+}: {
+  entry: ManuscriptNavigationEntry;
+  projectId: string;
+  unitsById: Map<string, DraftUnit>;
+  selectedUnitId: string | undefined;
+  onSelectUnit: (unit: DraftUnit) => void;
+  depth: number;
+  position: number;
+}) {
+  if (entry.kind === "node") {
+    return (
+      <li {...stylex.props(styles.treeNode)}>
+        {depth === 0 ? (
+          <Link to={`/projects/${projectId}/chapitre?chapterId=${entry.id}`} {...stylex.props(styles.treeLink)}>
+            {entry.title}
+          </Link>
+        ) : (
+          <span {...stylex.props(styles.treeLabel)}>{entry.title}</span>
+        )}
+        {entry.children.length > 0 && (
+          <ul {...stylex.props(styles.tree)}>
+            {entry.children.map((child, childPosition) => (
+              <ManuscriptNavigationEntryView
+                key={child.kind === "node" ? child.id : `${child.unitId}:${child.version}`}
+                entry={child}
+                projectId={projectId}
+                unitsById={unitsById}
+                selectedUnitId={selectedUnitId}
+                onSelectUnit={onSelectUnit}
+                depth={depth + 1}
+                position={childPosition}
+              />
+            ))}
+          </ul>
+        )}
+      </li>
+    );
+  }
+  const unit = unitsById.get(entry.unitId);
+  if (!unit) return null;
+  return (
+    <li>
+      <button
+        type="button"
+        {...stylex.props(styles.unitButton, selectedUnitId === unit.id && styles.unitButtonActive)}
+        onClick={() => onSelectUnit(unit)}
+      >
+        <span {...stylex.props(styles.unitTitle)}>
+          {entry.granularity === "paragraph" ? `Paragraphe ${position + 1}` : "Section"}
+        </span>
+        <span {...stylex.props(styles.unitMeta)}>{unit.status} · v{entry.version}</span>
+      </button>
+    </li>
   );
 }
 
@@ -587,6 +682,35 @@ const styles = stylex.create({
     display: "flex",
     flexDirection: "column",
     gap: "0.25rem",
+  },
+  tree: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.25rem",
+    listStyle: "none",
+    margin: 0,
+    paddingLeft: "0.75rem",
+  },
+  treeNode: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.25rem",
+  },
+  treeLink: {
+    color: themeVars.textPrimary,
+    fontSize: "0.875rem",
+    fontWeight: 650,
+    padding: "0.375rem 0.25rem",
+    textDecoration: {
+      default: "none",
+      ':hover': "underline",
+    },
+  },
+  treeLabel: {
+    color: themeVars.textPrimary,
+    fontSize: "0.875rem",
+    fontWeight: 650,
+    padding: "0.375rem 0.25rem",
   },
   unitButton: {
     backgroundColor: {
