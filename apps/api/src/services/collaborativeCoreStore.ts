@@ -376,9 +376,13 @@ export function createFileCollaborativeCoreStore(
       }
       const revision = state.graph.revisions[input.nextHeadRevisionId];
       if (revision === undefined) throw new Error(`revision not found: ${input.nextHeadRevisionId}`);
-      if (revision.branchId !== branch.id) throw new Error("revision branch does not match branch head target");
-      if (revision.parentIds[0] !== input.expectedHeadRevisionId) {
-        throw new Error("next revision first parent must match expected branch head");
+      if (input.nextHeadRevisionId !== input.expectedHeadRevisionId) {
+        if (revision.branchId !== branch.id) {
+          throw new Error("next revision must belong to the branch being advanced");
+        }
+        if (revision.parentIds[0] !== input.expectedHeadRevisionId) {
+          throw new Error("next revision first parent must match expected branch head");
+        }
       }
       state.graph.branches[input.branchId] = { ...branch, headRevisionId: revision.id };
       state.graph = RevisionGraphSchema.parse(state.graph);
@@ -473,6 +477,12 @@ export function createFileCollaborativeCoreStore(
     async saveIntegration(projectId, inputValue) {
       const state = await requireState(projectId);
       const value = IntegrationSchema.parse(inputValue);
+      if (state.proposals[value.proposalId] === undefined) {
+        throw new Error(`proposal not found for integration: ${value.proposalId}`);
+      }
+      if (state.graph.revisions[value.revisionId] === undefined) {
+        throw new Error(`revision not found for integration: ${value.revisionId}`);
+      }
       const existing = state.integrations[value.id];
       if (existing !== undefined && !equal(existing, value)) {
         throw new Error(`immutable Integration conflict: ${value.id}`);
