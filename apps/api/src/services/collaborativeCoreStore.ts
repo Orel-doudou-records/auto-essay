@@ -20,7 +20,6 @@ import {
   WorkBranchSchema,
   createRevisionGraph,
   type CollaborativeCoreStore,
-  type ContentVersion,
   type LiteraryManuscript,
   type RevisionGraph,
 } from "writing-engine";
