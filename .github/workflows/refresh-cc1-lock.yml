@@ -1,0 +1,32 @@
+name: Refresh CC1 lockfile
+
+on:
+  push:
+    branches:
+      - feat/cc1-autoessay-compat
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/cc1-autoessay-compat
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --package-lock-only --ignore-scripts
+      - name: Commit regenerated lockfile
+        run: |
+          if git diff --quiet -- package-lock.json; then
+            echo "package-lock.json already synchronized"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "build: sync Writing Engine CC1 lockfile"
+          git push origin HEAD:feat/cc1-autoessay-compat
