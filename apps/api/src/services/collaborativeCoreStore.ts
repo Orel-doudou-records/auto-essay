@@ -21,6 +21,7 @@ import {
   createRevisionGraph,
   type CollaborativeCoreStore,
   type LiteraryManuscript,
+  type Revision,
   type RevisionGraph,
 } from "writing-engine";
 import { getDataDir } from "../config.js";
@@ -140,7 +141,7 @@ function findFirstParentRevisionIds(graph: RevisionGraph, revisionId: string): s
   while (cursor !== undefined) {
     if (seen.has(cursor)) throw new Error(`revision cycle detected: ${cursor}`);
     seen.add(cursor);
-    const revision = graph.revisions[cursor];
+    const revision: Revision | undefined = graph.revisions[cursor];
     if (revision === undefined) throw new Error(`revision not found: ${cursor}`);
     ids.push(cursor);
     cursor = revision.parentIds[0];
