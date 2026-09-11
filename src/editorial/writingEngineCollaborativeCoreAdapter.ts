@@ -158,7 +158,7 @@ function projectLeaf(
   }
 
   const allowedByParent =
-    (parentKind === "manuscript" && kind !== "manuscript") ||
+    parentKind === "manuscript" ||
     (parentKind === "chapter" && (kind === "section" || kind === "paragraph")) ||
     (parentKind === "section" && kind === "paragraph");
   if (!allowedByParent) {
