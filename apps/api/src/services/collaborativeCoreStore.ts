@@ -21,13 +21,8 @@ import {
   createRevisionGraph,
   type CollaborativeCoreStore,
   type ContentVersion,
-  type Integration,
   type LiteraryManuscript,
-  type ManuscriptSnapshot,
-  type Proposal,
-  type ReviewDecision,
   type RevisionGraph,
-  type Task,
 } from "writing-engine";
 import { getDataDir } from "../config.js";
 
@@ -77,11 +72,6 @@ export const IntegrationMaterializationReceiptSchema = z.object({
 export type IntegrationMaterializationReceipt = z.infer<
   typeof IntegrationMaterializationReceiptSchema
 >;
-
-type StoredContentVersion = {
-  revisionId: string;
-  value: ContentVersion;
-};
 
 const StoredContentVersionSchema = z.object({
   revisionId: IdSchema,
@@ -305,7 +295,7 @@ export function createFileCollaborativeCoreStore(
       if (state.graph.revisions[revisionId] === undefined) {
         throw new Error(`revision not found: ${revisionId}`);
       }
-      let next = [...state.contentVersions];
+      const next = [...state.contentVersions];
       for (const inputValue of versions) {
         const value = ContentVersionSchema.parse(inputValue);
         const existing = next.find(
