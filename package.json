@@ -39,7 +39,7 @@
   },
   "dependencies": {
     "js-yaml": "^5.3.0",
-    "writing-engine": "git+https://github.com/Orel-doudou-records/writing-engine.git#07a2b4a2e40227a7dee36c1032df9f8b69d0cd0d",
+    "writing-engine": "git+https://github.com/Orel-doudou-records/writing-engine.git#36a3bcd04381890d3a4cd738832b1a278b786fb0",
     "zod": "^3.22.4"
   },
   "devDependencies": {

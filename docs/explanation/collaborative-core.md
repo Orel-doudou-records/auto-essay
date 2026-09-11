@@ -39,25 +39,71 @@ Le Core peut transporter des liens vers ces objets sous forme de références g�
 
 ## Première adoption : #168
 
-`auto-essay#168` est un **tracer bullet de compatibilité**, pas une migration.
+Le tracer bullet de compatibilité #168 est implémenté par `src/editorial/writingEngineCollaborativeCoreAdapter.ts`.
 
-Il doit uniquement :
+AutoEssay épingle exactement Writing Engine au commit :
 
-1. épingler AutoEssay sur le commit exact de Writing Engine contenant CC1 ;
-2. ajouter un adaptateur pur `AutoEssay manuscript -> Collaborative Manuscript Core` ;
-3. conserver les identités de nœuds existantes ;
-4. préserver hiérarchie et ordre ;
-5. projeter les références de contenu/version existantes sans promouvoir `DraftUnit` en type partagé ;
-6. transporter la provenance et les références métier via les contrats génériques CC1 ;
-7. prouver la parité par tests.
+```text
+36a3bcd04381890d3a4cd738832b1a278b786fb0
+```
 
-Il ne doit pas :
+Le seam est **unidirectionnel et pur** :
 
-- remplacer le manuscrit AutoEssay canonique ;
-- modifier la persistance existante ;
-- introduire de dual-write ;
-- basculer Writer, importer, RevisionProposal, API ou UI vers CC1 ;
-- créer une base de données ou une nouvelle couche générique.
+```text
+Manuscript + DraftUnit[]
+        │
+        └── projectAutoEssayManuscriptToCollaborativeCore(...)
+                    │
+                    ├── LiteraryManuscript
+                    └── ContentVersion[]
+```
+
+Il ne modifie ni le manuscrit ni les `DraftUnit` reçus. Il ne remplace aucun chemin de production AutoEssay.
+
+### Identité et contenu
+
+- `Manuscript.id` devient l'identité racine CC1 ;
+- les identités des nœuds structurels existants sont conservées ;
+- lorsqu'un `ManuscriptLeaf` est relié à une `PlanEntry`, `PlanEntry.id` devient l'identité littéraire persistante du paragraphe et `(unitId, unitVersion)` reste relié via `contentRef.version` + une référence opaque vers le `DraftUnit` ;
+- un `DraftUnit` autonome peut fournir l'identité littéraire de repli lorsqu'aucune `PlanEntry` ne la fournit ;
+- le texte d'un `DraftUnit` est projeté en `ContentVersion` sans déplacer la classe `DraftUnit` dans Writing Engine.
+
+Les références AutoEssay restent opaques pour CC1, par exemple :
+
+```text
+autoessay.draft-unit
+autoessay.claim
+autoessay.editorial-decision
+autoessay.content-style-articulation
+autoessay.transformation-trace
+```
+
+`toCollaborativeCoreScope(...)` permet de cibler un nœud ou une plage de texte avec le contrat `LiteraryScope` du Core.
+
+### Limites explicites du tracer bullet
+
+Le seam préfère échouer explicitement plutôt que produire une projection trompeuse.
+
+Dans #168 :
+
+- la projection structurelle prouvée est `manuscript -> chapter -> section -> paragraph`, avec niveaux sautables lorsque CC1 l'autorise ;
+- une profondeur de nœuds structurels AutoEssay supérieure à `chapter -> section` n'est pas aplatie automatiquement ;
+- un `ManuscriptNode.text` non vide n'est pas ignoré : il provoque une erreur car AutoEssay ne lui fournit pas encore une identité de contenu versionnée compatible ;
+- une version de `DraftUnit` référencée mais absente de l'entrée de l'adaptateur provoque une erreur ;
+- les `PlanEntry` encore sans texte restent, pour ce tracer bullet, dans le modèle AutoEssay : leur placement relatif avec les feuilles rédigées n'est pas inventé par l'adaptateur ;
+- si plusieurs occurrences ne peuvent pas recevoir une identité littéraire stable et non ambiguë, la projection doit être refusée plutôt que fabriquer une identité dépendante de la version.
+
+Ces limites servent à identifier les prochains besoins réels avant toute extension du modèle partagé.
+
+## Ce que #168 ne change pas
+
+Le tracer bullet ne :
+
+- remplace pas le manuscrit AutoEssay canonique ;
+- modifie pas la persistance existante ;
+- introduit pas de dual-write ;
+- bascule pas Writer, importer, RevisionProposal, API ou UI vers CC1 ;
+- crée pas de base de données ni de nouvelle couche générique.
 
 ## Règle d'adoption
 
