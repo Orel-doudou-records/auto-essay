@@ -2,7 +2,8 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 import {
-  PlanningBriefSchema,
+  PlanningGapSchema,
+  PlanningHypothesisSchema,
   PlanningScopeRefSchema,
   PlanningStructuralChangeSchema,
   PlanningArchitectureProposalSchema,
@@ -29,7 +30,6 @@ import {
   savePlanningBrief,
 } from "../services/editorialWorkspaceStore.js";
 
-const ScopeRequestSchema = z.object({ scopeRef: PlanningScopeRefSchema });
 const ReadinessContextSchema = z.object({
   parentRoleKnown: z.boolean().optional(),
   relevantPassageCount: z.number().int().nonnegative().optional(),
@@ -55,10 +55,10 @@ const BriefChangesSchema = z.object({
   question: z.string().min(1).optional(),
   intention: z.string().min(1).optional(),
   angleOrFunction: z.string().min(1).optional(),
-  hypotheses: PlanningBriefSchema.shape.hypotheses.optional(),
-  gaps: PlanningBriefSchema.shape.gaps.optional(),
-  constraints: PlanningBriefSchema.shape.constraints.optional(),
-  sourceRefs: PlanningBriefSchema.shape.sourceRefs.optional(),
+  hypotheses: z.array(PlanningHypothesisSchema).optional(),
+  gaps: z.array(PlanningGapSchema).optional(),
+  constraints: z.array(z.string().min(1)).optional(),
+  sourceRefs: z.array(z.string().min(1)).optional(),
   rationale: z.string().min(1).optional(),
 });
 const ApprovedDiffSchema = z.object({
@@ -195,6 +195,9 @@ export function planningRoutes(modelClientFactory: ModelClientFactory): Hono {
     }
     const parentNodeId = brief.scopeRef.kind === "node" ? brief.scopeRef.nodeId : null;
     const startIndex = childCount(workspace.manuscript.tree, parentNodeId);
+    if (startIndex < 0) {
+      throw new HTTPException(409, { message: "Le scope du brief n’existe plus dans le manuscrit." });
+    }
     return c.json({
       changes: body.architecture.children.map((child, index) => ({
         id: crypto.randomUUID(),
