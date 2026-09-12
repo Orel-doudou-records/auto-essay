@@ -292,9 +292,6 @@ export function createFileCollaborativeCoreStore(
 
     async appendContentVersions(projectId, revisionId, versions) {
       const state = await requireState(projectId);
-      if (state.graph.revisions[revisionId] === undefined) {
-        throw new Error(`revision not found: ${revisionId}`);
-      }
       const next = [...state.contentVersions];
       for (const inputValue of versions) {
         const value = ContentVersionSchema.parse(inputValue);
