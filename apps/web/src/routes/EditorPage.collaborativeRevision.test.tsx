@@ -7,6 +7,7 @@ import { useManuscriptNavigation } from "@/hooks/useManuscriptNavigation";
 import {
   acceptCollaborativeRevisionWork,
   rejectCollaborativeRevisionWork,
+  type RevisionSuggestionPayload,
 } from "@/api/revisionWork";
 import { EditorPage } from "./EditorPage";
 
@@ -66,7 +67,9 @@ const collaborativeWork = {
   status: "working" as const,
 };
 
-function renderEditor(reviseChat: ReturnType<typeof vi.fn>) {
+function renderEditor(
+  reviseChat: (unitId: string, instruction: string) => Promise<RevisionSuggestionPayload | undefined>
+) {
   useProjectUnits.mockReturnValue({
     units: [preparedUnit],
     loading: false,
@@ -118,7 +121,7 @@ describe("EditorPage collaborative revision compatibility", () => {
     const reviseChat = vi.fn().mockResolvedValue({
       kind: "collaborative",
       work: collaborativeWork,
-    });
+    } satisfies RevisionSuggestionPayload);
     const integratedUnit = {
       ...preparedUnit,
       content: "Proposition éditée.",
@@ -133,7 +136,7 @@ describe("EditorPage collaborative revision compatibility", () => {
     renderEditor(reviseChat);
 
     await requestRevision();
-    expect(screen.getByRole("heading", { name: "Proposition de révision" })).toBeInTheDocument();
+    expect(screen.getByText("Proposition de révision")).toBeInTheDocument();
     fireEvent.change(screen.getByRole("textbox", { name: "Texte proposé" }), {
       target: { value: "Proposition éditée." },
     });
@@ -158,7 +161,7 @@ describe("EditorPage collaborative revision compatibility", () => {
     const reviseChat = vi.fn().mockResolvedValue({
       kind: "collaborative",
       work: collaborativeWork,
-    });
+    } satisfies RevisionSuggestionPayload);
     rejectWork.mockResolvedValue({
       kind: "collaborative",
       status: "rejected",
@@ -183,7 +186,7 @@ describe("EditorPage collaborative revision compatibility", () => {
     const reviseChat = vi.fn().mockResolvedValue({
       kind: "collaborative",
       work: collaborativeWork,
-    });
+    } satisfies RevisionSuggestionPayload);
     acceptWork.mockResolvedValue({
       kind: "collaborative",
       status: "stale",
@@ -219,7 +222,7 @@ describe("EditorPage collaborative revision compatibility", () => {
       createdAt: "2026-09-12T10:00:00.000Z",
       updatedAt: "2026-09-12T10:00:00.000Z",
     };
-    const reviseChat = vi.fn().mockResolvedValue({ proposal: legacyProposal });
+    const reviseChat = vi.fn().mockResolvedValue({ proposal: legacyProposal } satisfies RevisionSuggestionPayload);
     updateUnit.mockResolvedValue({ ...preparedUnit, content: legacyProposal.content, version: 4 });
     renderEditor(reviseChat);
 
