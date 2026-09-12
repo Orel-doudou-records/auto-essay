@@ -7,16 +7,20 @@ import { useManuscriptNavigation } from "@/hooks/useManuscriptNavigation";
 import {
   acceptCollaborativeRevisionWork,
   rejectCollaborativeRevisionWork,
-} from "@/api";
+} from "@/api/revisionWork";
 import { EditorPage } from "./EditorPage";
 
 vi.mock("@/hooks/useUnits", () => ({ useUnits: vi.fn() }));
 vi.mock("@/hooks/useManuscriptNavigation", () => ({ useManuscriptNavigation: vi.fn() }));
-vi.mock("@/api", () => ({
-  exportProject: vi.fn(),
-  acceptCollaborativeRevisionWork: vi.fn(),
-  rejectCollaborativeRevisionWork: vi.fn(),
-}));
+vi.mock("@/api", () => ({ exportProject: vi.fn() }));
+vi.mock("@/api/revisionWork", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/api/revisionWork")>();
+  return {
+    ...actual,
+    acceptCollaborativeRevisionWork: vi.fn(),
+    rejectCollaborativeRevisionWork: vi.fn(),
+  };
+});
 
 const useProjectUnits = vi.mocked(useUnits);
 const useProjectNavigation = vi.mocked(useManuscriptNavigation);
