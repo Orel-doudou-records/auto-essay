@@ -28,6 +28,14 @@ export type ReviseChatResult =
       message: string;
     };
 
+function isAmbiguousCollaborativeRevisionTarget(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return (
+    error.message.includes("resolves to multiple literary identities") ||
+    error.message.includes("is linked from multiple PlanEntry identities")
+  );
+}
+
 async function captureRevisionSource(
   projectId: string,
   unitId: string
@@ -35,7 +43,10 @@ async function captureRevisionSource(
   try {
     return await captureCollaborativeRevisionSource(projectId, unitId);
   } catch (error) {
-    if (error instanceof HTTPException && error.status === 404) {
+    if (
+      (error instanceof HTTPException && error.status === 404) ||
+      isAmbiguousCollaborativeRevisionTarget(error)
+    ) {
       return { authority: "legacy", projectId, unitId };
     }
     throw error;
