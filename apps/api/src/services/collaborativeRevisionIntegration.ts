@@ -121,6 +121,10 @@ export async function integrateCollaborativeParagraphRevision(
       await loadCollaborativeRevisionWork(input.projectId, input.workId),
       input
     );
+    const proposalId = work.proposalId;
+    if (proposalId === undefined) {
+      throw new Error("collaborative revision work has no reviewed Proposal");
+    }
     const workspace = await getWorkspace(input.projectId);
     const units = await listUnits(input.projectId);
     const currentUnit = requireCurrentUnit(units, work);
@@ -159,9 +163,9 @@ export async function integrateCollaborativeParagraphRevision(
     if (canonicalManuscript === undefined) {
       throw new Error("canonical CC1 manuscript snapshot is missing");
     }
-    const proposal = await store.loadProposal(projectLink.coreProjectId, work.proposalId);
+    const proposal = await store.loadProposal(projectLink.coreProjectId, proposalId);
     if (proposal === undefined) {
-      throw new Error(`reviewed Proposal not found: ${work.proposalId}`);
+      throw new Error(`reviewed Proposal not found: ${proposalId}`);
     }
     if (proposal.status !== "approved") {
       throw new Error(`Proposal '${proposal.id}' is not approved`);
