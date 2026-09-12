@@ -5,6 +5,7 @@ import {
   assertBookPlanValid,
   createDiffractiveReader,
   formatPlanPart,
+  type BookBibliographyInput,
   type BookPartInput,
   type BookPlanInput,
   type ExistingCutInput,
@@ -26,15 +27,7 @@ const RawPlanPreviewsSchema = z.array(PlanPreviewEntrySchema);
 /** Prompt d'élaboration : le plan brut → un projet de preview par entrée. */
 export function buildPlanPreviewPrompt(plan: BookPlanInput[]): string {
   const parts = plan.map(formatPlanPart).join("\n\n");
-  return `Tu es un élaborateur de plan. Pour chaque paragraphe PRÉVU (pas encore écrit), écris un aperçu de 2 à 3 phrases : ce que ce paragraphe va dire, son rôle dans le chapitre, et ce qu'il doit connecter (le paragraphe précédent et le suivant si pertinent). Les notes (humain/agent) indiquent l'intention de l'auteur : respecte-les.
-
-## Le plan
-${parts}
-
-## Format JSON strict
-[{"entryId": "string", "preview": "string"}]
-
-Réponds UNIQUEMENT avec le JSON, une entrée par paragraphe du plan (même ordre).`;
+  return `Tu es un élaborateur de plan. Pour chaque paragraphe PRÉVU (pas encore écrit), écris un aperçu de 2 à 3 phrases : ce que ce paragraphe va dire, son rôle dans le chapitre, et ce qu'il doit connecter (le paragraphe précédent et le suivant si pertinent). Les notes (humain/agent) indiquent l'intention de l'auteur : respecte-les.\n\n## Le plan\n${parts}\n\n## Format JSON strict\n[{"entryId": "string", "preview": "string"}]\n\nRéponds UNIQUEMENT avec le JSON, une entrée par paragraphe du plan (même ordre).`;
 }
 
 /**
@@ -76,6 +69,8 @@ export interface DiffractPlanInput {
   plan: BookPlanInput[];
   bookParts?: BookPartInput[];
   existingCuts?: ExistingCutInput[];
+  /** Projection documentaire existante : profils/sources, jamais le corpus brut. */
+  bookBibliography?: BookBibliographyInput;
 }
 
 /**
@@ -96,5 +91,6 @@ export async function diffractPlan(
     bookParts: input.bookParts,
     existingCuts: input.existingCuts,
     bookPlan: input.plan,
+    bookBibliography: input.bookBibliography,
   });
 }
