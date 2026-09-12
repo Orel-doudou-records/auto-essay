@@ -14,6 +14,10 @@ import {
   createCollaborativeParagraphRevision,
   resolveRevisionAuthority,
 } from "../src/services/collaborativeRevisionWork.js";
+import {
+  listCollaborativeRevisionWorks,
+  loadCollaborativeRevisionWork,
+} from "../src/services/collaborativeRevisionWorkStore.js";
 
 const createdAt = "2026-09-12T08:00:00.000Z";
 
@@ -155,7 +159,7 @@ describe("AE2 collaborative revise-chat work", () => {
       workNode!.contentRef!.version
     );
     expect(workContent?.content).toBe("Revised paragraph candidate.");
-    expect(await store.loadRevisionWork(work.id)).toEqual(work);
+    expect(await loadCollaborativeRevisionWork("project-1", work.id)).toEqual(work);
 
     const canonicalUnit = await getUnit("project-1", "unit-1");
     expect(canonicalUnit).toMatchObject({ content: "Canonical paragraph.", version: 3 });
@@ -181,7 +185,7 @@ describe("AE2 collaborative revise-chat work", () => {
     expect(result).toEqual({ status: "candidate_stale_before_workspace" });
     const store = createFileCollaborativeCoreStore("project-1", { dataDir });
     expect(await store.loadProjectLink()).toBeUndefined();
-    expect(await store.listRevisionWorks()).toEqual([]);
+    expect(await listCollaborativeRevisionWorks("project-1")).toEqual([]);
   });
 
   it("uses one final-candidate completion seam and creates no partial streaming state", async () => {
@@ -197,7 +201,7 @@ describe("AE2 collaborative revise-chat work", () => {
     for (const chunk of chunks) {
       finalCandidate += chunk;
       expect(await store.loadProjectLink()).toBeUndefined();
-      expect(await store.listRevisionWorks()).toEqual([]);
+      expect(await listCollaborativeRevisionWorks("project-1")).toEqual([]);
     }
 
     const result = await createCollaborativeParagraphRevision({
@@ -207,7 +211,7 @@ describe("AE2 collaborative revise-chat work", () => {
     });
 
     expect(result.status).toBe("created");
-    expect((await store.listRevisionWorks()).length).toBe(1);
+    expect((await listCollaborativeRevisionWorks("project-1")).length).toBe(1);
     if (result.status !== "created") throw new Error("expected created work");
     expect(result.work.proposedContent).toBe("Revised streamed paragraph.");
   });
