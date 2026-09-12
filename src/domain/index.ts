@@ -17,6 +17,9 @@ export * from "./manuscript";
 export * from "./manuscriptVersioning";
 export * from "./manuscriptStatus";
 
+// Intention de planification versionnée, sans arbre parallèle (Plan V2)
+export * from "./planningBrief";
+
 // Projets essayistiques
 export * from "./essayProject";
 
