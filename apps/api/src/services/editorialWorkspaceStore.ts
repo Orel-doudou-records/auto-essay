@@ -10,10 +10,12 @@ import {
   EditorialDecisionSchema,
   EditorialGovernanceEventSchema,
   ManuscriptSchema,
+  PlanningBriefSchema,
   SourceProfileSchema,
   type ContentStyleArticulation,
   type EditorialDecision,
   type EditorialGovernanceEvent,
+  type PlanningBrief,
 } from "@auto-essay/core";
 import { HTTPException } from "hono/http-exception";
 import { getDataDir } from "../config.js";
@@ -66,6 +68,7 @@ export const EditorialWorkspaceSchema = z.object({
   readings: z.array(StoredReadingSchema).default([]),
   diffractionSettings: z.array(DiffractiveReadingSettingSchema).default([]),
   events: z.array(EditorialGovernanceEventSchema).default([]),
+  planningBriefs: z.array(PlanningBriefSchema).default([]),
 });
 
 export type EditorialWorkspace = z.infer<typeof EditorialWorkspaceSchema>;
@@ -93,6 +96,7 @@ export async function putWorkspaceWhileLocked(
     readings: current?.readings ?? [],
     diffractionSettings: current?.diffractionSettings ?? [],
     events: current?.events ?? [],
+    planningBriefs: current?.planningBriefs ?? [],
   });
   await writeWorkspace(projectId, workspace);
   return workspace;
@@ -104,6 +108,25 @@ export async function getWorkspace(projectId: string): Promise<EditorialWorkspac
     throw new HTTPException(404, { message: "editorial workspace not found" });
   }
   return workspace;
+}
+
+export async function listPlanningBriefs(projectId: string): Promise<PlanningBrief[]> {
+  const workspace = await getWorkspace(projectId);
+  return workspace.planningBriefs.map((brief) => PlanningBriefSchema.parse(brief));
+}
+
+export async function savePlanningBrief(projectId: string, brief: PlanningBrief): Promise<PlanningBrief> {
+  return mutateWorkspace(projectId, (workspace) => {
+    const parsed = PlanningBriefSchema.parse(brief);
+    if (parsed.projectId !== projectId) {
+      throw new HTTPException(400, { message: "planning brief project does not match route project" });
+    }
+    if (workspace.planningBriefs.some((item) => item.id === parsed.id)) {
+      throw new HTTPException(409, { message: "planning brief already exists" });
+    }
+    workspace.planningBriefs.push(parsed);
+    return parsed;
+  });
 }
 
 export function getDiffractiveReadingMode(
