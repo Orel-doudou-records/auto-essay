@@ -318,7 +318,7 @@ function ManuscriptNavigation({
           entry={entry}
           projectId={projectId}
           unitsById={unitsById}
-          selectedUnitId={selectedUnit?.id}
+          selectedUnitId={selectedUnitId}
           onSelectUnit={onSelectUnit}
           depth={0}
           position={index}
