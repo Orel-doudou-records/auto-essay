@@ -3,6 +3,14 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import * as stylex from "@stylexjs/stylex";
 import type { DraftUnit, RevisionProposal } from "@auto-essay/core";
 import { exportProject, type ManuscriptNavigationEntry } from "@/api";
+import {
+  acceptCollaborativeRevisionWork,
+  isCollaborativeRevisionSuggestion,
+  rejectCollaborativeRevisionWork,
+  type CollaborativeRevisionCommandResult,
+  type PublicCollaborativeRevisionWork,
+  type RevisionSuggestionPayload,
+} from "@/api/revisionWork";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -124,6 +132,23 @@ export function EditorPage() {
     if (!selectedUnit || selectedUnit.id !== proposal.unitId || selectedUnit.version !== proposal.sourceVersion) return;
     const applied = await update(proposal.unitId, { content, version: selectedUnit.version + 1 });
     if (applied) selectUnit(applied);
+  }
+
+  async function applyCollaborativeRevision(
+    work: PublicCollaborativeRevisionWork,
+    content: string
+  ): Promise<CollaborativeRevisionCommandResult | undefined> {
+    if (!projectId || !selectedUnit || selectedUnit.id !== work.unitId) return;
+    const result = await acceptCollaborativeRevisionWork(projectId, work.unitId, work.id, content);
+    if (result.status === "integrated") selectUnit(result.unit);
+    return result;
+  }
+
+  async function rejectCollaborativeRevision(
+    work: PublicCollaborativeRevisionWork
+  ): Promise<CollaborativeRevisionCommandResult | undefined> {
+    if (!projectId || !selectedUnit || selectedUnit.id !== work.unitId) return;
+    return rejectCollaborativeRevisionWork(projectId, work.unitId, work.id);
   }
 
   async function handleGenerate() {
@@ -259,6 +284,8 @@ export function EditorPage() {
                 manuscript={draftContent}
                 onGenerate={() => void handleGenerate()}
                 onApplyProposal={(proposal, content) => void applyRevisionProposal(proposal, content)}
+                onApplyCollaborative={applyCollaborativeRevision}
+                onRejectCollaborative={rejectCollaborativeRevision}
                 onReviseChat={reviseChat}
               />
             </aside>
@@ -291,7 +318,7 @@ function ManuscriptNavigation({
           entry={entry}
           projectId={projectId}
           unitsById={unitsById}
-          selectedUnitId={selectedUnitId}
+          selectedUnitId={selectedUnit?.id}
           onSelectUnit={onSelectUnit}
           depth={0}
           position={index}
@@ -474,12 +501,30 @@ function SaveIndicator({ status }: { status: SaveStatus }) {
   return <p {...stylex.props(styles.saveIndicator, status === "error" && styles.saveError)}>{label}</p>;
 }
 
+function collaborativeResultMessage(result: CollaborativeRevisionCommandResult): string | undefined {
+  switch (result.status) {
+    case "stale":
+      return "Le texte a évolué depuis cette proposition. Elle reste consultable mais ne peut pas être appliquée.";
+    case "conflict":
+      return "Cette proposition entre en conflit avec le texte actuel. Elle reste consultable mais ne peut pas être appliquée.";
+    case "recovery_failed":
+      return "La proposition ne peut pas être finalisée pour le moment. Le texte existant n’a pas été modifié.";
+    case "unsupported_projection_drift":
+    case "scope_mismatch":
+      return result.message;
+    default:
+      return undefined;
+  }
+}
+
 function ChatPanel({
   projectId,
   unit,
   manuscript,
   onGenerate,
   onApplyProposal,
+  onApplyCollaborative,
+  onRejectCollaborative,
   onReviseChat,
 }: {
   projectId: string;
@@ -487,37 +532,123 @@ function ChatPanel({
   manuscript: string;
   onGenerate: () => void;
   onApplyProposal: (proposal: RevisionProposal, content: string) => void;
-  onReviseChat: (unitId: string, instruction: string) => Promise<{ proposal: RevisionProposal } | undefined>;
+  onApplyCollaborative: (
+    work: PublicCollaborativeRevisionWork,
+    content: string
+  ) => Promise<CollaborativeRevisionCommandResult | undefined>;
+  onRejectCollaborative: (
+    work: PublicCollaborativeRevisionWork
+  ) => Promise<CollaborativeRevisionCommandResult | undefined>;
+  onReviseChat: (unitId: string, instruction: string) => Promise<RevisionSuggestionPayload | undefined>;
 }) {
   const [instruction, setInstruction] = useState("");
-  const [proposal, setProposal] = useState<RevisionProposal | null>(null);
+  const [suggestion, setSuggestion] = useState<RevisionSuggestionPayload | null>(null);
   const [proposedContent, setProposedContent] = useState("");
   const [busy, setBusy] = useState(false);
+  const [actionBusy, setActionBusy] = useState(false);
+  const [commandMessage, setCommandMessage] = useState<string>();
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     if (!instruction.trim()) return;
     setBusy(true);
+    setCommandMessage(undefined);
     try {
       const result = await onReviseChat(unit.id, instruction);
       if (result) {
-        setProposal(result.proposal);
-        setProposedContent(result.proposal.content);
+        setSuggestion(result);
+        setProposedContent(
+          isCollaborativeRevisionSuggestion(result)
+            ? result.work.proposedContent
+            : result.proposal.content
+        );
       }
     } finally {
       setBusy(false);
     }
   }
 
-  const isStale = proposal !== null && (proposal.unitId !== unit.id || manuscript !== proposal.before);
+  const legacyProposal = suggestion && !isCollaborativeRevisionSuggestion(suggestion)
+    ? suggestion.proposal
+    : null;
+  const collaborativeWork = suggestion && isCollaborativeRevisionSuggestion(suggestion)
+    ? suggestion.work
+    : null;
+  const sourceContent = legacyProposal?.before ?? collaborativeWork?.base.content ?? "";
+  const suggestionUnitId = legacyProposal?.unitId ?? collaborativeWork?.unitId;
+  const presentationStale = suggestion !== null &&
+    (suggestionUnitId !== unit.id || manuscript !== sourceContent);
+  const backendStale = collaborativeWork?.status === "stale";
+  const isStale = presentationStale || backendStale;
+  const legacyBlocked = legacyProposal !== null && presentationStale;
+  const collaborativeBlocked = collaborativeWork?.status === "stale";
+  const interactionBlocked = Boolean(legacyBlocked || collaborativeBlocked || actionBusy);
   const levelLabel = unit.granularity === "paragraph" ? "Paragraphe" : "Section";
 
-  function applyProposal() {
-    if (!proposal || isStale) return;
-    onApplyProposal(proposal, proposedContent);
-    setProposal(null);
+  function clearSuggestion() {
+    setSuggestion(null);
     setProposedContent("");
+    setCommandMessage(undefined);
   }
+
+  async function applySuggestion() {
+    if (!suggestion || interactionBlocked) return;
+    if (!isCollaborativeRevisionSuggestion(suggestion)) {
+      onApplyProposal(suggestion.proposal, proposedContent);
+      clearSuggestion();
+      return;
+    }
+
+    setActionBusy(true);
+    setCommandMessage(undefined);
+    try {
+      const result = await onApplyCollaborative(suggestion.work, proposedContent);
+      if (!result) return;
+      if (result.status === "integrated") {
+        clearSuggestion();
+        return;
+      }
+      if ("work" in result && result.work) {
+        setSuggestion({ kind: "collaborative", work: result.work });
+      }
+      setCommandMessage(collaborativeResultMessage(result));
+    } catch {
+      setCommandMessage("La proposition n’a pas pu être appliquée. Le texte existant n’a pas été modifié.");
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  async function rejectSuggestion() {
+    if (!suggestion || actionBusy) return;
+    if (!isCollaborativeRevisionSuggestion(suggestion)) {
+      clearSuggestion();
+      return;
+    }
+
+    setActionBusy(true);
+    setCommandMessage(undefined);
+    try {
+      const result = await onRejectCollaborative(suggestion.work);
+      if (result?.status === "rejected") {
+        clearSuggestion();
+        return;
+      }
+      if (result) setCommandMessage(collaborativeResultMessage(result));
+    } catch {
+      setCommandMessage("La proposition n’a pas pu être refusée. Le texte existant n’a pas été modifié.");
+    } finally {
+      setActionBusy(false);
+    }
+  }
+
+  const presentationMessage = commandMessage ?? (
+    isStale
+      ? legacyBlocked || backendStale
+        ? "Le manuscrit a changé depuis cette proposition. Elle reste consultable, mais ne peut pas être appliquée."
+        : "Le manuscrit a changé depuis cette proposition. Elle reste consultable ; sa compatibilité sera vérifiée au moment de l’application."
+      : "Le manuscrit ne change qu’après votre application explicite."
+  );
 
   return (
     <section {...stylex.props(styles.inspectorContent)}>
@@ -541,18 +672,28 @@ function ChatPanel({
         </Button>
       </form>
 
-      {proposal && (
+      {suggestion && (
         <section {...stylex.props(styles.reviewResult)} aria-label="Proposition de révision">
           <p {...stylex.props(styles.resultTitle)}>{isStale ? "Proposition périmée" : "Proposition de révision"}</p>
-          <p {...stylex.props(styles.resultText)}>{isStale ? "Le manuscrit a changé depuis cette proposition. Elle reste consultable, mais ne peut pas être appliquée." : "Le manuscrit ne change qu’après votre application explicite."}</p>
-          <Textarea aria-label="Texte proposé" value={proposedContent} onChange={(event) => setProposedContent(event.target.value)} rows={6} disabled={isStale} />
+          <p {...stylex.props(styles.resultText)}>{presentationMessage}</p>
+          <Textarea
+            aria-label="Texte proposé"
+            value={proposedContent}
+            onChange={(event) => setProposedContent(event.target.value)}
+            rows={6}
+            disabled={interactionBlocked}
+          />
           <details>
             <summary>Comparer avec le texte de départ</summary>
-            <p {...stylex.props(styles.resultText)}>{proposal.before}</p>
+            <p {...stylex.props(styles.resultText)}>{sourceContent}</p>
           </details>
           <div {...stylex.props(styles.resultActions)}>
-            <Button size="sm" variant="outline" onClick={applyProposal} disabled={isStale}>Appliquer la proposition</Button>
-            <Button size="sm" variant="ghost" onClick={() => { setProposal(null); setProposedContent(""); }}>Écarter la proposition</Button>
+            <Button size="sm" variant="outline" onClick={() => void applySuggestion()} disabled={interactionBlocked}>
+              Appliquer la proposition
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => void rejectSuggestion()} disabled={actionBusy}>
+              Refuser la proposition
+            </Button>
           </div>
         </section>
       )}
