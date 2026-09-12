@@ -78,3 +78,6 @@ export * from "./integratedEvaluationReadiness";
 
 // Résultats intégrés historisés, consultables sans autorité d’écriture
 export * from "./integratedEvaluationHistory";
+
+// Demandes durables de lecture automatique, sans décision ni écriture
+export * from "./automaticDiffractiveReading";
