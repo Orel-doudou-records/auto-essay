@@ -13,11 +13,12 @@ Activated by #182. This note records the production boundary after the AE2 rollo
 | Mounted `DraftUnit` paragraph with exactly one #168 `LiteraryNode` identity | Collaborative Core | CC1 workspace / ChangeSet / Revision state only |
 | Unmounted paragraph | Legacy | `revision-proposals.json` |
 | Section, chapter or book unit | Legacy | `revision-proposals.json` |
+| Paragraph that #168 cannot project within its compatibility envelope | Legacy | `revision-proposals.json` |
 | Ambiguous paragraph identity, including multiple PlanEntry identities for one leaf | Legacy | `revision-proposals.json` |
 
 Standard and streaming `revise-chat` share the same source capture and candidate finalization rules. A request must never write both legacy proposal state and collaborative work state.
 
-An ambiguity discovered while selecting authority is therefore treated as non-eligibility and stays legacy. By contrast, once a request has entered the collaborative path, later unsupported projection drift is reported as `unsupported_projection_drift`; it must not silently fall back to legacy because that would create a second authority after collaborative state already exists.
+An unsupported or ambiguous target discovered while selecting authority is therefore treated as non-eligibility and stays legacy. By contrast, once a request has entered the collaborative path, later unsupported projection drift is reported as `unsupported_projection_drift`; it must not silently fall back to legacy because that would create a second authority after collaborative state already exists.
 
 ## Canonical materialization boundary
 
@@ -64,4 +65,4 @@ Those flows continue to use their existing AutoEssay authority and persistence r
 
 ## Regression contract
 
-The #182 regression suite verifies the production boundary for mounted paragraphs, unmounted paragraphs, unsupported granularities, ambiguous identities, standard and streaming completion, reject, concurrent autosave drift, one-version materialization, idempotent repeated accept, post-applied `text_changed`, and scheduler failure after Integration. Existing AE2 recovery, projection-drift, API and web tests remain part of the full CI gate.
+The #182 regression suite verifies the production boundary for mounted paragraphs, unmounted paragraphs, unsupported granularities, unsupported #168 projections, ambiguous identities, standard and streaming completion, reject, concurrent autosave drift, one-version materialization, idempotent repeated accept, post-applied `text_changed`, and scheduler failure after Integration. Existing AE2 recovery, projection-drift, API and web tests remain part of the full CI gate.
