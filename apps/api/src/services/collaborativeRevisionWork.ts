@@ -24,6 +24,7 @@ import {
   type AutoEssayCollaborativeCoreStore,
 } from "./collaborativeCoreStore.js";
 import { synchronizeAutoEssayCanonicalWhileLocked } from "./collaborativeCoreCanonicalSync.js";
+import { recoverIncompleteIntegrationMaterializationsWhileLocked } from "./collaborativeRevisionIntegration.js";
 import {
   CollaborativeRevisionWorkDtoSchema,
   loadCollaborativeRevisionWork,
@@ -308,6 +309,30 @@ async function loadCollaborativeContext(
   return { coreProjectId: projectLink.coreProjectId, graph };
 }
 
+async function loadExistingAcceptedProposal(input: {
+  store: AutoEssayCollaborativeCoreStore;
+  work: CollaborativeRevisionWorkDto;
+  content: string;
+}): Promise<Proposal | undefined> {
+  if (input.work.proposalId === undefined) return undefined;
+  if (input.work.proposedContent !== input.content) {
+    throw new Error("collaborative revision work is already reviewed with different content");
+  }
+  const projectLink = await input.store.loadProjectLink();
+  if (projectLink === undefined) throw new Error("collaborative project link is missing");
+  const proposal = await input.store.loadProposal(
+    projectLink.coreProjectId,
+    input.work.proposalId
+  );
+  if (
+    proposal === undefined ||
+    (proposal.status !== "approved" && proposal.status !== "integrated")
+  ) {
+    return undefined;
+  }
+  return proposal;
+}
+
 export async function captureCollaborativeRevisionSource(
   projectId: string,
   unitId: string
@@ -347,6 +372,8 @@ export async function createCollaborativeParagraphRevision(
   }
 
   return withProjectWriteLock(input.projectId, async () => {
+    await recoverIncompleteIntegrationMaterializationsWhileLocked(input.projectId);
+
     const [workspace, draftUnits] = await Promise.all([
       getWorkspace(input.projectId),
       listUnits(input.projectId),
@@ -406,7 +433,7 @@ export async function createCollaborativeParagraphRevision(
       projectLink.canonicalBranchId
     );
     if (canonicalManuscript === undefined) {
-      throw new Error("canonical CC1 manuscript snapshot is missing");
+      throw new Error("collaborative CC1 manuscript snapshot is missing");
     }
     const node = canonicalManuscript.nodes[input.source.literaryNodeId];
     if (
@@ -493,15 +520,30 @@ export async function acceptCollaborativeParagraphRevision(
   input: AcceptCollaborativeParagraphRevisionInput
 ): Promise<AcceptCollaborativeParagraphRevisionResult> {
   return withProjectWriteLock(input.projectId, async () => {
+    await recoverIncompleteIntegrationMaterializationsWhileLocked(input.projectId);
+
     let work = requireWorkScope(
       await loadCollaborativeRevisionWork(input.projectId, input.workId),
       input
     );
+    const store = createFileCollaborativeCoreStore(input.projectId);
+    const existingProposal = await loadExistingAcceptedProposal({
+      store,
+      work,
+      content: input.content,
+    });
+    if (existingProposal !== undefined) {
+      return {
+        status: "accepted",
+        work,
+        proposal: existingProposal,
+        authorRevisionCreated: false,
+      };
+    }
     if (work.status !== "working" || work.proposalId !== undefined) {
       throw new Error("collaborative revision work is already reviewed");
     }
 
-    const store = createFileCollaborativeCoreStore(input.projectId);
     const context = await loadCollaborativeContext(store, work);
     const coreProjectId = context.coreProjectId;
     let graph = context.graph;
@@ -603,6 +645,8 @@ export async function rejectCollaborativeParagraphRevision(
   input: RejectCollaborativeParagraphRevisionInput
 ): Promise<RejectCollaborativeParagraphRevisionResult> {
   return withProjectWriteLock(input.projectId, async () => {
+    await recoverIncompleteIntegrationMaterializationsWhileLocked(input.projectId);
+
     let work = requireWorkScope(
       await loadCollaborativeRevisionWork(input.projectId, input.workId),
       input
