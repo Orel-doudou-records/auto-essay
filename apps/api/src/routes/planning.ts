@@ -88,6 +88,7 @@ export function planningRoutes(modelClientFactory: ModelClientFactory): Hono {
     const sources = await listSources(projectId);
     const representedSources = sources.filter((source) => source.content.trim().length > 0);
     return c.json({
+      manuscriptId: workspace.manuscript.id,
       mode: hasExistingPlan(workspace.manuscript.tree) ? "existing_plan" : "from_zero",
       activeBrief,
       readiness,
