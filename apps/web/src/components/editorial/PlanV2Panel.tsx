@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import type {
   PlanningArchitectureProposal,
+  PlanningQuestionCandidate,
   PlanningStructuralChange,
   PlanningSubjectExploration,
 } from "@auto-essay/core";
@@ -17,6 +18,7 @@ import {
   createPlanningBriefFromSubjectRequest,
   createPlanningStructuralDiff,
   explorePlanningSubjects,
+  fetchPlanningGrill,
   fetchPlanningState,
   proposePlanningDecomposition,
   refinePlanning,
@@ -35,6 +37,7 @@ export function PlanV2Panel({ projectId, chapterId, writingHref }: PlanV2PanelPr
   const [state, setState] = useState<PlanningStatePayload>();
   const [exploration, setExploration] = useState<PlanningSubjectExploration>();
   const [refinement, setRefinement] = useState<PlanRefinementPayload>();
+  const [grillQuestions, setGrillQuestions] = useState<PlanningQuestionCandidate[]>([]);
   const [architectures, setArchitectures] = useState<PlanningArchitectureProposal[]>([]);
   const [changes, setChanges] = useState<PlanningStructuralChange[]>([]);
   const [question, setQuestion] = useState("");
@@ -49,6 +52,12 @@ export function PlanV2Panel({ projectId, chapterId, writingHref }: PlanV2PanelPr
     setState(next);
     setQuestion(next.activeBrief?.question ?? "");
     setAngle(next.activeBrief?.angleOrFunction ?? "");
+    if (next.activeBrief) {
+      const grill = await fetchPlanningGrill(projectId, next.activeBrief.id, 0);
+      setGrillQuestions(grill.questions);
+    } else {
+      setGrillQuestions([]);
+    }
   }
 
   useEffect(() => {
@@ -144,14 +153,10 @@ export function PlanV2Panel({ projectId, chapterId, writingHref }: PlanV2PanelPr
 
       {exploration && (
         <Card>
-          <CardHeader>
-            <CardTitle>Sujets possibles</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>Sujets possibles</CardTitle></CardHeader>
           <CardContent>
             <div {...stylex.props(workshopStyles.stack)}>
-              <p>
-                Couverture observée : {exploration.coverage.exploredSourceCount}/{exploration.coverage.registeredSourceCount}. Les propositions restent provisoires.
-              </p>
+              <p>Couverture observée : {exploration.coverage.exploredSourceCount}/{exploration.coverage.registeredSourceCount}. Les propositions restent provisoires.</p>
               {exploration.subjects.map((subject) => (
                 <article key={`${subject.title}-${subject.question}`} {...stylex.props(workshopStyles.compactStack)}>
                   <strong>{subject.title}</strong>
@@ -159,24 +164,13 @@ export function PlanV2Panel({ projectId, chapterId, writingHref }: PlanV2PanelPr
                   <span>{subject.angle}</span>
                   <span>Statut documentaire : {subject.status}</span>
                   {subject.limits.length > 0 && <span>Limites : {subject.limits.join(" · ")}</span>}
-                  <Button
-                    type="button"
-                    disabled={Boolean(loading)}
-                    onClick={() => void run("subject", async () => {
-                      if (!state) return;
-                      await createPlanningBriefFromSubjectRequest(
-                        projectId,
-                        state.manuscriptId,
-                        chapterId,
-                        subject
-                      );
-                      await refresh();
-                      setExploration(undefined);
-                      setMessage("Sujet retenu. Vous pouvez maintenant le préciser.");
-                    })}
-                  >
-                    Choisir ce sujet
-                  </Button>
+                  <Button type="button" disabled={Boolean(loading)} onClick={() => void run("subject", async () => {
+                    if (!state) return;
+                    await createPlanningBriefFromSubjectRequest(projectId, state.manuscriptId, chapterId, subject);
+                    await refresh();
+                    setExploration(undefined);
+                    setMessage("Sujet retenu. Vous pouvez maintenant le préciser.");
+                  })}>Choisir ce sujet</Button>
                 </article>
               ))}
             </div>
@@ -186,29 +180,19 @@ export function PlanV2Panel({ projectId, chapterId, writingHref }: PlanV2PanelPr
 
       {refinement && (
         <Card>
-          <CardHeader>
-            <CardTitle>Ce que la relecture du plan met en tension</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>Ce que la relecture du plan met en tension</CardTitle></CardHeader>
           <CardContent>
             <div {...stylex.props(workshopStyles.stack)}>
-              {refinement.diagnostics.length === 0 ? (
-                <p>Aucun diagnostic local significatif.</p>
-              ) : refinement.diagnostics.map((diagnostic, index) => (
-                <p key={`${diagnostic.partId}-${diagnostic.entryId ?? index}`}>
-                  <strong>{diagnostic.kind}</strong> — {diagnostic.reason}
-                </p>
+              {refinement.diagnostics.length === 0 ? <p>Aucun diagnostic local significatif.</p> : refinement.diagnostics.map((diagnostic, index) => (
+                <p key={`${diagnostic.partId}-${diagnostic.entryId ?? index}`}><strong>{diagnostic.kind}</strong> — {diagnostic.reason}</p>
               ))}
               {refinement.remoteImpacts.length > 0 && (
                 <div {...stylex.props(workshopStyles.compactStack)}>
                   <strong>Conséquences ailleurs dans le livre</strong>
-                  {refinement.remoteImpacts.map((impact, index) => (
-                    <span key={`${impact.partId}-${impact.entryId ?? index}`}>{impact.partTitle} — {impact.impact}</span>
-                  ))}
+                  {refinement.remoteImpacts.map((impact, index) => <span key={`${impact.partId}-${impact.entryId ?? index}`}>{impact.partTitle} — {impact.impact}</span>)}
                 </div>
               )}
-              {!state?.activeBrief && (
-                <p>Pour transformer ce diagnostic en structure, choisissez d’abord un sujet avec « Explorer ».</p>
-              )}
+              {!state?.activeBrief && <p>Pour transformer ce diagnostic en structure, choisissez d’abord un sujet avec « Explorer ».</p>}
             </div>
           </CardContent>
         </Card>
@@ -216,11 +200,16 @@ export function PlanV2Panel({ projectId, chapterId, writingHref }: PlanV2PanelPr
 
       {state?.activeBrief && (
         <Card>
-          <CardHeader>
-            <CardTitle>Préciser</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>Préciser</CardTitle></CardHeader>
           <CardContent>
             <div {...stylex.props(workshopStyles.stack)}>
+              {grillQuestions.length > 0 && (
+                <div {...stylex.props(workshopStyles.compactStack)}>
+                  <strong>Questions utiles maintenant</strong>
+                  {grillQuestions.map((item) => <span key={item.id}>{item.prompt}</span>)}
+                  <small>Le nombre de questions est borné par le backend ; aucune session de grill n’est créée.</small>
+                </div>
+              )}
               <div {...stylex.props(workshopStyles.field)}>
                 <Label htmlFor="plan-question">Question directrice</Label>
                 <Textarea id="plan-question" value={question} onChange={(event) => setQuestion(event.target.value)} />
@@ -233,9 +222,7 @@ export function PlanV2Panel({ projectId, chapterId, writingHref }: PlanV2PanelPr
               {state.activeBrief.gaps.length > 0 && (
                 <div {...stylex.props(workshopStyles.compactStack)}>
                   <strong>Lacunes encore ouvertes</strong>
-                  {state.activeBrief.gaps.map((gap, index) => (
-                    <span key={`${gap.description}-${index}`}>{gap.description} — {gap.consequence}</span>
-                  ))}
+                  {state.activeBrief.gaps.map((gap, index) => <span key={`${gap.description}-${index}`}>{gap.description} — {gap.consequence}</span>)}
                 </div>
               )}
 
@@ -247,32 +234,19 @@ export function PlanV2Panel({ projectId, chapterId, writingHref }: PlanV2PanelPr
               )}
 
               <div {...stylex.props(workshopStyles.actionRow)}>
-                <Button
-                  type="button"
-                  disabled={Boolean(loading) || !question.trim()}
-                  onClick={() => void run("clarify", async () => {
-                    await supersedePlanningBriefRequest(projectId, state.activeBrief!.id, {
-                      question: question.trim(),
-                      angleOrFunction: angle.trim() || undefined,
-                    });
-                    await refresh();
-                    setMessage("Précisions enregistrées dans une nouvelle version.");
-                  })}
-                >
-                  {loading === "clarify" ? "Enregistrement…" : "Préciser"}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={Boolean(loading)}
-                  onClick={() => void run("decompose", async () => {
-                    const result = await proposePlanningDecomposition(projectId, state.activeBrief!.id);
-                    setArchitectures(result.architectures);
-                    setChanges([]);
-                  })}
-                >
-                  {loading === "decompose" ? "Proposition…" : "Proposer une structure"}
-                </Button>
+                <Button type="button" disabled={Boolean(loading) || !question.trim()} onClick={() => void run("clarify", async () => {
+                  await supersedePlanningBriefRequest(projectId, state.activeBrief!.id, {
+                    question: question.trim(),
+                    angleOrFunction: angle.trim() || undefined,
+                  });
+                  await refresh();
+                  setMessage("Précisions enregistrées dans une nouvelle version.");
+                })}>{loading === "clarify" ? "Enregistrement…" : "Préciser"}</Button>
+                <Button type="button" variant="outline" disabled={Boolean(loading)} onClick={() => void run("decompose", async () => {
+                  const result = await proposePlanningDecomposition(projectId, state.activeBrief!.id);
+                  setArchitectures(result.architectures);
+                  setChanges([]);
+                })}>{loading === "decompose" ? "Proposition…" : "Proposer une structure"}</Button>
               </div>
             </div>
           </CardContent>
@@ -281,30 +255,18 @@ export function PlanV2Panel({ projectId, chapterId, writingHref }: PlanV2PanelPr
 
       {architectures.length > 0 && state?.activeBrief && (
         <Card>
-          <CardHeader>
-            <CardTitle>Structures proposées</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>Structures proposées</CardTitle></CardHeader>
           <CardContent>
             <div {...stylex.props(workshopStyles.stack)}>
               {architectures.map((architecture, index) => (
                 <article key={`${architecture.structuralDecision}-${index}`} {...stylex.props(workshopStyles.compactStack)}>
                   <strong>{architecture.structuralDecision}</strong>
                   {architecture.whyDifferent && <span>{architecture.whyDifferent}</span>}
-                  <ul>
-                    {architecture.children.map((child) => (
-                      <li key={`${child.level}-${child.title}`}>{child.title} — {child.rationale}</li>
-                    ))}
-                  </ul>
-                  <Button
-                    type="button"
-                    disabled={Boolean(loading)}
-                    onClick={() => void run("diff", async () => {
-                      const result = await createPlanningStructuralDiff(projectId, state.activeBrief!.id, architecture);
-                      setChanges(result.changes);
-                    })}
-                  >
-                    Préparer les changements
-                  </Button>
+                  <ul>{architecture.children.map((child) => <li key={`${child.level}-${child.title}`}>{child.title} — {child.rationale}</li>)}</ul>
+                  <Button type="button" disabled={Boolean(loading)} onClick={() => void run("diff", async () => {
+                    const result = await createPlanningStructuralDiff(projectId, state.activeBrief!.id, architecture);
+                    setChanges(result.changes);
+                  })}>Préparer les changements</Button>
                 </article>
               ))}
             </div>
@@ -314,47 +276,28 @@ export function PlanV2Panel({ projectId, chapterId, writingHref }: PlanV2PanelPr
 
       {changes.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle>Vérifier avant validation</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>Vérifier avant validation</CardTitle></CardHeader>
           <CardContent>
             <div {...stylex.props(workshopStyles.stack)}>
               <p>Aucun changement n’est appliqué avant votre validation.</p>
               {changes.map((change) => (
                 <div key={change.id} {...stylex.props(workshopStyles.compactStack)}>
                   {change.kind === "create_node" ? (
-                    <>
-                      <Label htmlFor={`change-${change.id}`}>Titre</Label>
-                      <Input
-                        id={`change-${change.id}`}
-                        value={change.node.title}
-                        onChange={(event) => editChangeTitle(change.id, event.target.value)}
-                      />
-                    </>
-                  ) : (
-                    <strong>{change.kind}</strong>
-                  )}
+                    <><Label htmlFor={`change-${change.id}`}>Titre</Label><Input id={`change-${change.id}`} value={change.node.title} onChange={(event) => editChangeTitle(change.id, event.target.value)} /></>
+                  ) : <strong>{change.kind}</strong>}
                   <span>Pourquoi : {change.reason}</span>
                   {change.consequences.length > 0 && <span>Conséquences : {change.consequences.join(" · ")}</span>}
                 </div>
               ))}
               <div {...stylex.props(workshopStyles.actionRow)}>
-                <Button
-                  type="button"
-                  disabled={Boolean(loading) || changes.some((change) => change.kind === "create_node" && !change.node.title.trim())}
-                  onClick={() => void run("apply", async () => {
-                    await applyPlanningStructuralDiff(projectId, changes);
-                    setChanges([]);
-                    setArchitectures([]);
-                    await refresh();
-                    setMessage("Structure validée et appliquée.");
-                  })}
-                >
-                  {loading === "apply" ? "Validation…" : "Valider"}
-                </Button>
-                <Button type="button" variant="outline" disabled={Boolean(loading)} onClick={() => setChanges([])}>
-                  Refuser
-                </Button>
+                <Button type="button" disabled={Boolean(loading) || changes.some((change) => change.kind === "create_node" && !change.node.title.trim())} onClick={() => void run("apply", async () => {
+                  await applyPlanningStructuralDiff(projectId, changes);
+                  setChanges([]);
+                  setArchitectures([]);
+                  await refresh();
+                  setMessage("Structure validée et appliquée.");
+                })}>{loading === "apply" ? "Validation…" : "Valider"}</Button>
+                <Button type="button" variant="outline" disabled={Boolean(loading)} onClick={() => setChanges([])}>Refuser</Button>
               </div>
             </div>
           </CardContent>
@@ -362,14 +305,7 @@ export function PlanV2Panel({ projectId, chapterId, writingHref }: PlanV2PanelPr
       )}
 
       {state?.readiness?.ready && writingHref && (
-        <Card>
-          <CardContent>
-            <div {...stylex.props(workshopStyles.actionRow)}>
-              <span>Ce scope est suffisamment stable pour poursuivre localement.</span>
-              <Link {...stylex.props(workshopStyles.actionLink)} to={writingHref}>Passer à l’écriture</Link>
-            </div>
-          </CardContent>
-        </Card>
+        <Card><CardContent><div {...stylex.props(workshopStyles.actionRow)}><span>Ce scope est suffisamment stable pour poursuivre localement.</span><Link {...stylex.props(workshopStyles.actionLink)} to={writingHref}>Passer à l’écriture</Link></div></CardContent></Card>
       )}
     </section>
   );
