@@ -331,7 +331,7 @@ describe("EditorPage", () => {
     fireEvent.change(manuscript, { target: { value: "Le manuscrit a changé." } });
     expect(screen.getByText("Proposition périmée")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Appliquer la proposition" })).toBeDisabled();
-    fireEvent.click(screen.getByRole("button", { name: "Écarter la proposition" }));
+    fireEvent.click(screen.getByRole("button", { name: "Refuser la proposition" }));
     expect(screen.queryByRole("region", { name: "Proposition de révision" })).not.toBeInTheDocument();
   });
 

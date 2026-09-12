@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { DraftUnit } from "@auto-essay/core";
@@ -172,14 +172,14 @@ describe("EditorPage collaborative revision compatibility", () => {
     await requestRevision();
     fireEvent.click(screen.getByRole("button", { name: "Refuser la proposition" }));
 
-    await vi.waitFor(() =>
-      expect(rejectWork).toHaveBeenCalledWith("project-1", "unit-prepared", collaborativeWork.id)
-    );
+    await waitFor(() => {
+      expect(rejectWork).toHaveBeenCalledWith("project-1", "unit-prepared", collaborativeWork.id);
+      expect(screen.queryByRole("region", { name: "Proposition de révision" })).not.toBeInTheDocument();
+    });
     expect(updateUnit).not.toHaveBeenCalled();
     expect(screen.getByRole("textbox", { name: "Manuscrit : Unité préparée" })).toHaveValue(
       "Texte canonique."
     );
-    expect(screen.queryByRole("region", { name: "Proposition de révision" })).not.toBeInTheDocument();
   });
 
   it("keeps collaborative apply backend-authoritative when local text makes the proposal look stale", async () => {
