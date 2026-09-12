@@ -5,11 +5,11 @@ import {
   splitManuscriptUnit,
   updateUnit,
   generateUnit,
-  reviseUnitChat,
   evaluateIntegratedUnit,
   evaluateUnit,
   verifyUnit,
 } from "@/api";
+import { reviseUnitChatCompatible } from "@/api/revisionWork";
 import { useEffect, useState, useCallback } from "react";
 import type { DraftUnit } from "@auto-essay/core";
 
@@ -89,7 +89,7 @@ export function useUnits(projectId: string | undefined) {
   const reviseChat = useCallback(
     async (unitId: string, instruction: string) => {
       if (!projectId) return;
-      return reviseUnitChat(projectId, unitId, instruction);
+      return reviseUnitChatCompatible(projectId, unitId, instruction);
     },
     [projectId]
   );
