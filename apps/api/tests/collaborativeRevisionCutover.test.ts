@@ -8,13 +8,19 @@ import {
   type Manuscript,
 } from "@auto-essay/core";
 import { MockClient } from "../src/llm/mockClient.js";
-import { putWorkspace } from "../src/services/editorialWorkspaceStore.js";
+import { listAutomaticDiffractiveReadings } from "../src/services/automaticDiffractiveReadingStore.js";
+import {
+  getWorkspace,
+  putWorkspace,
+  setDiffractiveReadingMode,
+} from "../src/services/editorialWorkspaceStore.js";
 import { loadCollaborativeRevisionWork } from "../src/services/collaborativeRevisionWorkStore.js";
 import { getUnit, setUnits } from "../src/services/unitStore.js";
 import { makeTempDataDir, makeTestApp, postJson } from "./helper.js";
 
 const projectId = "project-revision-cutover";
 const unitId = "unit-revision-cutover";
+const sectionId = "section-revision-cutover";
 const createdAt = "2026-09-12T12:00:00.000Z";
 
 function fixture(mounted: boolean): { manuscript: Manuscript; unit: DraftUnit } {
@@ -23,6 +29,7 @@ function fixture(mounted: boolean): { manuscript: Manuscript; unit: DraftUnit } 
     projectId,
     granularity: "paragraph",
     targetWordCount: 180,
+    contextInPlan: { section: sectionId },
     evidencePack: { sourceIds: [] },
     content: "Canonical paragraph.",
     claimIds: [],
@@ -47,7 +54,7 @@ function fixture(mounted: boolean): { manuscript: Manuscript; unit: DraftUnit } 
         children: [
           {
             kind: "node",
-            id: "section-revision-cutover",
+            id: sectionId,
             title: "Section",
             plan: mounted
               ? [{
@@ -196,5 +203,70 @@ describe("AE2 production revise-chat authority cutover", () => {
       content: "Canonical paragraph.",
       version: 4,
     });
+  });
+
+  it("materializes one next version and schedules text_changed only after applied integration", async () => {
+    await seed(dataDir, true);
+    await setDiffractiveReadingMode(projectId, sectionId, "automatic");
+    const app = makeTestApp(dataDir, {
+      modelClientFactory: async () => new MockClient(),
+    });
+
+    const reviseResponse = await postJson(
+      app,
+      `/api/projects/${projectId}/units/${unitId}/revise-chat`,
+      { instruction: "Resserre le paragraphe." }
+    );
+    const revision = await reviseResponse.json();
+    expect(revision.kind).toBe("collaborative");
+    expect(await listAutomaticDiffractiveReadings(projectId, sectionId)).toEqual([]);
+
+    const acceptedContent = "Author-edited collaborative revision.";
+    const acceptResponse = await postJson(
+      app,
+      `/api/projects/${projectId}/units/${unitId}/revision-work/${encodeURIComponent(revision.work.id)}/accept`,
+      { content: acceptedContent }
+    );
+
+    expect(acceptResponse.status).toBe(200);
+    expect(await acceptResponse.json()).toMatchObject({
+      kind: "collaborative",
+      status: "integrated",
+      work: { id: revision.work.id, status: "integrated" },
+      unit: { id: unitId, content: acceptedContent, version: 5 },
+    });
+    expect(await getUnit(projectId, unitId)).toMatchObject({
+      content: acceptedContent,
+      version: 5,
+    });
+    expect((await getWorkspace(projectId)).manuscript).toMatchObject({
+      tree: [{
+        children: [{
+          plan: [{ unitId, unitVersion: 5 }],
+          children: [{ kind: "leaf", unitId, version: 5 }],
+        }],
+      }],
+    });
+
+    const readings = await listAutomaticDiffractiveReadings(projectId, sectionId);
+    expect(readings).toHaveLength(1);
+    expect(readings[0]).toMatchObject({
+      projectId,
+      sectionId,
+      trigger: "text_changed",
+    });
+
+    const repeatedAccept = await postJson(
+      app,
+      `/api/projects/${projectId}/units/${unitId}/revision-work/${encodeURIComponent(revision.work.id)}/accept`,
+      { content: acceptedContent }
+    );
+    expect(repeatedAccept.status).toBe(200);
+    expect(await getUnit(projectId, unitId)).toMatchObject({
+      content: acceptedContent,
+      version: 5,
+    });
+    expect(await listAutomaticDiffractiveReadings(projectId, sectionId)).toHaveLength(1);
+    expect(await exists(legacyProposalPath(dataDir))).toBe(false);
   });
 });
