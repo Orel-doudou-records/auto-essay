@@ -2,6 +2,7 @@ import type {
   AdaptivePlanningDecomposition,
   PlanningArchitectureProposal,
   PlanningBrief,
+  PlanningQuestionCandidate,
   PlanningReadinessAssessment,
   PlanningStructuralChange,
   PlanningSubjectExploration,
@@ -131,6 +132,18 @@ export async function supersedePlanningBriefRequest(
     }
   );
   return result.brief;
+}
+
+export async function fetchPlanningGrill(
+  projectId: string,
+  briefId: string,
+  round = 0
+): Promise<{ round: number; questions: PlanningQuestionCandidate[] }> {
+  return requestJson(`${API}/projects/${projectId}/planning/grill`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ briefId, round }),
+  });
 }
 
 export async function proposePlanningDecomposition(
