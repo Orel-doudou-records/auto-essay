@@ -17,6 +17,7 @@ export * from "./planRefinement.js";
 export * from "./planningDecomposition.js";
 export * from "./planningStructuralDiff.js";
 export * from "./planningEditorialPlanCompiler.js";
+export * from "./planningImpactReview.js";
 export * from "./manuscriptGranularity.js";
 export * from "./manuscriptReimport.js";
 export * from "./writingEngineCollaborativeCoreAdapter.js";
