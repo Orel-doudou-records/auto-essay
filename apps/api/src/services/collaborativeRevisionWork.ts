@@ -99,16 +99,11 @@ function resolveLiteraryNodeId(
   draftUnits: DraftUnit[],
   unitId: string
 ): string | undefined {
-  let projected;
-  try {
-    projected = projectAutoEssayManuscriptToCollaborativeCore({
-      manuscript,
-      draftUnits,
-      contentCreatedBy: { id: "autoessay-authority-resolution" },
-    });
-  } catch {
-    return undefined;
-  }
+  const projected = projectAutoEssayManuscriptToCollaborativeCore({
+    manuscript,
+    draftUnits,
+    contentCreatedBy: { id: "autoessay-authority-resolution" },
+  });
 
   const matches = Object.values(projected.manuscript.nodes).filter(
     (node) =>
