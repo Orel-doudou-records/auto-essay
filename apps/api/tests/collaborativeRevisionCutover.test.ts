@@ -103,28 +103,24 @@ async function seedAmbiguousParagraph(dataDir: string): Promise<void> {
         children: [
           {
             kind: "node",
-            id: "section-revision-cutover-a",
-            title: "Section A",
-            plan: [{
-              id: "paragraph-revision-cutover-a",
-              subject: "Paragraph A",
-              unitId,
-              unitVersion: 4,
-              notes: [],
-            }],
-            children: [{ kind: "leaf", unitId, version: 4 }],
-          },
-          {
-            kind: "node",
-            id: "section-revision-cutover-b",
-            title: "Section B",
-            plan: [{
-              id: "paragraph-revision-cutover-b",
-              subject: "Paragraph B",
-              unitId,
-              unitVersion: 4,
-              notes: [],
-            }],
+            id: sectionId,
+            title: "Section",
+            plan: [
+              {
+                id: "paragraph-revision-cutover-a",
+                subject: "Paragraph A",
+                unitId,
+                unitVersion: 4,
+                notes: [],
+              },
+              {
+                id: "paragraph-revision-cutover-b",
+                subject: "Paragraph B",
+                unitId,
+                unitVersion: 4,
+                notes: [],
+              },
+            ],
             children: [{ kind: "leaf", unitId, version: 4 }],
           },
         ],
