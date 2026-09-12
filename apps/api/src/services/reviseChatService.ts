@@ -28,11 +28,23 @@ export type ReviseChatResult =
       message: string;
     };
 
-function isAmbiguousCollaborativeRevisionTarget(error: unknown): boolean {
-  if (!(error instanceof Error)) return false;
+const unsupportedCollaborativeProjectionMessages = [
+  "resolves to multiple literary identities",
+  "is linked from multiple PlanEntry identities",
+  "CC1 compatibility projection supports at most chapter -> section structural nesting before paragraphs",
+  "contains text that the CC1 compatibility projection cannot represent without inventing a content identity",
+  "has book granularity; the CC1 manuscript root already represents the book",
+  "represents a paragraph but links DraftUnit",
+  "Cannot project AutoEssay DraftUnit",
+  "CC1 literary node id collision",
+] as const;
+
+function isUnsupportedCollaborativeProjection(error: unknown): error is Error {
   return (
-    error.message.includes("resolves to multiple literary identities") ||
-    error.message.includes("is linked from multiple PlanEntry identities")
+    error instanceof Error &&
+    unsupportedCollaborativeProjectionMessages.some((message) =>
+      error.message.includes(message)
+    )
   );
 }
 
@@ -45,7 +57,7 @@ async function captureRevisionSource(
   } catch (error) {
     if (
       (error instanceof HTTPException && error.status === 404) ||
-      isAmbiguousCollaborativeRevisionTarget(error)
+      isUnsupportedCollaborativeProjection(error)
     ) {
       return { authority: "legacy", projectId, unitId };
     }
@@ -72,11 +84,23 @@ async function finalizeRevisionCandidate(input: {
     return { proposal };
   }
 
-  const result = await createCollaborativeParagraphRevision({
-    projectId: input.projectId,
-    source: input.source,
-    proposedContent: input.proposedContent,
-  });
+  let result;
+  try {
+    result = await createCollaborativeParagraphRevision({
+      projectId: input.projectId,
+      source: input.source,
+      proposedContent: input.proposedContent,
+    });
+  } catch (error) {
+    if (isUnsupportedCollaborativeProjection(error)) {
+      return {
+        kind: "collaborative",
+        status: "unsupported_projection_drift",
+        message: error.message,
+      };
+    }
+    throw error;
+  }
   if (result.status === "created") {
     return {
       kind: "collaborative",
