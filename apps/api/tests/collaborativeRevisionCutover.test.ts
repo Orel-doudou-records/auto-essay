@@ -76,9 +76,8 @@ function fixture(mounted: boolean): { manuscript: Manuscript; unit: DraftUnit } 
   return { manuscript, unit };
 }
 
-async function seed(dataDir: string, mounted: boolean): Promise<void> {
+async function storeFixture(dataDir: string, source: { manuscript: Manuscript; unit: DraftUnit }): Promise<void> {
   process.env.AUTO_ESSAY_DATA_DIR = dataDir;
-  const source = fixture(mounted);
   await setUnits(projectId, [source.unit]);
   await putWorkspace(projectId, {
     manuscript: source.manuscript,
@@ -86,6 +85,76 @@ async function seed(dataDir: string, mounted: boolean): Promise<void> {
     profiles: [],
     articulations: [],
   });
+}
+
+async function seed(dataDir: string, mounted: boolean): Promise<void> {
+  await storeFixture(dataDir, fixture(mounted));
+}
+
+async function seedAmbiguousParagraph(dataDir: string): Promise<void> {
+  const source = fixture(true);
+  const manuscript = ManuscriptSchema.parse({
+    ...source.manuscript,
+    tree: [
+      {
+        kind: "node",
+        id: "chapter-revision-cutover",
+        title: "Chapter",
+        children: [
+          {
+            kind: "node",
+            id: "section-revision-cutover-a",
+            title: "Section A",
+            plan: [{
+              id: "paragraph-revision-cutover-a",
+              subject: "Paragraph A",
+              unitId,
+              unitVersion: 4,
+              notes: [],
+            }],
+            children: [{ kind: "leaf", unitId, version: 4 }],
+          },
+          {
+            kind: "node",
+            id: "section-revision-cutover-b",
+            title: "Section B",
+            plan: [{
+              id: "paragraph-revision-cutover-b",
+              subject: "Paragraph B",
+              unitId,
+              unitVersion: 4,
+              notes: [],
+            }],
+            children: [{ kind: "leaf", unitId, version: 4 }],
+          },
+        ],
+      },
+    ],
+  });
+  await storeFixture(dataDir, { manuscript, unit: source.unit });
+}
+
+async function seedMountedSection(dataDir: string): Promise<void> {
+  const unit = DraftUnitSchema.parse({
+    ...fixture(true).unit,
+    granularity: "section",
+    contextInPlan: undefined,
+    content: "Canonical section.",
+  });
+  const manuscript = ManuscriptSchema.parse({
+    id: "manuscript-revision-cutover",
+    projectId,
+    title: "Revision cutover essay",
+    tree: [{
+      kind: "node",
+      id: "chapter-revision-cutover",
+      title: "Chapter",
+      children: [{ kind: "leaf", unitId, version: 4 }],
+    }],
+    createdAt,
+    updatedAt: createdAt,
+  });
+  await storeFixture(dataDir, { manuscript, unit });
 }
 
 async function exists(filePath: string): Promise<boolean> {
@@ -109,6 +178,24 @@ function parseServerSentEvents(body: string): Array<{ type: string; payload?: un
     .map((entry) => JSON.parse(entry.slice("data: ".length)) as { type: string; payload?: unknown });
 }
 
+function testApp(dataDir: string) {
+  return makeTestApp(dataDir, {
+    modelClientFactory: async () => new MockClient(),
+  });
+}
+
+async function requestCollaborativeRevision(app: ReturnType<typeof testApp>) {
+  const response = await postJson(
+    app,
+    `/api/projects/${projectId}/units/${unitId}/revise-chat`,
+    { instruction: "Resserre le paragraphe." }
+  );
+  expect(response.status).toBe(200);
+  const body = await response.json();
+  expect(body.kind).toBe("collaborative");
+  return body as { kind: "collaborative"; work: { id: string; status: string } };
+}
+
 describe("AE2 production revise-chat authority cutover", () => {
   let dataDir: string;
 
@@ -122,9 +209,7 @@ describe("AE2 production revise-chat authority cutover", () => {
 
   it("routes an eligible mounted paragraph exclusively to collaborative work", async () => {
     await seed(dataDir, true);
-    const app = makeTestApp(dataDir, {
-      modelClientFactory: async () => new MockClient(),
-    });
+    const app = testApp(dataDir);
 
     const response = await postJson(
       app,
@@ -153,9 +238,53 @@ describe("AE2 production revise-chat authority cutover", () => {
 
   it("keeps an unmounted paragraph exclusively on the legacy proposal path", async () => {
     await seed(dataDir, false);
-    const app = makeTestApp(dataDir, {
-      modelClientFactory: async () => new MockClient(),
+    const app = testApp(dataDir);
+
+    const response = await postJson(
+      app,
+      `/api/projects/${projectId}/units/${unitId}/revise-chat`,
+      { instruction: "Resserre le paragraphe." }
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.proposal).toMatchObject({
+      projectId,
+      unitId,
+      sourceVersion: 4,
+      before: "Canonical paragraph.",
+      status: "available",
     });
+    expect(body).not.toHaveProperty("kind");
+    expect(await exists(legacyProposalPath(dataDir))).toBe(true);
+  });
+
+  it("keeps a mounted section on the legacy proposal path", async () => {
+    await seedMountedSection(dataDir);
+    const app = testApp(dataDir);
+
+    const response = await postJson(
+      app,
+      `/api/projects/${projectId}/units/${unitId}/revise-chat`,
+      { instruction: "Resserre la section." }
+    );
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.proposal).toMatchObject({
+      projectId,
+      unitId,
+      sourceVersion: 4,
+      before: "Canonical section.",
+      status: "available",
+    });
+    expect(body).not.toHaveProperty("kind");
+    expect(await exists(legacyProposalPath(dataDir))).toBe(true);
+  });
+
+  it("keeps an ambiguous paragraph target on the legacy proposal path", async () => {
+    await seedAmbiguousParagraph(dataDir);
+    const app = testApp(dataDir);
 
     const response = await postJson(
       app,
@@ -178,9 +307,7 @@ describe("AE2 production revise-chat authority cutover", () => {
 
   it("uses the same collaborative authority at streaming completion", async () => {
     await seed(dataDir, true);
-    const app = makeTestApp(dataDir, {
-      modelClientFactory: async () => new MockClient(),
-    });
+    const app = testApp(dataDir);
 
     const response = await postJson(
       app,
@@ -205,20 +332,70 @@ describe("AE2 production revise-chat authority cutover", () => {
     });
   });
 
+  it("rejects collaborative work without changing canonical content or scheduling downstream work", async () => {
+    await seed(dataDir, true);
+    await setDiffractiveReadingMode(projectId, sectionId, "automatic");
+    const app = testApp(dataDir);
+    const revision = await requestCollaborativeRevision(app);
+
+    const rejectResponse = await postJson(
+      app,
+      `/api/projects/${projectId}/units/${unitId}/revision-work/${encodeURIComponent(revision.work.id)}/reject`,
+      {}
+    );
+
+    expect(rejectResponse.status).toBe(200);
+    expect(await rejectResponse.json()).toMatchObject({
+      kind: "collaborative",
+      status: "rejected",
+      work: { id: revision.work.id, status: "rejected" },
+    });
+    expect(await getUnit(projectId, unitId)).toMatchObject({
+      content: "Canonical paragraph.",
+      version: 4,
+    });
+    expect(await listAutomaticDiffractiveReadings(projectId, sectionId)).toEqual([]);
+    expect(await exists(legacyProposalPath(dataDir))).toBe(false);
+  });
+
+  it("keeps concurrent autosave drift canonical and blocks collaborative integration", async () => {
+    await seed(dataDir, true);
+    await setDiffractiveReadingMode(projectId, sectionId, "automatic");
+    const app = testApp(dataDir);
+    const revision = await requestCollaborativeRevision(app);
+    const current = await getUnit(projectId, unitId);
+    expect(current).toBeDefined();
+    await setUnits(projectId, [
+      DraftUnitSchema.parse({
+        ...current!,
+        content: "Concurrent autosave content.",
+        updatedAt: "2026-09-12T12:05:00.000Z",
+      }),
+    ]);
+
+    const acceptResponse = await postJson(
+      app,
+      `/api/projects/${projectId}/units/${unitId}/revision-work/${encodeURIComponent(revision.work.id)}/accept`,
+      { content: "Collaborative candidate." }
+    );
+
+    expect(acceptResponse.status).toBe(409);
+    const body = await acceptResponse.json();
+    expect(["stale", "conflict"]).toContain(body.status);
+    expect(await getUnit(projectId, unitId)).toMatchObject({
+      content: "Concurrent autosave content.",
+      version: 4,
+    });
+    expect(await listAutomaticDiffractiveReadings(projectId, sectionId)).toEqual([]);
+    expect(await exists(legacyProposalPath(dataDir))).toBe(false);
+  });
+
   it("materializes one next version and schedules text_changed only after applied integration", async () => {
     await seed(dataDir, true);
     await setDiffractiveReadingMode(projectId, sectionId, "automatic");
-    const app = makeTestApp(dataDir, {
-      modelClientFactory: async () => new MockClient(),
-    });
+    const app = testApp(dataDir);
 
-    const reviseResponse = await postJson(
-      app,
-      `/api/projects/${projectId}/units/${unitId}/revise-chat`,
-      { instruction: "Resserre le paragraphe." }
-    );
-    const revision = await reviseResponse.json();
-    expect(revision.kind).toBe("collaborative");
+    const revision = await requestCollaborativeRevision(app);
     expect(await listAutomaticDiffractiveReadings(projectId, sectionId)).toEqual([]);
 
     const acceptedContent = "Author-edited collaborative revision.";
@@ -267,6 +444,40 @@ describe("AE2 production revise-chat authority cutover", () => {
       version: 5,
     });
     expect(await listAutomaticDiffractiveReadings(projectId, sectionId)).toHaveLength(1);
+    expect(await exists(legacyProposalPath(dataDir))).toBe(false);
+  });
+
+  it("keeps an applied Integration successful when downstream scheduling fails", async () => {
+    await seed(dataDir, true);
+    const current = await getUnit(projectId, unitId);
+    expect(current).toBeDefined();
+    await setUnits(projectId, [
+      DraftUnitSchema.parse({
+        ...current!,
+        contextInPlan: { section: "missing-scheduler-section" },
+      }),
+    ]);
+    const app = testApp(dataDir);
+    const revision = await requestCollaborativeRevision(app);
+
+    const acceptedContent = "Applied despite scheduler failure.";
+    const acceptResponse = await postJson(
+      app,
+      `/api/projects/${projectId}/units/${unitId}/revision-work/${encodeURIComponent(revision.work.id)}/accept`,
+      { content: acceptedContent }
+    );
+
+    expect(acceptResponse.status).toBe(200);
+    expect(await acceptResponse.json()).toMatchObject({
+      kind: "collaborative",
+      status: "integrated",
+      unit: { id: unitId, content: acceptedContent, version: 5 },
+    });
+    expect(await getUnit(projectId, unitId)).toMatchObject({
+      content: acceptedContent,
+      version: 5,
+      contextInPlan: { section: "missing-scheduler-section" },
+    });
     expect(await exists(legacyProposalPath(dataDir))).toBe(false);
   });
 });
