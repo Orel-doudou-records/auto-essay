@@ -12,6 +12,7 @@ import { exportRoutes } from "./routes/export.js";
 import { diffractRoutes } from "./routes/diffract.js";
 import { demoRoutes } from "./routes/demo.js";
 import { editorialRoutes } from "./routes/editorial.js";
+import { planningRoutes } from "./routes/planning.js";
 import { manuscriptImportRoutes } from "./routes/manuscriptImport.js";
 import { manuscriptGranularityRoutes } from "./routes/manuscriptGranularity.js";
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -58,6 +59,7 @@ export function createApp(options: AppOptions = {}): Hono {
   );
   app.route("/api/projects/:projectId/export", exportRoutes());
   app.route("/api/projects/:projectId/editorial", editorialRoutes(modelClientFactory));
+  app.route("/api/projects/:projectId/planning", planningRoutes(modelClientFactory));
   app.route("/api/diffract", diffractRoutes(modelClientFactory));
   app.route("/api/demo", demoRoutes());
 

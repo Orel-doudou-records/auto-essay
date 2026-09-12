@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ChapterOperationPanel } from "@/components/editorial/ChapterOperationPanel";
+import { PlanV2Panel } from "@/components/editorial/PlanV2Panel";
 
 export function ChapterWorkshopPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -46,7 +47,7 @@ export function ChapterWorkshopPage() {
           <p {...stylex.props(workshopStyles.eyebrow)}>Manuscrit</p>
           <h1 {...stylex.props(workshopStyles.title)}>Plan du manuscrit</h1>
           <p {...stylex.props(workshopStyles.copy)}>
-            Consultez l’état éditorial du chapitre, puis choisissez explicitement la section ou l’unité à poursuivre.
+            Explorez, précisez et validez la structure avant de poursuivre l’écriture. Aucun changement n’est appliqué sans confirmation explicite.
           </p>
         </header>
 
@@ -57,10 +58,10 @@ export function ChapterWorkshopPage() {
                 <div {...stylex.props(workshopStyles.field)}>
                   <Label htmlFor="chapter-id">Chapitre</Label>
                   <Input
-                id="chapter-id"
-                value={chapterId}
-                onChange={(event) => setChapterId(event.target.value)}
-                placeholder="Choisissez un chapitre depuis le manuscrit"
+                    id="chapter-id"
+                    value={chapterId}
+                    onChange={(event) => setChapterId(event.target.value)}
+                    placeholder="Choisissez un chapitre depuis le manuscrit"
                   />
                 </div>
                 <Button type="button" onClick={() => void loadChapter()} disabled={!chapterId.trim() || loading}>
@@ -84,6 +85,12 @@ export function ChapterWorkshopPage() {
                 Statut de rédaction : {workspace.chapter.writingStatus}
               </p>
             </header>
+
+            <PlanV2Panel
+              projectId={projectId ?? ""}
+              chapterId={workspace.chapter.id}
+              writingHref={workspace.sections[0]?.transitions.workshop.href}
+            />
 
             <ChapterOperationPanel projectId={projectId ?? ""} chapterId={workspace.chapter.id} />
 
