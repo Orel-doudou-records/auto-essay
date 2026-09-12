@@ -89,6 +89,13 @@ export function compilePlanningScopeToEditorialPlan(
     return { ok: false, reasons: readiness.reasons };
   }
 
+  if (input.execution.scope.projectId !== input.brief.projectId) {
+    return {
+      ok: false,
+      reasons: ["editorial scope belongs to a different project than the planning brief"],
+    };
+  }
+
   const argumentativeFunction =
     input.brief.angleOrFunction?.trim() ||
     input.execution.argumentativeFunction?.trim();
