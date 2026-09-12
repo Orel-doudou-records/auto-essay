@@ -509,7 +509,10 @@ export async function acceptCollaborativeParagraphRevision(
       coreProjectId,
       work.workspaceId
     );
-    const node = workspaceManuscript?.nodes[work.literaryNodeId];
+    if (workspaceManuscript === undefined) {
+      throw new Error("collaborative workspace snapshot is missing");
+    }
+    const node = workspaceManuscript.nodes[work.literaryNodeId];
     if (
       node === undefined ||
       node.removed ||
