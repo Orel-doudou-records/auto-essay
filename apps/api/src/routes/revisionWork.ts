@@ -2,6 +2,8 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { DraftUnit } from "@auto-essay/core";
 import type { ConflictAssessment } from "writing-engine";
+import type { ModelClientFactory } from "../llm/client.js";
+import { enqueueAutomaticDiffractiveReading } from "../services/automaticDiffractiveReadingScheduler.js";
 import {
   acceptCollaborativeParagraphRevision,
   rejectCollaborativeParagraphRevision,
@@ -84,7 +86,27 @@ function recoveryFailure(error: IntegrationMaterializationRecoveryError) {
   };
 }
 
-export function revisionWorkRoutes(): Hono {
+async function scheduleTextChangedAfterAppliedIntegration(
+  projectId: string,
+  unit: DraftUnit,
+  modelClientFactory: ModelClientFactory
+): Promise<void> {
+  const sectionId = unit.contextInPlan?.section;
+  if (!sectionId) return;
+
+  try {
+    await enqueueAutomaticDiffractiveReading({
+      projectId,
+      sectionId,
+      trigger: "text_changed",
+      modelClientFactory,
+    });
+  } catch {
+    // Materialization is already applied. Downstream scheduling must never undo it.
+  }
+}
+
+export function revisionWorkRoutes(modelClientFactory: ModelClientFactory): Hono {
   const app = new Hono();
 
   app.post("/:workId/accept", async (c) => {
@@ -117,6 +139,11 @@ export function revisionWorkRoutes(): Hono {
       });
 
       if (integration.status === "integrated") {
+        await scheduleTextChangedAfterAppliedIntegration(
+          projectId,
+          integration.unit,
+          modelClientFactory
+        );
         return c.json({
           kind: "collaborative",
           status: "integrated",
