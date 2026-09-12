@@ -502,7 +502,9 @@ export async function acceptCollaborativeParagraphRevision(
     }
 
     const store = createFileCollaborativeCoreStore(input.projectId);
-    let { coreProjectId, graph } = await loadCollaborativeContext(store, work);
+    const context = await loadCollaborativeContext(store, work);
+    const coreProjectId = context.coreProjectId;
+    let graph = context.graph;
     const workspaceManuscript = await store.loadCurrentManuscript(
       coreProjectId,
       work.workspaceId
