@@ -13,8 +13,10 @@ import {
   proposeAdaptiveDecomposition,
   proposePlanningSubjects,
   refineExistingPlan,
+  selectPlanningGrillQuestions,
   supersedePlanningBrief,
   type PlanningBrief,
+  type PlanningQuestionCandidate,
   type PlanningReadinessContext,
   type PlanningSubjectProposal,
   type StructuredModelClient,
@@ -175,6 +177,19 @@ export function planningRoutes(modelClientFactory: ModelClientFactory): Hono {
     return c.json(assessPlanningReadiness(brief, (body.context ?? {}) as PlanningReadinessContext));
   });
 
+  app.post("/grill", async (c) => {
+    const projectId = c.req.param("projectId") as string;
+    const body = z.object({
+      briefId: z.string().min(1),
+      round: z.number().int().nonnegative().default(0),
+    }).parse(await c.req.json());
+    const brief = latestBrief(await listPlanningBriefs(projectId), body.briefId);
+    return c.json({
+      round: body.round,
+      questions: selectPlanningGrillQuestions(buildBriefQuestions(brief), body.round),
+    });
+  });
+
   app.post("/decompose", async (c) => {
     const projectId = c.req.param("projectId") as string;
     const body = z.object({ briefId: z.string().min(1) }).parse(await c.req.json());
@@ -252,6 +267,35 @@ function scopeMatches(brief: PlanningBrief, kind: string, scopeId?: string): boo
   if (kind === "node") return brief.scopeRef.kind === "node" && brief.scopeRef.nodeId === scopeId;
   if (kind === "plan_entry") return brief.scopeRef.kind === "plan_entry" && brief.scopeRef.planEntryId === scopeId;
   return false;
+}
+
+function buildBriefQuestions(brief: PlanningBrief): PlanningQuestionCandidate[] {
+  const questions: PlanningQuestionCandidate[] = [];
+  if (!brief.intention?.trim()) {
+    questions.push({
+      id: "intention",
+      prompt: "Quelle transformation intellectuelle ou éditoriale ce scope doit-il produire dans le livre ?",
+      impact: "scope_meaning",
+      wouldChangePlanning: true,
+    });
+  }
+  if (!brief.angleOrFunction?.trim()) {
+    questions.push({
+      id: "angle",
+      prompt: "Quel rôle précis ce scope joue-t-il dans l’argument ou la progression du livre ?",
+      impact: "structure",
+      wouldChangePlanning: true,
+    });
+  }
+  if (!brief.hypotheses.some((hypothesis) => hypothesis.status !== "rejected")) {
+    questions.push({
+      id: "hypothesis",
+      prompt: "Quelle hypothèse, tension ou alternative ce scope doit-il réellement mettre à l’épreuve ?",
+      impact: "hypothesis",
+      wouldChangePlanning: true,
+    });
+  }
+  return questions;
 }
 
 function hasExistingPlan(children: Array<{ kind: string; plan?: unknown[]; children?: unknown[] }>): boolean {
