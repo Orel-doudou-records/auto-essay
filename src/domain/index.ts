@@ -20,6 +20,9 @@ export * from "./manuscriptStatus";
 // Intention de planification versionnée, sans arbre parallèle (Plan V2)
 export * from "./planningBrief";
 
+// Maturité calculée et politique bornée du grill (Plan V2)
+export * from "./planningReadiness";
+
 // Projets essayistiques
 export * from "./essayProject";
 
