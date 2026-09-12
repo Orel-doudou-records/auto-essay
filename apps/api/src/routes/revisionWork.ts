@@ -52,7 +52,9 @@ export type PublicCollaborativeRevisionWork = z.infer<
   typeof PublicCollaborativeRevisionWorkSchema
 >;
 
-function publicWork(work: CollaborativeRevisionWorkDto): PublicCollaborativeRevisionWork {
+export function toPublicCollaborativeRevisionWork(
+  work: CollaborativeRevisionWorkDto
+): PublicCollaborativeRevisionWork {
   return PublicCollaborativeRevisionWorkSchema.parse({
     id: work.id,
     unitId: work.unitId,
@@ -118,7 +120,7 @@ export function revisionWorkRoutes(): Hono {
         return c.json({
           kind: "collaborative",
           status: "integrated",
-          work: publicWork(integration.work),
+          work: toPublicCollaborativeRevisionWork(integration.work),
           unit: integration.unit satisfies DraftUnit,
         });
       }
@@ -127,7 +129,7 @@ export function revisionWorkRoutes(): Hono {
           {
             kind: "collaborative",
             status: "unsupported_projection_drift",
-            work: publicWork(integration.work),
+            work: toPublicCollaborativeRevisionWork(integration.work),
             message: integration.reason,
           },
           409
@@ -137,7 +139,7 @@ export function revisionWorkRoutes(): Hono {
         {
           kind: "collaborative",
           status: integration.assessment.stale ? "stale" : "conflict",
-          work: publicWork(integration.work),
+          work: toPublicCollaborativeRevisionWork(integration.work),
           conflicts: publicConflicts(integration.assessment),
         },
         409
@@ -174,7 +176,7 @@ export function revisionWorkRoutes(): Hono {
       return c.json({
         kind: "collaborative",
         status: "rejected",
-        work: publicWork(rejected.work),
+        work: toPublicCollaborativeRevisionWork(rejected.work),
       });
     } catch (error) {
       if (error instanceof IntegrationMaterializationRecoveryError) {
