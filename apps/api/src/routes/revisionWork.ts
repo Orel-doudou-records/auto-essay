@@ -2,6 +2,8 @@ import { Hono } from "hono";
 import { z } from "zod";
 import type { DraftUnit } from "@auto-essay/core";
 import type { ConflictAssessment } from "writing-engine";
+import type { ModelClientFactory } from "../llm/client.js";
+import { enqueueAutomaticDiffractiveReading } from "../services/automaticDiffractiveReadingScheduler.js";
 import {
   acceptCollaborativeParagraphRevision,
   rejectCollaborativeParagraphRevision,
@@ -52,7 +54,9 @@ export type PublicCollaborativeRevisionWork = z.infer<
   typeof PublicCollaborativeRevisionWorkSchema
 >;
 
-function publicWork(work: CollaborativeRevisionWorkDto): PublicCollaborativeRevisionWork {
+export function toPublicCollaborativeRevisionWork(
+  work: CollaborativeRevisionWorkDto
+): PublicCollaborativeRevisionWork {
   return PublicCollaborativeRevisionWorkSchema.parse({
     id: work.id,
     unitId: work.unitId,
@@ -82,7 +86,27 @@ function recoveryFailure(error: IntegrationMaterializationRecoveryError) {
   };
 }
 
-export function revisionWorkRoutes(): Hono {
+async function scheduleTextChangedAfterAppliedIntegration(
+  projectId: string,
+  unit: DraftUnit,
+  modelClientFactory: ModelClientFactory
+): Promise<void> {
+  const sectionId = unit.contextInPlan?.section;
+  if (!sectionId) return;
+
+  try {
+    await enqueueAutomaticDiffractiveReading({
+      projectId,
+      sectionId,
+      trigger: "text_changed",
+      modelClientFactory,
+    });
+  } catch {
+    // Materialization is already applied. Downstream scheduling must never undo it.
+  }
+}
+
+export function revisionWorkRoutes(modelClientFactory: ModelClientFactory): Hono {
   const app = new Hono();
 
   app.post("/:workId/accept", async (c) => {
@@ -115,10 +139,15 @@ export function revisionWorkRoutes(): Hono {
       });
 
       if (integration.status === "integrated") {
+        await scheduleTextChangedAfterAppliedIntegration(
+          projectId,
+          integration.unit,
+          modelClientFactory
+        );
         return c.json({
           kind: "collaborative",
           status: "integrated",
-          work: publicWork(integration.work),
+          work: toPublicCollaborativeRevisionWork(integration.work),
           unit: integration.unit satisfies DraftUnit,
         });
       }
@@ -127,7 +156,7 @@ export function revisionWorkRoutes(): Hono {
           {
             kind: "collaborative",
             status: "unsupported_projection_drift",
-            work: publicWork(integration.work),
+            work: toPublicCollaborativeRevisionWork(integration.work),
             message: integration.reason,
           },
           409
@@ -137,7 +166,7 @@ export function revisionWorkRoutes(): Hono {
         {
           kind: "collaborative",
           status: integration.assessment.stale ? "stale" : "conflict",
-          work: publicWork(integration.work),
+          work: toPublicCollaborativeRevisionWork(integration.work),
           conflicts: publicConflicts(integration.assessment),
         },
         409
@@ -174,7 +203,7 @@ export function revisionWorkRoutes(): Hono {
       return c.json({
         kind: "collaborative",
         status: "rejected",
-        work: publicWork(rejected.work),
+        work: toPublicCollaborativeRevisionWork(rejected.work),
       });
     } catch (error) {
       if (error instanceof IntegrationMaterializationRecoveryError) {

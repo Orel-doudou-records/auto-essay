@@ -1,11 +1,124 @@
+import type { RevisionProposal } from "@auto-essay/core";
+import { HTTPException } from "hono/http-exception";
 import type { ModelClientFactory } from "../llm/client.js";
-import { getUnit } from "./unitStore.js";
+import {
+  captureCollaborativeRevisionSource,
+  createCollaborativeParagraphRevision,
+  type CapturedRevisionSource,
+} from "./collaborativeRevisionWork.js";
+import type { CollaborativeRevisionWorkDto } from "./collaborativeRevisionWorkStore.js";
 import { createRevisionProposal } from "./revisionProposalStore.js";
 import { listSources } from "./sourceStore.js";
-import type { RevisionProposal } from "@auto-essay/core";
+import { getUnit } from "./unitStore.js";
 
-export interface ReviseChatResult {
-  proposal: RevisionProposal;
+export type ReviseChatResult =
+  | { proposal: RevisionProposal }
+  | {
+      kind: "collaborative";
+      status: "created";
+      work: CollaborativeRevisionWorkDto;
+    }
+  | {
+      kind: "collaborative";
+      status: "candidate_stale_before_workspace";
+    }
+  | {
+      kind: "collaborative";
+      status: "unsupported_projection_drift";
+      message: string;
+    };
+
+const unsupportedCollaborativeProjectionMessages = [
+  "resolves to multiple literary identities",
+  "is linked from multiple PlanEntry identities",
+  "CC1 compatibility projection supports at most chapter -> section structural nesting before paragraphs",
+  "contains text that the CC1 compatibility projection cannot represent without inventing a content identity",
+  "has book granularity; the CC1 manuscript root already represents the book",
+  "represents a paragraph but links DraftUnit",
+  "Cannot project AutoEssay DraftUnit",
+  "CC1 literary node id collision",
+] as const;
+
+function isUnsupportedCollaborativeProjection(error: unknown): error is Error {
+  return (
+    error instanceof Error &&
+    unsupportedCollaborativeProjectionMessages.some((message) =>
+      error.message.includes(message)
+    )
+  );
+}
+
+async function captureRevisionSource(
+  projectId: string,
+  unitId: string
+): Promise<CapturedRevisionSource> {
+  try {
+    return await captureCollaborativeRevisionSource(projectId, unitId);
+  } catch (error) {
+    if (
+      (error instanceof HTTPException && error.status === 404) ||
+      isUnsupportedCollaborativeProjection(error)
+    ) {
+      return { authority: "legacy", projectId, unitId };
+    }
+    throw error;
+  }
+}
+
+async function finalizeRevisionCandidate(input: {
+  projectId: string;
+  unitId: string;
+  source: CapturedRevisionSource;
+  sourceVersion: number;
+  sourceContent: string;
+  proposedContent: string;
+}): Promise<ReviseChatResult> {
+  if (input.source.authority === "legacy") {
+    const proposal = await createRevisionProposal(
+      input.projectId,
+      input.unitId,
+      input.sourceVersion,
+      input.sourceContent,
+      input.proposedContent
+    );
+    return { proposal };
+  }
+
+  let result;
+  try {
+    result = await createCollaborativeParagraphRevision({
+      projectId: input.projectId,
+      source: input.source,
+      proposedContent: input.proposedContent,
+    });
+  } catch (error) {
+    if (isUnsupportedCollaborativeProjection(error)) {
+      return {
+        kind: "collaborative",
+        status: "unsupported_projection_drift",
+        message: error.message,
+      };
+    }
+    throw error;
+  }
+  if (result.status === "created") {
+    return {
+      kind: "collaborative",
+      status: "created",
+      work: result.work,
+    };
+  }
+  if (result.status === "unsupported_projection_drift") {
+    return {
+      kind: "collaborative",
+      status: result.status,
+      message: result.reason,
+    };
+  }
+  return {
+    kind: "collaborative",
+    status: "candidate_stale_before_workspace",
+  };
 }
 
 export async function reviseUnitChat(
@@ -14,6 +127,7 @@ export async function reviseUnitChat(
   instruction: string,
   modelClientFactory: ModelClientFactory
 ): Promise<ReviseChatResult> {
+  const source = await captureRevisionSource(projectId, unitId);
   const unit = await getUnit(projectId, unitId);
   if (!unit) throw new Error("unit not found");
 
@@ -32,9 +146,13 @@ Contraintes :
     .filter(Boolean)
     .map((s) => `- ${s?.title}`)
     .join("\n");
+  const sourceContent = source.authority === "collaborative-core" ? source.content : unit.content;
+  const sourceVersion = source.authority === "collaborative-core"
+    ? source.fingerprint.unitVersion
+    : unit.version;
 
   const user = `## Unité à réviser
-${unit.content}
+${sourceContent}
 
 ## Sources utilisées
 ${sourceList || "Aucune"}
@@ -43,8 +161,14 @@ ${sourceList || "Aucune"}
 ${instruction}`;
 
   const after = await client.complete(system, user);
-  const proposal = await createRevisionProposal(projectId, unitId, unit.version, unit.content, after);
-  return { proposal };
+  return finalizeRevisionCandidate({
+    projectId,
+    unitId,
+    source,
+    sourceVersion,
+    sourceContent,
+    proposedContent: after,
+  });
 }
 
 export async function streamReviseUnitChat(
@@ -54,6 +178,7 @@ export async function streamReviseUnitChat(
   onEvent: (event: { type: string; payload?: unknown }) => void,
   modelClientFactory: ModelClientFactory
 ): Promise<void> {
+  const source = await captureRevisionSource(projectId, unitId);
   const unit = await getUnit(projectId, unitId);
   if (!unit) throw new Error("unit not found");
 
@@ -68,7 +193,11 @@ export async function streamReviseUnitChat(
     .filter(Boolean)
     .map((s) => `- ${s?.title}`)
     .join("\n");
-  const user = `## Unité à réviser\n${unit.content}\n\n## Sources\n${sourceList || "Aucune"}\n\n## Instruction\n${instruction}`;
+  const sourceContent = source.authority === "collaborative-core" ? source.content : unit.content;
+  const sourceVersion = source.authority === "collaborative-core"
+    ? source.fingerprint.unitVersion
+    : unit.version;
+  const user = `## Unité à réviser\n${sourceContent}\n\n## Sources\n${sourceList || "Aucune"}\n\n## Instruction\n${instruction}`;
 
   let after = "";
   await client.completeStream(system, user, (chunk) => {
@@ -76,6 +205,13 @@ export async function streamReviseUnitChat(
     onEvent({ type: "chunk", payload: chunk });
   });
 
-  const proposal = await createRevisionProposal(projectId, unitId, unit.version, unit.content, after);
-  onEvent({ type: "done", payload: { proposal } });
+  const result = await finalizeRevisionCandidate({
+    projectId,
+    unitId,
+    source,
+    sourceVersion,
+    sourceContent,
+    proposedContent: after,
+  });
+  onEvent({ type: "done", payload: result });
 }

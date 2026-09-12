@@ -50,7 +50,7 @@ export function createApp(options: AppOptions = {}): Hono {
   app.route("/api/projects/:projectId/units/:unitId/revise-chat", reviseChatRoutes(modelClientFactory));
   app.route(
     "/api/projects/:projectId/units/:unitId/revision-work",
-    revisionWorkRoutes()
+    revisionWorkRoutes(modelClientFactory)
   );
   app.route(
     "/api/projects/:projectId/units/:unitId/evaluate",
