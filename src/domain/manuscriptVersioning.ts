@@ -24,19 +24,40 @@ export function advanceManuscriptUnitVersion(
     throw new Error("next manuscript unit version must advance exactly once");
   }
 
-  let leafMatches = 0;
-  let planMatches = 0;
+  const leafVersions: number[] = [];
+  const planVersions: Array<number | undefined> = [];
 
-  const visit = (child: ManuscriptChild): ManuscriptChild => {
+  const inspect = (child: ManuscriptChild): void => {
     if (child.kind === "leaf") {
-      if (child.unitId !== unitId) return child;
-      leafMatches += 1;
-      if (child.version !== expectedVersion) {
-        throw new Error(
-          `manuscript unit '${unitId}' expected version ${expectedVersion}, found leaf version ${child.version}`
-        );
-      }
-      return { ...child, version: nextVersion };
+      if (child.unitId === unitId) leafVersions.push(child.version);
+      return;
+    }
+    for (const entry of child.plan ?? []) {
+      if (entry.unitId === unitId) planVersions.push(entry.unitVersion);
+    }
+    for (const nested of child.children) inspect(nested);
+  };
+  for (const child of manuscript.tree) inspect(child);
+
+  if (leafVersions.length !== 1 || planVersions.length > 1) {
+    throw new Error(
+      `ambiguous manuscript references for unit '${unitId}': ${leafVersions.length} leaves, ${planVersions.length} plan entries`
+    );
+  }
+  if (leafVersions[0] !== expectedVersion) {
+    throw new Error(
+      `manuscript unit '${unitId}' expected version ${expectedVersion}, found leaf version ${String(leafVersions[0])}`
+    );
+  }
+  if (planVersions.length === 1 && planVersions[0] !== expectedVersion) {
+    throw new Error(
+      `manuscript unit '${unitId}' expected version ${expectedVersion}, found plan version ${String(planVersions[0])}`
+    );
+  }
+
+  const advance = (child: ManuscriptChild): ManuscriptChild => {
+    if (child.kind === "leaf") {
+      return child.unitId === unitId ? { ...child, version: nextVersion } : child;
     }
 
     const node: ManuscriptNode = {
@@ -44,28 +65,17 @@ export function advanceManuscriptUnitVersion(
       ...(child.plan === undefined
         ? {}
         : {
-            plan: child.plan.map((entry) => {
-              if (entry.unitId !== unitId) return entry;
-              planMatches += 1;
-              if (entry.unitVersion !== expectedVersion) {
-                throw new Error(
-                  `manuscript unit '${unitId}' expected version ${expectedVersion}, found plan version ${String(entry.unitVersion)}`
-                );
-              }
-              return { ...entry, unitVersion: nextVersion };
-            }),
+            plan: child.plan.map((entry) =>
+              entry.unitId === unitId ? { ...entry, unitVersion: nextVersion } : entry
+            ),
           }),
-      children: child.children.map(visit),
+      children: child.children.map(advance),
     };
     return node;
   };
 
-  const tree = manuscript.tree.map(visit);
-  if (leafMatches !== 1 || planMatches > 1) {
-    throw new Error(
-      `ambiguous manuscript references for unit '${unitId}': ${leafMatches} leaves, ${planMatches} plan entries`
-    );
-  }
-
-  return ManuscriptSchema.parse({ ...manuscript, tree });
+  return ManuscriptSchema.parse({
+    ...manuscript,
+    tree: manuscript.tree.map(advance),
+  });
 }
