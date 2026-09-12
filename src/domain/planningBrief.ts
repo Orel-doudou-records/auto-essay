@@ -98,6 +98,19 @@ export const PlanningBriefSchema = z
         message: "A planning brief version after v1 must supersede its predecessor",
       });
     }
+
+    const declaredSources = new Set(brief.sourceRefs);
+    for (const [index, hypothesis] of brief.hypotheses.entries()) {
+      for (const sourceRef of hypothesis.sourceRefs) {
+        if (!declaredSources.has(sourceRef)) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["hypotheses", index, "sourceRefs"],
+            message: `Hypothesis source '${sourceRef}' must be declared by the planning brief`,
+          });
+        }
+      }
+    }
   });
 
 export type PlanningBrief = z.infer<typeof PlanningBriefSchema>;
@@ -139,7 +152,7 @@ export function createPlanningBrief(input: CreatePlanningBriefInput): PlanningBr
 }
 
 export function supersedePlanningBrief(
-  current: PlanningBrief,
+  currentInput: PlanningBrief,
   manuscript: Manuscript,
   changes: Partial<Pick<
     PlanningBrief,
@@ -153,6 +166,7 @@ export function supersedePlanningBrief(
     | "rationale"
   >> = {}
 ): PlanningBrief {
+  const current = PlanningBriefSchema.parse(currentInput);
   assertScopeExists(manuscript, current.scopeRef);
   if (
     current.projectId !== manuscript.projectId ||
