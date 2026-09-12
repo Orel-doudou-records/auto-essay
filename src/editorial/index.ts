@@ -12,6 +12,7 @@ export * from "./projectBookState.js";
 export * from "./chapterEditorialProjection.js";
 export * from "./planPreview.js";
 export * from "./planDrafting.js";
+export * from "./planningSubjects.js";
 export * from "./manuscriptGranularity.js";
 export * from "./manuscriptReimport.js";
 export * from "./writingEngineCollaborativeCoreAdapter.js";
