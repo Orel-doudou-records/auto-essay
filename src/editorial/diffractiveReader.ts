@@ -9,6 +9,7 @@ import {
   DraftUnitStatusSchema,
   type DraftUnitStatus,
 } from "../domain/draftUnit";
+import type { ProjectedScope } from "../bibliography/distribution";
 
 /**
  * Sortie brute attendue du modèle : les quatre passes + le verdict (et sa
@@ -136,10 +137,7 @@ export interface BookPlanInput {
   entries: BookPlanEntryInput[];
 }
 
-/**
- * Une source projetée dans le scope en cours (F1/F3) : métadonnées + profil
- * compact — jamais le corpus. Le lecteur peut proposer de la redistribuer.
- */
+/** Source projetée dans le scope en cours : métadonnées + profil compact. */
 export interface BookBibliographyEntryInput {
   sourceId: string;
   title?: string;
@@ -148,19 +146,29 @@ export interface BookBibliographyEntryInput {
   concepts?: string[];
 }
 
-/** Un voisinage de graphe (Graphify) projeté dans le scope : terme + texte. */
+export interface BookDocumentaryPassageInput {
+  sourceId: string;
+  text: string;
+  locator: string;
+  role: "supports" | "contradicts" | "qualifies" | "context";
+  query: string;
+}
+
+/** Un voisinage de graphe historique (Graphify) projeté dans le scope. */
 export interface BookGraphNeighborhoodInput {
   term: string;
   text: string;
 }
 
-/** La bibliothèque du chapitre en cours de lecture. */
+/** Matière documentaire déjà projetée pour le scope. Aucun retrieval ici. */
 export interface BookBibliographyInput {
   entries: BookBibliographyEntryInput[];
-  /**
-   * Signaux du graphe de corpus (voisinages autour de termes du chapitre).
-   * Le graphe suggère des rapprochements ; la lecture les qualifie.
-   */
+  passages?: BookDocumentaryPassageInput[];
+  citationIds?: string[];
+  relationIds?: string[];
+  gaps?: string[];
+  unexploredAreas?: string[];
+  /** Compatibilité historique ; Corpus V2 ne dépend pas de Graphify. */
   graphNeighborhoods?: BookGraphNeighborhoodInput[];
 }
 
@@ -182,7 +190,7 @@ export interface DiffractiveReadingRequest {
   existingCuts?: ExistingCutInput[];
   /** Le plan d'ébauche du livre (chapitres → paragraphes prévus). */
   bookPlan?: BookPlanInput[];
-  /** Bibliothèque du scope en cours (sources projetées + profils). */
+  /** Matière documentaire déjà projetée pour le scope. */
   bookBibliography?: BookBibliographyInput;
   /** Concepts déjà nommés dans le corpus. */
   concepts?: Array<{ label: string; definition: string }>;
@@ -206,9 +214,7 @@ export function statusLabel(status: DraftUnitStatus): string {
 
 /** Une ligne « [STATUT] titre (id) — texte | (pas encore écrit) ». */
 export function formatBookPart(part: BookPartInput): string {
-  const body = part.text.trim()
-    ? ` — ${part.text}`
-    : " — (pas encore écrit)";
+  const body = part.text.trim() ? ` — ${part.text}` : " — (pas encore écrit)";
   return `- [${statusLabel(part.status)}] ${part.title} (${part.id})${body}`;
 }
 
@@ -316,10 +322,6 @@ export function buildBookStateSection(
   return lines.join("\n");
 }
 
-/**
- * Lecteur diffractif : produit une DiffractiveReading (4 passes + verdict forcé
- * + matrice de compromis) à partir d'un fragment posé dans le livre.
- */
 /** Section « Le plan du livre » du prompt (paragraphes prévus + notes). */
 export function buildBookPlanSection(plan: BookPlanInput[]): string {
   const lines: string[] = [
@@ -363,21 +365,71 @@ export function formatBibliographyEntry(
   return `- ${entry.sourceId} | ${title}${subjects}${concepts}`;
 }
 
-/** Section « La bibliothèque du chapitre » du prompt (sources + profils + graphe). */
+export function bibliographyFromProjection(
+  projection: ProjectedScope
+): BookBibliographyInput {
+  return {
+    entries: projection.sources.map((source) => ({
+      sourceId: source.sourceId,
+      title: source.title,
+      authors: source.authors,
+      subjects: source.subjects,
+      concepts: source.concepts,
+    })),
+    passages: projection.passages.map((item) => ({
+      sourceId: item.passage.sourceId,
+      text: item.passage.text,
+      locator: `${item.passage.locator.kind}:${item.passage.locator.value}`,
+      role: item.role,
+      query: item.query,
+    })),
+    citationIds: [...projection.citationIds],
+    relationIds: [...projection.sourceRelationIds],
+    gaps: [...projection.gaps],
+    unexploredAreas: [...projection.unexploredAreas],
+  };
+}
+
+/** Section documentaire du scope. Diffract consomme cette projection ; il ne cherche pas le corpus. */
 export function buildBibliographySection(input: BookBibliographyInput): string {
   const lines: string[] = [
-    "## La bibliothèque du chapitre",
-    "Ces sources documentent le chapitre en cours (profil compact, jamais le corpus). Un choix d'écriture peut redistribuer la bibliographie : déplacer une source vers un autre chapitre, rapprocher deux sources, signaler une source manquante. Remplis alors bibliographyImpacts.",
+    "## Matière documentaire du scope",
+    "Cette matière a été projetée avant la lecture diffractive. Les passages sont des localisations documentaires et leurs rôles de recherche ; ne les transforme pas en preuve par simple similarité. Les citations/relation ids indiquent les ancrages déjà qualifiés. Diffract n'effectue aucun retrieval.",
   ];
   for (const entry of input.entries) {
     lines.push(formatBibliographyEntry(entry));
+  }
+  const passages = input.passages ?? [];
+  if (passages.length > 0) {
+    lines.push("", "### Passages projetés");
+    for (const passage of passages) {
+      lines.push(
+        `- [${passage.role}] ${passage.sourceId} | ${passage.locator} | ${passage.text} | requête: ${passage.query}`
+      );
+    }
+  }
+  if ((input.citationIds ?? []).length > 0) {
+    lines.push("", `Citations vérifiées : ${(input.citationIds ?? []).join(", ")}`);
+  }
+  if ((input.relationIds ?? []).length > 0) {
+    lines.push(`Relations qualifiées : ${(input.relationIds ?? []).join(", ")}`);
+  }
+  if ((input.gaps ?? []).length > 0) {
+    lines.push("", "### Lacunes documentaires", ...(input.gaps ?? []).map((gap) => `- ${gap}`));
+  }
+  if ((input.unexploredAreas ?? []).length > 0) {
+    lines.push(
+      "",
+      "### Zones encore à explorer",
+      ...(input.unexploredAreas ?? []).map((gap) => `- ${gap}`)
+    );
   }
   const neighborhoods = input.graphNeighborhoods ?? [];
   if (neighborhoods.length > 0) {
     lines.push(
       "",
-      "### Signaux du graphe de la bibliothèque",
-      "Graphify propose ci-dessous des voisinages autour des termes du chapitre (termes, nœuds, arêtes). Ce sont des signaux candidats : le graphe suggère, la sémantique reste la tienne. Qualifie-les dans bibliographyImpacts (rapprocher, redistribuer, source manquante) ou ignore-les explicitement.",
+      "### Signaux historiques du graphe de la bibliothèque",
+      "Ces voisinages Graphify sont un signal legacy optionnel, jamais l'autorité documentaire Corpus V2."
     );
     for (const hood of neighborhoods) {
       lines.push("#### Terme du graphe : " + hood.term);
@@ -400,13 +452,9 @@ export class DiffractiveReader {
     if (request.bookBibliography) {
       assertBibliographyValid(request.bookBibliography);
     }
-    const rawOutput = await this.client.generateJson(
-      buildDiffractivePrompt(request)
-    );
+    const rawOutput = await this.client.generateJson(buildDiffractivePrompt(request));
     const parsed = RawDiffractiveOutputSchema.parse(rawOutput);
 
-    // Tolérance LLM : null sur un champ optionnel → absent (jamais null dans
-    // le domaine). EntréeId d'un impact de plan, coupe antérieure d'un défaut.
     const planImpacts = parsed.planImpacts.map((impact) => ({
       ...impact,
       entryId: impact.entryId ?? undefined,
@@ -462,15 +510,11 @@ export function buildDiffractivePrompt(
   const parts = request.bookParts ?? [];
   const cuts = request.existingCuts ?? [];
   const hasBookState = parts.length > 0 || cuts.length > 0;
-  const bookState = hasBookState
-    ? buildBookStateSection(parts, cuts)
-    : "";
+  const bookState = hasBookState ? buildBookStateSection(parts, cuts) : "";
   const plan = request.bookPlan ?? [];
   const planSection = plan.length > 0 ? buildBookPlanSection(plan) : "";
   const bibliography = request.bookBibliography;
-  const bibliographySection = bibliography
-    ? buildBibliographySection(bibliography)
-    : "";
+  const bibliographySection = bibliography ? buildBibliographySection(bibliography) : "";
 
   return `Tu es un lecteur diffractif. Tu appliques la méthode diffractive (Haraway/Barad)
 à un fragment posé dans un livre en cours d'écriture.
