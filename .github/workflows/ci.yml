@@ -39,46 +39,23 @@ jobs:
         run: npm run typecheck
 
       - name: Test core
-        run: npx vitest run
+        run: npm run test
 
       - name: Test API
         run: npm run test:api
 
-      - name: Diagnose EditorPage persistence
-        if: always()
-        run: >-
-          npm run test -w @auto-essay/web -- src/routes/EditorPage.test.tsx
-          -t "opens the requested|lets the author explicitly split|saves after|shows an in-progress|keeps a newer local change|reports a failed automatic save"
-
-      - name: Diagnose EditorPage project entry
-        if: always()
-        run: >-
-          npm run test -w @auto-essay/web -- src/routes/EditorPage.test.tsx
-          -t "offers only the agreed calm|creates the first editable|prevents duplicate creation"
-
-      - name: Diagnose EditorPage proposal and navigation
-        if: always()
-        run: >-
-          npm run test -w @auto-essay/web -- src/routes/EditorPage.test.tsx
-          -t "keeps a revision proposal|shows book structure|selects chapters|explains when manuscript navigation"
-
       - name: Test web
-        if: always()
         run: npm run test:web
 
       - name: Build
-        if: always()
         run: npm run build
 
       - name: Synthetic Literacraft demonstration
-        if: always()
         run: npm run demo:synthetic
 
       - name: Station Reverse demonstration
-        if: always()
         run: npm run demo:station-reverse
 
       - name: Security audit
-        if: always()
         run: npm audit --audit-level=high
         continue-on-error: true
