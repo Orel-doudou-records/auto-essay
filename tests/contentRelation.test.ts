@@ -20,12 +20,13 @@ describe("ContentRelation", () => {
         { kind: "source", id: "testimony-1", role: "situated chronology" },
       ],
       description: "The testimony dates the closure before the archive records it.",
-      evidenceIds: ["annotation-1", "annotation-2"],
+      citationIds: ["citation-1", "citation-2"],
       origin: "co_constructed",
     });
 
     expect(relation.type).toBe("contradicts");
     expect(relation.participants).toHaveLength(2);
+    expect(relation.citationIds).toEqual(["citation-1", "citation-2"]);
     expect(relation.status).toBe("detected");
     expect(relation.confidence).toBe("medium");
   });
@@ -43,7 +44,7 @@ describe("ContentRelation", () => {
     });
 
     expect(relation.type).toBe("differs_in_scope");
-    expect(relation.type).not.toBe("contradicts");
+    expect(relation.citationIds).toEqual([]);
   });
 
   it("should reject a binary relation with only one participant", () => {
@@ -85,12 +86,8 @@ describe("ContentRelation", () => {
 
   it("should enforce identifiers required by the editorial scope", () => {
     expect(() =>
-      EditorialScopeSchema.parse({
-        level: "section",
-        projectId: "project-1",
-      })
+      EditorialScopeSchema.parse({ level: "section", projectId: "project-1" })
     ).toThrow();
-
     expect(() =>
       EditorialScopeSchema.parse({
         level: "project",
@@ -142,7 +139,6 @@ describe("ContentRelation atomicity", () => {
       { kind: "claim", id: "claim-1" },
       { kind: "claim", id: "claim-2" },
     ]);
-
     expect(roles.map((participant) => participant.role)).toEqual([
       "supporting",
       "supported",
@@ -154,7 +150,6 @@ describe("ContentRelation atomicity", () => {
       { kind: "claim", id: "claim-1", role: "archive view" },
       { kind: "claim", id: "claim-2" },
     ]);
-
     expect(roles[0].role).toBe("archive view");
     expect(roles[1].role).toBe("challenged");
   });
@@ -171,7 +166,6 @@ describe("ContentRelation atomicity", () => {
       origin: "system_detected",
       groupId: "argument-1",
     });
-
     expect(relation.groupId).toBe("argument-1");
   });
 });
