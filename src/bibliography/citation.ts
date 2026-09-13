@@ -104,8 +104,8 @@ export function citationsForUnit(
 
 /**
  * Garde pure Corpus V2 : toute citation utilisée par un paragraphe doit être
- * autorisée par la projection documentaire de son scope. Sans scope résolu,
- * rien à vérifier (l'unité n'est pas encore rattachée au plan).
+ * explicitement autorisée par la projection documentaire de son scope. Sans
+ * scope résolu, rien à vérifier (l'unité n'est pas encore rattachée au plan).
  */
 export function assertCiteable(
   manuscript: Manuscript,
@@ -118,19 +118,15 @@ export function assertCiteable(
   if (!scope) return;
   const projection = projections.find((item) => item.scopeId === scope);
   const allowedCitationIds = new Set(projection?.citationIds ?? []);
-  const allowedSourceIds = new Set(projection?.sources.map((source) => source.sourceId) ?? []);
 
   for (const use of citationsForUnit(unitId, citationUses)) {
     const citation = citations.find((candidate) => candidate.id === use.citationId);
     if (!citation) {
       throw new Error(`Citation '${use.citationId}' not found`);
     }
-    if (
-      !allowedCitationIds.has(citation.id) &&
-      !allowedSourceIds.has(citation.sourceId)
-    ) {
+    if (!allowedCitationIds.has(citation.id)) {
       throw new Error(
-        `Citation '${citation.id}' uses source '${citation.sourceId}' not projected on scope '${scope}'`
+        `Citation '${citation.id}' is not projected on scope '${scope}'`
       );
     }
   }
