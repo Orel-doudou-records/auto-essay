@@ -11,7 +11,6 @@ import {
 } from "../src/bibliography/bibliography";
 import {
   SourceProfileSchema,
-  isComprehensionReady,
   type SourceProfile,
 } from "../src/domain/sourceProfile";
 
@@ -108,14 +107,13 @@ function fakeClient() {
 }
 
 describe("SourceProfile Corpus V2", () => {
-  it("keeps legacy compact profiles parseable but never comprehension-ready", () => {
+  it("keeps legacy compact profiles parseable without claiming comprehension", () => {
     const legacy = SourceProfileSchema.parse({
       sourceId: "src-legacy",
       subjects: ["archive"],
       concepts: [],
     });
 
-    expect(isComprehensionReady(legacy)).toBe(false);
     expect(legacy.fingerprint).toBeUndefined();
     expect(legacy.comprehension).toBeUndefined();
   });
@@ -139,7 +137,7 @@ describe("SourceProfile Corpus V2", () => {
 
     const [profile] = await buildProfiles([document], client);
 
-    expect(prompts).toHaveLength(3); // 2 sections + document synthesis
+    expect(prompts).toHaveLength(3);
     expect(profile.fingerprint).toBe(document.fingerprint);
     expect(profile.comprehension).toEqual({
       totalBlocks: 4,
@@ -151,7 +149,6 @@ describe("SourceProfile Corpus V2", () => {
       ["src-0-b0", "src-0-b1"],
       ["src-0-b2", "src-0-b3"],
     ]);
-    expect(isComprehensionReady(profile)).toBe(true);
   });
 
   it("allows explicit block exclusion while keeping complete accounting", async () => {
