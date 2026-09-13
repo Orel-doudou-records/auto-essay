@@ -44,7 +44,7 @@ export interface PlanningEditorialExecutionInput {
   decisions: EditorialDecision[];
   argumentativeFunction?: string;
   claimIds?: string[];
-  evidenceIds?: string[];
+  citationIds?: string[];
   sourceRelationIds?: string[];
   contentOperations: string[];
   stylisticOperations: PlannedStylisticOperationInput[];
@@ -71,13 +71,6 @@ export type CompilePlanningScopeResult =
       reasons: string[];
     };
 
-/**
- * Thin Plan V2 -> EditorialPlan adapter.
- *
- * Planning semantics stay upstream. Only fields already consumed by
- * EditorialPlan are projected; the rest remains in a transient trace so this
- * function does not create a second execution-plan model.
- */
 export function compilePlanningScopeToEditorialPlan(
   input: CompilePlanningScopeInput
 ): CompilePlanningScopeResult {
@@ -129,7 +122,7 @@ export function compilePlanningScopeToEditorialPlan(
     argumentativeFunction,
     decisions: input.execution.decisions,
     claimIds: input.execution.claimIds,
-    evidenceIds: input.execution.evidenceIds,
+    citationIds: input.execution.citationIds,
     sourceRelationIds: input.execution.sourceRelationIds,
     contentOperations: input.execution.contentOperations,
     stylisticOperations: input.execution.stylisticOperations,
