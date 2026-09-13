@@ -14,7 +14,7 @@ describe("Concept", () => {
     expect(concept.label).toBe("temporalité messianique");
     expect(concept.status).toBe("proposed");
     expect(concept.scope.level).toBe("project");
-    expect(concept.evidenceIds).toEqual([]);
+    expect(concept.citationIds).toEqual([]);
   });
 
   it("rejects a concept without a definition", () => {
@@ -30,17 +30,17 @@ describe("Concept", () => {
     ).toThrow();
   });
 
-  it("accepts evidence ids grounding the concept in passages", () => {
+  it("accepts citation ids grounding the concept in passages", () => {
     const concept = createConcept({
       projectId: "project-1",
       label: "diaspora",
       definition: "Dispersion vécue comme condition et comme horizon.",
       scope: { level: "project", projectId: "project-1" },
-      evidenceIds: ["citation-1", "citation-2"],
+      citationIds: ["citation-1", "citation-2"],
       status: "accepted",
     });
 
-    expect(concept.evidenceIds).toHaveLength(2);
+    expect(concept.citationIds).toHaveLength(2);
     expect(concept.status).toBe("accepted");
   });
 });
