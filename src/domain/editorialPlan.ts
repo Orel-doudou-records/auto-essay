@@ -110,6 +110,10 @@ export function isEditorialPlanExecutable(plan: EditorialPlan): boolean {
   return plan.status === "validated";
 }
 
+/**
+ * Plan local d'un paragraphe. Les décisions héritées et locales sont séparées
+ * pour que la projection future puisse expliquer l'origine de chaque contrainte.
+ */
 export const ParagraphEditorialPlanSchema = z
   .object({
     id: z.string(),
@@ -152,6 +156,9 @@ export type ParagraphEditorialPlanInput = z.input<
   typeof ParagraphEditorialPlanSchema
 >;
 
+/**
+ * Agrégat de planification d'une section et de ses paragraphes.
+ */
 export const SectionEditorialPlanSchema = z
   .object({
     id: z.string(),
@@ -200,3 +207,4 @@ export type SectionEditorialPlan = z.infer<typeof SectionEditorialPlanSchema>;
 export type SectionEditorialPlanInput = z.input<
   typeof SectionEditorialPlanSchema
 >;
+
