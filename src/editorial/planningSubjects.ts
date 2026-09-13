@@ -6,11 +6,19 @@ import {
   type PlanningScopeRefInput,
 } from "../domain/planningBrief.js";
 import type { Manuscript } from "../domain/manuscript.js";
+import type { IngestedDocument } from "../domain/ingestedDocument.js";
+import type { SourceProfile } from "../domain/sourceProfile.js";
+import type { RetrievedPassage } from "../bibliography/corpusExplorer.js";
+import {
+  materializeCorpusSynthesis,
+  synthesizeClosedCorpus,
+  type CorpusSynthesis,
+  type CorpusSynthesisObservationKind,
+} from "../bibliography/corpusSynthesis.js";
 
 /**
  * Transient adapter shape for Plan V2. It is deliberately NOT a canonical
- * corpus contract: callers map the current retrieval implementation into this
- * snapshot until CorpusExplorer/RetrievedPassage are promoted on the mainline.
+ * corpus contract: callers map retrieval results into this snapshot.
  */
 export const PlanningPassageSchema = z.object({
   id: z.string().min(1),
@@ -105,9 +113,17 @@ export interface PlanningSubjectExploration {
   };
 }
 
+export interface PlanningCorpusSignal {
+  id: string;
+  kind: CorpusSynthesisObservationKind;
+  statement: string;
+  passageIds: string[];
+}
+
 export function buildPlanningSubjectPrompt(
   snapshot: CorpusExplorationSnapshot,
-  cadrage?: string
+  cadrage?: string,
+  signals: PlanningCorpusSignal[] = []
 ): string {
   const passages = snapshot.passages
     .map(
@@ -115,11 +131,18 @@ export function buildPlanningSubjectPrompt(
         `[${passage.id}] source=${passage.sourceId}${passage.locator ? ` locator=${passage.locator}` : ""}\n${passage.text}`
     )
     .join("\n\n");
+  const comparativeSignals = signals
+    .map(
+      (signal) =>
+        `[${signal.id}] kind=${signal.kind} passages=${signal.passageIds.join(",")}\n${signal.statement}`
+    )
+    .join("\n\n");
 
   return `Tu aides un auteur à découvrir ce qu'un corpus peut réellement permettre de penser avant de figer une thèse.
 
 Règles impératives :
-- Tu n'utilises QUE les passages fournis ci-dessous.
+- Tu n'utilises QUE les passages fournis ci-dessous et, s'ils existent, les signaux comparatifs dérivés de ces passages.
+- Les signaux comparatifs ne sont pas des preuves : toute fondation documentaire doit citer des passageId réels.
 - Une absence dans ces passages n'est jamais une preuve d'absence dans le corpus.
 - Ne complète jamais une lacune avec ta connaissance générale.
 - Propose d'abord des axes fertiles, puis plusieurs sujets de livre réellement distincts.
@@ -129,7 +152,7 @@ Règles impératives :
 
 Couverture observée : ${snapshot.exploredSourceIds.length}/${snapshot.registeredSourceCount} sources explorées. Exploration complète : ${snapshot.explorationComplete ? "oui" : "non"}.
 ${cadrage ? `\nCadrage auteur :\n${cadrage}\n` : ""}
-Passages disponibles :
+${comparativeSignals ? `Signaux comparatifs ancrés :\n${comparativeSignals}\n\n` : ""}Passages disponibles :
 ${passages || "Aucun passage récupéré."}
 
 JSON strict attendu :
@@ -160,10 +183,13 @@ JSON strict attendu :
 export async function proposePlanningSubjects(
   snapshotInput: CorpusExplorationSnapshot,
   client: StructuredModelClient,
-  cadrage?: string
+  cadrage?: string,
+  signals: PlanningCorpusSignal[] = []
 ): Promise<PlanningSubjectExploration> {
   const snapshot = CorpusExplorationSnapshotSchema.parse(snapshotInput);
-  const raw = await client.generateJson(buildPlanningSubjectPrompt(snapshot, cadrage));
+  const raw = await client.generateJson(
+    buildPlanningSubjectPrompt(snapshot, cadrage, signals)
+  );
   const parsed = RawPlanningExplorationSchema.parse(raw);
   const byPassageId = new Map(snapshot.passages.map((passage) => [passage.id, passage]));
 
@@ -198,6 +224,94 @@ export async function proposePlanningSubjects(
       exploredSourceCount: snapshot.exploredSourceIds.length,
       explorationComplete: snapshot.explorationComplete,
     },
+  };
+}
+
+export function createPlanningCorpusSnapshot(input: {
+  registeredSourceCount: number;
+  exploredSourceIds: string[];
+  explorationComplete: boolean;
+  passages: RetrievedPassage[];
+}): CorpusExplorationSnapshot {
+  return CorpusExplorationSnapshotSchema.parse({
+    registeredSourceCount: input.registeredSourceCount,
+    exploredSourceIds: [...new Set(input.exploredSourceIds)],
+    explorationComplete: input.explorationComplete,
+    passages: input.passages.map((passage) => ({
+      id: passage.id,
+      sourceId: passage.sourceId,
+      text: passage.text,
+      locator: `${passage.locator.kind}:${passage.locator.value}`,
+    })),
+  });
+}
+
+export async function proposePlanningSubjectsFromClosedCorpus(
+  input: {
+    documents: IngestedDocument[];
+    profiles: SourceProfile[];
+    excludedSourceIds?: string[];
+  },
+  client: StructuredModelClient,
+  cadrage?: string
+): Promise<{
+  synthesis: CorpusSynthesis;
+  passages: RetrievedPassage[];
+  retrievalCoverage: {
+    anchorCount: number;
+    materializedAnchorCount: number;
+    complete: boolean;
+  };
+  planning: PlanningSubjectExploration;
+}> {
+  const synthesis = await synthesizeClosedCorpus({
+    documents: input.documents,
+    profiles: input.profiles,
+    excludedSourceIds: input.excludedSourceIds,
+    client,
+  });
+  const materialized = await materializeCorpusSynthesis({
+    synthesis,
+    documents: input.documents,
+  });
+  if (!materialized.coverage.complete) {
+    throw new Error("Corpus synthesis anchors were not fully materialized");
+  }
+
+  const passageIdByAnchor = new Map(
+    materialized.passages.map((passage) => [
+      `${passage.sourceId}:${passage.span.blockId}`,
+      passage.id,
+    ] as const)
+  );
+  const signals: PlanningCorpusSignal[] = synthesis.observations.map((observation) => ({
+    id: observation.id,
+    kind: observation.kind,
+    statement: observation.statement,
+    passageIds: observation.anchors.map((anchor) => {
+      const passageId = passageIdByAnchor.get(`${anchor.sourceId}:${anchor.blockId}`);
+      if (!passageId) {
+        throw new Error(
+          `No RetrievedPassage materialized for synthesis anchor '${anchor.sourceId}:${anchor.blockId}'`
+        );
+      }
+      return passageId;
+    }),
+  }));
+
+  const snapshot = createPlanningCorpusSnapshot({
+    registeredSourceCount: synthesis.sourceIds.length,
+    exploredSourceIds: synthesis.sourceIds,
+    explorationComplete: materialized.coverage.complete,
+    passages: materialized.passages,
+  });
+  const planning = await proposePlanningSubjects(snapshot, client, cadrage, signals);
+
+  return {
+    synthesis,
+    passages: materialized.passages,
+    retrievalCoverage: materialized.coverage,
+    planning,
   };
 }
 

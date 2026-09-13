@@ -4,7 +4,7 @@ import {
   createCorpusExplorer,
   type CorpusLocator,
 } from "../src/bibliography/corpusExplorer.js";
-import { createPlanningCorpusSnapshot } from "../src/editorial/planningCorpusAdapter.js";
+import { createPlanningCorpusSnapshot } from "../src/editorial/planningSubjects.js";
 
 function document(
   id: string,
