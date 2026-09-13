@@ -44,13 +44,31 @@ jobs:
       - name: Test API
         run: npm run test:api
 
-      - name: Diagnose scope workspace default
+      - name: Diagnose EditorPage suite
         if: always()
-        run: npm run test -w @auto-essay/web -- src/routes/EditorPage.test.tsx -t "shows book structure and editorial context by default for the selected scope and lets the author collapse them"
+        run: npm run test -w @auto-essay/web -- src/routes/EditorPage.test.tsx
 
-      - name: Diagnose scope workspace hierarchy
+      - name: Diagnose collaborative revision suite
         if: always()
-        run: npm run test -w @auto-essay/web -- src/routes/EditorPage.test.tsx -t "selects chapters, sections and paragraphs from one visible manuscript hierarchy"
+        run: npm run test -w @auto-essay/web -- src/routes/EditorPage.collaborativeRevision.test.tsx
+
+      - name: Diagnose remaining web suites
+        if: always()
+        run: >-
+          npm run test -w @auto-essay/web --
+          src/components/editorial/ChapterOperationPanel.test.tsx
+          src/components/editorial/PlanV2Panel.test.tsx
+          src/components/layout/AppShell.test.tsx
+          src/routes/AuthorWorkshopPage.test.tsx
+          src/routes/ChapterWorkshopPage.test.tsx
+          src/routes/DemoPage.test.tsx
+          src/routes/EvaluatePage.test.tsx
+          src/routes/HomePage.test.tsx
+          src/routes/ManuscriptImportPage.test.tsx
+          src/routes/PlanImportPage.test.tsx
+          src/routes/ProjectEntryPage.test.tsx
+          src/routes/ProjectPage.test.tsx
+          src/routes/WorkspaceLandingPage.test.tsx
 
       - name: Test web
         if: always()
