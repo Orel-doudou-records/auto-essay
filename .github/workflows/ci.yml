@@ -44,31 +44,23 @@ jobs:
       - name: Test API
         run: npm run test:api
 
-      - name: Diagnose EditorPage suite
-        if: always()
-        run: npm run test -w @auto-essay/web -- src/routes/EditorPage.test.tsx
-
-      - name: Diagnose collaborative revision suite
-        if: always()
-        run: npm run test -w @auto-essay/web -- src/routes/EditorPage.collaborativeRevision.test.tsx
-
-      - name: Diagnose remaining web suites
+      - name: Diagnose EditorPage persistence
         if: always()
         run: >-
-          npm run test -w @auto-essay/web --
-          src/components/editorial/ChapterOperationPanel.test.tsx
-          src/components/editorial/PlanV2Panel.test.tsx
-          src/components/layout/AppShell.test.tsx
-          src/routes/AuthorWorkshopPage.test.tsx
-          src/routes/ChapterWorkshopPage.test.tsx
-          src/routes/DemoPage.test.tsx
-          src/routes/EvaluatePage.test.tsx
-          src/routes/HomePage.test.tsx
-          src/routes/ManuscriptImportPage.test.tsx
-          src/routes/PlanImportPage.test.tsx
-          src/routes/ProjectEntryPage.test.tsx
-          src/routes/ProjectPage.test.tsx
-          src/routes/WorkspaceLandingPage.test.tsx
+          npm run test -w @auto-essay/web -- src/routes/EditorPage.test.tsx
+          -t "opens the requested|lets the author explicitly split|saves after|shows an in-progress|keeps a newer local change|reports a failed automatic save"
+
+      - name: Diagnose EditorPage project entry
+        if: always()
+        run: >-
+          npm run test -w @auto-essay/web -- src/routes/EditorPage.test.tsx
+          -t "offers only the agreed calm|creates the first editable|prevents duplicate creation"
+
+      - name: Diagnose EditorPage proposal and navigation
+        if: always()
+        run: >-
+          npm run test -w @auto-essay/web -- src/routes/EditorPage.test.tsx
+          -t "keeps a revision proposal|shows book structure|selects chapters|explains when manuscript navigation"
 
       - name: Test web
         if: always()
