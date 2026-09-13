@@ -1,5 +1,6 @@
 import type {
   AdaptivePlanningDecomposition,
+  DiffractiveReading,
   PlanningArchitectureProposal,
   PlanningBrief,
   PlanningQuestionCandidate,
@@ -154,6 +155,24 @@ export async function proposePlanningDecomposition(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ briefId }),
+  });
+}
+
+export async function diffractPlanningArchitecture(
+  brief: Pick<PlanningBrief, "scopeRef" | "sourceRefs">,
+  architecture: PlanningArchitectureProposal
+): Promise<DiffractiveReading> {
+  return requestJson(`${API}/diffract`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      statement: [
+        `Décomposition proposée pour le scope ${brief.scopeRef.kind}.`,
+        `Décision structurante: ${architecture.structuralDecision}.`,
+        ...architecture.children.map((child) => `${child.level}: ${child.title} — ${child.rationale}`),
+      ].join("\n"),
+      sourceIds: brief.sourceRefs,
+    }),
   });
 }
 
