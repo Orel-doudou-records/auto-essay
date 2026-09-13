@@ -14,12 +14,8 @@ const mockContext = {
     tensions: [],
     bookBibliography: {
       entries: [{ sourceId: "eshun2003", title: "Further Considerations on Afrofuturism" }],
-      graphNeighborhoods: [
-        { term: "star trek", text: "Voisinage du graphe (2 nœuds, 1 arête) :\n- Star Trek [concept] (trek.md)" },
-      ],
     },
   },
-  graphSummary: { nodes: 73, links: 70, terms: ["asimov", "star trek"] },
   sourcesCount: 1,
   suggestedFragments: [
     {
@@ -60,7 +56,7 @@ describe("DemoPage", () => {
     vi.clearAllMocks();
   });
 
-  it("renders the demo context and runs a suggested fragment", async () => {
+  it("renders the projected documentary context and runs a suggested fragment", async () => {
     render(
       <BrowserRouter>
         <DemoPage />
@@ -70,7 +66,8 @@ describe("DemoPage", () => {
     await waitFor(() => {
       expect(screen.getByText(/Chapitre 2 - Le salon/)).toBeInTheDocument();
     });
-    expect(screen.getByText(/1 sources, graphe de 73 nœuds/)).toBeInTheDocument();
+    expect(screen.getByText(/Bibliothèque projetée : 1 sources/)).toBeInTheDocument();
+    expect(screen.queryByText(/Signaux du graphe/)).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByText("chap2-14/16 — le salon dans la cabine"));
 
@@ -83,20 +80,7 @@ describe("DemoPage", () => {
     expect(
       screen.getByText(/le vaisseau-salon comme machine à différer/i)
     ).toBeInTheDocument();
-    expect(screen.getByText(/Impacts bibliographiques/)).toBeInTheDocument();
+    expect(screen.getByText("Impacts bibliographiques")).toBeInTheDocument();
     expect(screen.getByText("rapprocher")).toBeInTheDocument();
-  });
-
-  it("shows the graph neighborhoods sent to the reader", async () => {
-    render(
-      <BrowserRouter>
-        <DemoPage />
-      </BrowserRouter>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText(/Signaux du graphe envoyés au lecteur/)).toBeInTheDocument();
-    });
-    expect(screen.getByText("Terme : star trek")).toBeInTheDocument();
   });
 });
