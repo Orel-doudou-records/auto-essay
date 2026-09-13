@@ -90,31 +90,38 @@ describe("lecture diffractive avec bibliothèque (F3)", () => {
 });
 
 describe("applyBibliographyImpacts", () => {
-  const impacts: BibliographyImpact[] = [
-    {
-      sourceId: "s1",
-      scopeId: "chap-2",
-      kind: "redistribuer",
-      impact: "Déplacer",
-    },
+  const distribution = [
+    { sourceId: "src-1", scopeId: "chap-2" },
+    { sourceId: "src-2", scopeId: "chap-2" },
   ];
 
-  it("applique la redistribution en remplaçant le scope de la source", () => {
-    const result = applyBibliographyImpacts(
-      [{ sourceId: "s1", scopeId: "chap-1", rationale: "ancien", confidence: 1 }],
-      impacts
-    );
-    expect(result).toEqual([
-      { sourceId: "s1", scopeId: "chap-2", rationale: "Déplacer", confidence: 1 },
-    ]);
+  it("redistribuer : déplace la source vers un autre scope", () => {
+    const impacts: BibliographyImpact[] = [
+      { sourceId: "src-1", scopeId: "chap-3", kind: "redistribuer", impact: "mieux ici" },
+    ];
+    const next = applyBibliographyImpacts(distribution, impacts);
+    expect(next).toHaveLength(2);
+    expect(next.find((entry) => entry.sourceId === "src-1")?.scopeId).toBe("chap-3");
+    expect(distribution[0].scopeId).toBe("chap-2");
   });
 
-  it("n'applique pas rapproche/manquante à la distribution", () => {
-    const original = [{ sourceId: "s1", scopeId: "chap-1", rationale: "ancien", confidence: 1 }];
-    expect(
-      applyBibliographyImpacts(original, [
-        { sourceId: "s1", scopeId: "chap-2", kind: "rapprocher", impact: "x" },
-      ])
-    ).toEqual(original);
+  it("rapprocher : ajoute le lien s'il n'existe pas, sans dupliquer", () => {
+    const impacts: BibliographyImpact[] = [
+      { sourceId: "src-9", scopeId: "chap-2", kind: "rapprocher", impact: "pont" },
+      { sourceId: "src-9", scopeId: "chap-2", kind: "rapprocher", impact: "duplicata" },
+    ];
+    const next = applyBibliographyImpacts(distribution, impacts);
+    const links = next.filter((entry) => entry.sourceId === "src-9");
+    expect(links).toHaveLength(1);
+    expect(links[0].confidence).toBe(0.7);
+  });
+
+  it("manquante : ajoute un lien avec confiance faible (signal)", () => {
+    const impacts: BibliographyImpact[] = [
+      { sourceId: "src-9", scopeId: "chap-4", kind: "manquante", impact: "source absente" },
+    ];
+    const next = applyBibliographyImpacts(distribution, impacts);
+    expect(next).toHaveLength(3);
+    expect(next[2].confidence).toBe(0.4);
   });
 });
