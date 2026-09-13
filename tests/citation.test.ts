@@ -1,11 +1,15 @@
 import { describe, expect, it } from "vitest";
 import type { Manuscript, Source } from "../src/domain";
 import type { Citation, CitationUse } from "../src/domain/citation";
+import { createContentRelation } from "../src/domain/contentRelation";
+import type { RetrievedPassage } from "../src/bibliography/corpusExplorer";
 import {
   assertCiteable,
+  assertVerifiedRelationCitations,
   citationsForUnit,
   findUnitScope,
   formatCitation,
+  promoteRetrievedPassageToCitation,
   sourceYear,
 } from "../src/bibliography/citation";
 
@@ -66,6 +70,103 @@ const uses: CitationUse[] = [
   { citationId: "cit-1", draftUnitId: "u-par", draftUnitVersion: 1 },
   { citationId: "cit-2", draftUnitId: "u-par", draftUnitVersion: 1 },
 ];
+
+describe("RetrievedPassage -> Citation", () => {
+  const passage: RetrievedPassage = {
+    id: "doc-1:aaaaaaaaaaaaaaaa:block-1:0-14",
+    sourceId: "src-1",
+    fingerprint: "a".repeat(64),
+    span: {
+      documentId: "doc-1",
+      blockId: "block-1",
+      start: 0,
+      end: 14,
+    },
+    locator: { kind: "page", value: "42" },
+    text: "Archive phrase",
+    mode: "corroboration",
+    probe: "support",
+    reason: "test",
+  };
+
+  it("promotes exact passage provenance without treating retrieval as verification", () => {
+    const citation = promoteRetrievedPassageToCitation({
+      projectId: "p1",
+      passage,
+      verificationStatus: "verified",
+      citationId: "cit-promoted",
+      createdAt: "2026-09-13T12:00:00.000Z",
+    });
+
+    expect(citation).toMatchObject({
+      id: "cit-promoted",
+      sourceId: "src-1",
+      quote: "Archive phrase",
+      locator: { kind: "page", value: "42" },
+      verificationStatus: "verified",
+      retrievalProvenance: {
+        retrievedPassageId: passage.id,
+        documentId: "doc-1",
+        blockId: "block-1",
+        start: 0,
+        end: 14,
+        documentFingerprint: "a".repeat(64),
+      },
+    });
+  });
+
+  it("allows one verified citation to ground different argumentative relations", () => {
+    const citation = promoteRetrievedPassageToCitation({
+      projectId: "p1",
+      passage,
+      verificationStatus: "verified",
+      citationId: "cit-shared",
+    });
+    const relations = (["supports", "qualifies", "contradicts"] as const).map(
+      (type, index) =>
+        createContentRelation({
+          scope: { level: "project", projectId: "p1" },
+          type,
+          participants: [
+            { kind: "claim", id: `claim-a-${index}` },
+            { kind: "claim", id: `claim-b-${index}` },
+          ],
+          description: `${type} relation`,
+          citationIds: [citation.id],
+          origin: "co_constructed",
+        })
+    );
+
+    for (const relation of relations) {
+      expect(() => assertVerifiedRelationCitations(relation, [citation])).not.toThrow();
+      expect(relation.citationIds).toEqual([citation.id]);
+    }
+  });
+
+  it("refuses unverified citations as functional argumentative grounding", () => {
+    const citation = promoteRetrievedPassageToCitation({
+      projectId: "p1",
+      passage,
+      verificationStatus: "unverified",
+      citationId: "cit-unverified-passage",
+    });
+    const relation = createContentRelation({
+      scope: { level: "project", projectId: "p1" },
+      type: "supports",
+      participants: [
+        { kind: "source", id: "src-1" },
+        { kind: "claim", id: "claim-1" },
+      ],
+      description: "Support candidate",
+      citationIds: [citation.id],
+      origin: "system_detected",
+    });
+
+    expect(() => assertVerifiedRelationCitations(relation, [citation])).toThrow(
+      "non-verified citation 'cit-unverified-passage'"
+    );
+  });
+});
 
 describe("findUnitScope", () => {
   it("résout le scope d'une unité liée à une entrée de plan (E4)", () => {
