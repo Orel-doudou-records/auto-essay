@@ -71,6 +71,13 @@ export type CompilePlanningScopeResult =
       reasons: string[];
     };
 
+/**
+ * Thin Plan V2 -> EditorialPlan adapter.
+ *
+ * Planning semantics stay upstream. Only fields already consumed by
+ * EditorialPlan are projected; the rest remains in a transient trace so this
+ * function does not create a second execution-plan model.
+ */
 export function compilePlanningScopeToEditorialPlan(
   input: CompilePlanningScopeInput
 ): CompilePlanningScopeResult {
