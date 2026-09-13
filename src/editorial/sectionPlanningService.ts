@@ -50,6 +50,10 @@ export interface SectionPlanRequest {
   paragraphs: ParagraphPlanRequest[];
 }
 
+/**
+ * Construit une section et ses paragraphes à partir de décisions déjà actives.
+ * Aucun prompt de génération n'est produit à ce stade.
+ */
 export class SectionPlanningService {
   build(request: SectionPlanRequest): SectionEditorialPlan {
     const sectionScope = EditorialScopeSchema.parse(request.scope);
@@ -57,6 +61,7 @@ export class SectionPlanningService {
     if (sectionScope.level !== "section") {
       throw new Error("Section planning requires a section editorial scope");
     }
+
     if (request.paragraphs.length === 0) {
       throw new Error("A section plan requires at least one paragraph plan");
     }
@@ -135,11 +140,13 @@ export class SectionPlanningService {
       paragraph.inheritedDecisionIds ?? Array.from(sectionDecisions.keys());
     const inheritedDecisions = inheritedDecisionIds.map((decisionId) => {
       const decision = sectionDecisions.get(decisionId);
+
       if (!decision) {
         throw new Error(
           `Paragraph ${paragraph.paragraphId} inherits unknown decision ${decisionId}`
         );
       }
+
       return decision;
     });
     const localDecisions = paragraph.localDecisions ?? [];
@@ -196,14 +203,18 @@ function assertDecisionAppliesToScope(
   targetScope: EditorialScope
 ): void {
   if (decision.projectId !== targetScope.projectId) {
-    throw new Error(`Decision ${decision.id} belongs to another project`);
+    throw new Error(
+      `Decision ${decision.id} belongs to another project`
+    );
   }
 
   if (
     decision.scope.level === "section" &&
     decision.scope.sectionId !== targetScope.sectionId
   ) {
-    throw new Error(`Decision ${decision.id} belongs to another section`);
+    throw new Error(
+      `Decision ${decision.id} belongs to another section`
+    );
   }
 
   if (decision.scope.level === "paragraph") {
@@ -212,11 +223,14 @@ function assertDecisionAppliesToScope(
         `Paragraph decision ${decision.id} cannot be applied to a section plan`
       );
     }
+
     if (
       decision.scope.sectionId !== targetScope.sectionId ||
       decision.scope.paragraphId !== targetScope.paragraphId
     ) {
-      throw new Error(`Decision ${decision.id} belongs to another paragraph`);
+      throw new Error(
+        `Decision ${decision.id} belongs to another paragraph`
+      );
     }
   }
 }
@@ -225,12 +239,17 @@ function deduplicateDecisions(
   decisions: EditorialDecision[]
 ): EditorialDecision[] {
   const byId = new Map<string, EditorialDecision>();
-  for (const decision of decisions) byId.set(decision.id, decision);
+
+  for (const decision of decisions) {
+    byId.set(decision.id, decision);
+  }
+
   return Array.from(byId.values());
 }
 
 function assertUniqueParagraphIds(paragraphs: ParagraphPlanRequest[]): void {
   const ids = new Set<string>();
+
   for (const paragraph of paragraphs) {
     if (ids.has(paragraph.paragraphId)) {
       throw new Error(`Duplicate paragraph identifier ${paragraph.paragraphId}`);
@@ -243,6 +262,7 @@ function assertUniqueParagraphOrders(
   paragraphs: ParagraphPlanRequest[]
 ): void {
   const orders = new Set<number>();
+
   for (const paragraph of paragraphs) {
     if (orders.has(paragraph.order)) {
       throw new Error(`Duplicate paragraph order ${paragraph.order}`);
