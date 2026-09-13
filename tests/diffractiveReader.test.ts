@@ -106,7 +106,7 @@ describe("DiffractiveReader", () => {
     expect(prompt).toContain("quatre passes");
   });
 
-  it("embeds graph neighborhoods as candidate signals to qualify", () => {
+  it("embeds legacy graph neighborhoods as historical signals to qualify", () => {
     const prompt = buildDiffractivePrompt({
       statement: "Le vaisseau est un salon.",
       bookBibliography: {
@@ -120,11 +120,12 @@ describe("DiffractiveReader", () => {
       },
     });
 
-    expect(prompt).toContain("Signaux du graphe de la bibliothèque");
+    expect(prompt).toContain("Signaux historiques du graphe de la bibliothèque");
     expect(prompt).toContain("#### Terme du graphe : star trek");
     expect(prompt).toContain("Star Trek --influences [EXTRACTED 1]--> Spock");
     expect(prompt).toContain("Further Considerations on Afrofuturism");
-    expect(prompt).toContain("le graphe suggère, la sémantique reste la tienne");
+    expect(prompt).toContain("signal legacy optionnel");
+    expect(prompt).toContain("jamais l'autorité documentaire Corpus V2");
   });
 
   it("normalizes null on optional fields (LLM tolerance)", async () => {
