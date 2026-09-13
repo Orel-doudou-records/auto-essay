@@ -139,7 +139,7 @@ export function createCorpusExplorer(
         const text = readIngestedSpan(document, span);
         if (text.length === 0) continue;
 
-        const id = `${document.id}:${block.id}:${span.start}-${span.end}`;
+        const id = `${document.id}:${document.fingerprint.slice(0, 16)}:${block.id}:${span.start}-${span.end}`;
         if (seen.has(id)) continue;
         seen.add(id);
 
