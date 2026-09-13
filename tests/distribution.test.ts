@@ -117,14 +117,27 @@ function passage(
 
 describe("Corpus V2 documentary scope projection", () => {
   it("projects support, contradiction and qualification passages while preserving unresolved gaps", async () => {
+    const byProbe = {
+      support: passage("p-support", "src-1", "support", "Support exact."),
+      contradiction: passage(
+        "p-contradict",
+        "src-2",
+        "contradiction",
+        "Contradiction exacte."
+      ),
+      qualification: passage(
+        "p-qualify",
+        "src-2",
+        "qualification",
+        "Qualification exacte."
+      ),
+    } as const;
     const explorer: CorpusExplorer = {
       retrieve: async (input) => {
         if (input.mode === "exploration") return [];
-        return [
-          passage("p-support", "src-1", "support", "Support exact."),
-          passage("p-contradict", "src-2", "contradiction", "Contradiction exacte."),
-          passage("p-qualify", "src-2", "qualification", "Qualification exacte."),
-        ];
+        return input.probe && input.probe in byProbe
+          ? [byProbe[input.probe as keyof typeof byProbe]]
+          : [];
       },
     };
 
@@ -213,7 +226,12 @@ describe("legacy keyword distribution fallback", () => {
     const nodes = collectDistributionNodes(manuscript.tree);
     expect(distributeByKeywords(profiles[0], nodes)).toHaveLength(1);
     const entries = await distributeBibliography(manuscript, profiles);
-    expect(entries).toHaveLength(1);
-    expect(entries[0]).toMatchObject({ sourceId: "src-1", scopeId: "chap-1" });
+    expect(entries).toHaveLength(2);
+    expect(entries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ sourceId: "src-1", scopeId: "chap-1" }),
+        expect.objectContaining({ sourceId: "src-2", scopeId: "chap-1" }),
+      ])
+    );
   });
 });
