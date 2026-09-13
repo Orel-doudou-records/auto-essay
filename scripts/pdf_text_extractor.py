@@ -20,21 +20,28 @@ except ImportError as error:  # infrastructure failure, not document unreadabili
     raise SystemExit(2) from error
 
 
+def unreadable(error: Exception) -> dict[str, object]:
+    return {
+        "pageCount": 0,
+        "pages": [],
+        "diagnostics": [f"PDF parse failed: {type(error).__name__}: {error}"],
+        "fatal": True,
+    }
+
+
 def extract(path: Path) -> dict[str, object]:
     diagnostics: list[str] = []
     try:
         reader = PdfReader(str(path), strict=False)
+        page_count = len(reader.pages)
     except Exception as error:  # corrupt/encrypted/otherwise unreadable document
-        return {
-            "pageCount": 0,
-            "pages": [],
-            "diagnostics": [f"PDF parse failed: {type(error).__name__}: {error}"],
-            "fatal": True,
-        }
+        return unreadable(error)
 
     pages: list[dict[str, object]] = []
-    for number, page in enumerate(reader.pages, 1):
+    for index in range(page_count):
+        number = index + 1
         try:
+            page = reader.pages[index]
             text = page.extract_text() or ""
         except Exception as error:
             text = ""
@@ -44,7 +51,7 @@ def extract(path: Path) -> dict[str, object]:
         pages.append({"number": number, "text": text})
 
     return {
-        "pageCount": len(reader.pages),
+        "pageCount": page_count,
         "pages": pages,
         "diagnostics": diagnostics,
         "fatal": False,
