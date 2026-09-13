@@ -44,6 +44,7 @@ describe("ContentRelation", () => {
     });
 
     expect(relation.type).toBe("differs_in_scope");
+    expect(relation.type).not.toBe("contradicts");
     expect(relation.citationIds).toEqual([]);
   });
 
@@ -86,8 +87,12 @@ describe("ContentRelation", () => {
 
   it("should enforce identifiers required by the editorial scope", () => {
     expect(() =>
-      EditorialScopeSchema.parse({ level: "section", projectId: "project-1" })
+      EditorialScopeSchema.parse({
+        level: "section",
+        projectId: "project-1",
+      })
     ).toThrow();
+
     expect(() =>
       EditorialScopeSchema.parse({
         level: "project",
@@ -139,6 +144,7 @@ describe("ContentRelation atomicity", () => {
       { kind: "claim", id: "claim-1" },
       { kind: "claim", id: "claim-2" },
     ]);
+
     expect(roles.map((participant) => participant.role)).toEqual([
       "supporting",
       "supported",
@@ -150,6 +156,7 @@ describe("ContentRelation atomicity", () => {
       { kind: "claim", id: "claim-1", role: "archive view" },
       { kind: "claim", id: "claim-2" },
     ]);
+
     expect(roles[0].role).toBe("archive view");
     expect(roles[1].role).toBe("challenged");
   });
@@ -166,6 +173,7 @@ describe("ContentRelation atomicity", () => {
       origin: "system_detected",
       groupId: "argument-1",
     });
+
     expect(relation.groupId).toBe("argument-1");
   });
 });
