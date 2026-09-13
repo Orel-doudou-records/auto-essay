@@ -39,7 +39,7 @@ jobs:
         run: npm run typecheck
 
       - name: Test core
-        run: npm run test
+        run: npx vitest run
 
       - name: Test API
         run: npm run test:api
