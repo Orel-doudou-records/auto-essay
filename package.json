@@ -16,7 +16,9 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "scripts/pdf_text_extractor.py",
+    "requirements-pdf.txt"
   ],
   "scripts": {
     "build": "tsc && npm run build -w @auto-essay/api && npm run build -w @auto-essay/web",
