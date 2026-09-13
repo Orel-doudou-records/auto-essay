@@ -187,15 +187,36 @@ export interface ProjectBibliographyInput {
   limitPerProbe?: number;
 }
 
+/** Shared point Corpus V2 : projection documentaire passage-aware d'un scope. */
+export function projectBibliography(input: ProjectBibliographyInput): Promise<ProjectedScope>;
 /**
- * Shared point Corpus V2 : projette pour un scope les sources, passages,
- * citations/relations déjà qualifiées et lacunes restant ouvertes.
- *
- * Le retrieval peut être demandé ici, jamais dans Diffract. Les passages
- * retournés restent des candidats documentaires : seuls des Citation vérifiées
- * et ContentRelation qualifiées deviennent des références canoniques downstream.
+ * @deprecated Adapter de compatibilité pour les workspaces API historiques
+ * stockant encore `BibliographyDistributionEntry[]`. À supprimer au cutover #222.
  */
-export async function projectBibliography(
+export function projectBibliography(
+  manuscript: Manuscript,
+  distribution: readonly BibliographyDistributionEntry[],
+  librarySources: readonly Source[],
+  profiles: readonly SourceProfile[]
+): ProjectedScope[];
+export function projectBibliography(
+  inputOrManuscript: ProjectBibliographyInput | Manuscript,
+  distribution?: readonly BibliographyDistributionEntry[],
+  librarySources?: readonly Source[],
+  profiles?: readonly SourceProfile[]
+): Promise<ProjectedScope> | ProjectedScope[] {
+  if ("planningBrief" in inputOrManuscript) {
+    return projectDocumentaryScope(inputOrManuscript);
+  }
+  return projectLegacyBibliography(
+    inputOrManuscript,
+    distribution ?? [],
+    librarySources ?? [],
+    profiles ?? []
+  );
+}
+
+async function projectDocumentaryScope(
   input: ProjectBibliographyInput
 ): Promise<ProjectedScope> {
   const {
@@ -310,6 +331,41 @@ export async function projectBibliography(
     gaps,
     unexploredAreas,
   };
+}
+
+function projectLegacyBibliography(
+  manuscript: Manuscript,
+  distribution: readonly BibliographyDistributionEntry[],
+  librarySources: readonly Source[],
+  profiles: readonly SourceProfile[]
+): ProjectedScope[] {
+  const nodeIds = new Set(collectNodeIds(manuscript.tree));
+  const sourceById = new Map(librarySources.map((source) => [source.id, source]));
+  const profileBySource = new Map(profiles.map((profile) => [profile.sourceId, profile]));
+  const grouped = new Map<string, ProjectedSource[]>();
+
+  for (const entry of distribution) {
+    if (!nodeIds.has(entry.scopeId)) continue;
+    const list = grouped.get(entry.scopeId) ?? [];
+    list.push(
+      projectSource(
+        entry.sourceId,
+        sourceById.get(entry.sourceId),
+        profileBySource.get(entry.sourceId)
+      )
+    );
+    grouped.set(entry.scopeId, list);
+  }
+
+  return [...grouped.entries()].map(([scopeId, sources]) => ({
+    scopeId,
+    sources,
+    passages: [],
+    citationIds: [],
+    sourceRelationIds: [],
+    gaps: [],
+    unexploredAreas: [],
+  }));
 }
 
 /** Ajoute uniquement les références canoniques de la projection à un plan existant. */
