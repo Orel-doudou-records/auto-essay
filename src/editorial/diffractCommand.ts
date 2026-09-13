@@ -8,22 +8,14 @@ import {
   type BookBibliographyInput,
   type ExistingCutInput,
 } from "./diffractiveReader";
-import {
-  findNode,
-  formatNeighborhood,
-  queryNeighborhood,
-  type KnowledgeGraph,
-} from "../bibliography/graphify";
 import type { DraftUnitStatus } from "../domain/draftUnit";
 import type { StructuredModelClient } from "../evaluation/evaluateEssay";
 import type { DiffractiveReading } from "../domain/diffractiveReading";
 
 /**
  * Arguments d'une commande de lecture diffractive (CLI générique).
- * `book` est le texte fourni en ligne ; `bookPath` un fichier à lire par
- * l'appelant (la commande elle-même reste sans I/O). `conceptsPath` /
- * `tensionsPath` sont des fichiers JSON lus par l'appelant ; `concepts` /
- * `tensions` sont les données déjà chargées (passées à `buildDiffractiveRequest`).
+ * Les fichiers sont lus par l'appelant ; cette commande reste sans I/O.
+ * La matière documentaire est fournie déjà projetée : aucun retrieval ici.
  */
 export interface DiffractCliArgs {
   statement: string;
@@ -37,22 +29,14 @@ export interface DiffractCliArgs {
   cutsPath?: string;
   bookPlanPath?: string;
   bibliographyPath?: string;
-  graphPath?: string;
-  graphTerms?: string[];
   concepts?: Array<{ label: string; definition: string }>;
   tensions?: Array<{ label: string; description: string }>;
   bookParts?: BookPartInput[];
   existingCuts?: ExistingCutInput[];
   bookPlan?: BookPlanInput[];
   bookBibliography?: BookBibliographyInput;
-  graphNeighborhoods?: Array<{ term: string; text: string }>;
 }
 
-/**
- * Extrait { label, definition } d'objets concepts bruts (ex. concepts.json :
- * { id, label, definition, scope, status, ... }).
- * Fonction pure, sans I/O : on ne garde que ce que le lecteur diffractif consomme.
- */
 export function extractConcepts(
   raw: unknown
 ): Array<{ label: string; definition: string }> {
@@ -69,10 +53,6 @@ export function extractConcepts(
   return out;
 }
 
-/**
- * Extrait { label, description } d'objets tensions bruts (ex. tensions.json).
- * Fonction pure, sans I/O.
- */
 export function extractTensions(
   raw: unknown
 ): Array<{ label: string; description: string }> {
@@ -89,10 +69,6 @@ export function extractTensions(
   return out;
 }
 
-/**
- * Extrait des BookPartInput d'un fichier JSON brut (bookParts.json) :
- * { id, title, status, text }. Fonction pure, sans I/O.
- */
 export function extractBookParts(raw: unknown): BookPartInput[] {
   if (!Array.isArray(raw)) return [];
   const out: BookPartInput[] = [];
@@ -121,10 +97,6 @@ export function extractBookParts(raw: unknown): BookPartInput[] {
   return out;
 }
 
-/**
- * Extrait des ExistingCutInput d'un fichier JSON brut (cuts.json) :
- * { scope, verdict, cut }. Fonction pure, sans I/O.
- */
 export function extractExistingCuts(raw: unknown): ExistingCutInput[] {
   if (!Array.isArray(raw)) return [];
   const out: ExistingCutInput[] = [];
@@ -147,17 +119,6 @@ export function extractExistingCuts(raw: unknown): ExistingCutInput[] {
   return out;
 }
 
-/**
- * Parse les arguments d'une ligne de commande :
- * --statement <texte> --book <texte> --book-file <chemin>
- * --claims <a,b,c> --sources <a,b,c>
- * --concepts <fichier.json> --tensions <fichier.json>
- */
-/**
- * Extrait des BookPlanInput d'un fichier JSON brut (bookPlan.json) :
- * { partId, partTitle, entries: [{ id, subject, preview?, notes? }] }.
- * Fonction pure, sans I/O.
- */
 export function extractBookPlan(raw: unknown): BookPlanInput[] {
   if (!Array.isArray(raw)) return [];
   const out: BookPlanInput[] = [];
@@ -233,8 +194,6 @@ export function parseDiffractArgs(argv: string[]): DiffractCliArgs {
     else if (flag === "--cuts") args.cutsPath = argv[++i] ?? "";
     else if (flag === "--book-plan") args.bookPlanPath = argv[++i] ?? "";
     else if (flag === "--bibliography") args.bibliographyPath = argv[++i] ?? "";
-    else if (flag === "--graph") args.graphPath = argv[++i] ?? "";
-    else if (flag === "--graph-terms") args.graphTerms = splitList(argv[++i]);
   }
 
   if (!args.statement.trim()) {
@@ -253,9 +212,9 @@ export function splitList(raw: string | undefined): string[] {
 }
 
 /**
- * Extrait la bibliothèque projetée d'un fichier library.json brut (F0) :
- * { sources: [{ id, title, authors }], profiles: [{ sourceId, subjects,
- * concepts }] }. Les profils sans source connue sont ignorés. Pure, sans I/O.
+ * Extrait la bibliothèque projetée d'un fichier library.json brut historique.
+ * Aucune décision documentaire n'est prise ici : les profils sont seulement
+ * formatés comme entrée de lecture Diffract déjà fournie par l'appelant.
  */
 export function extractBookBibliography(
   raw: unknown
@@ -302,8 +261,6 @@ export function extractBookBibliography(
       });
     }
   }
-  // Les sources sans profil restent dans la bibliothèque du chapitre :
-  // entrée nue (id + titre + auteurs), le graphe porte déjà les concepts.
   for (const [sourceId, source] of sourceById) {
     if (seen.has(sourceId)) continue;
     entries.push({
@@ -313,27 +270,6 @@ export function extractBookBibliography(
     });
   }
   return entries.length > 0 ? { entries } : undefined;
-}
-
-/**
- * Extrait les voisinages du graphe autour de termes (BFS budgété, zéro token).
- * Chaque terme trouvé devient un signal { terme, voisinage formaté } pour le
- * prompt. Les termes sans nœud correspondant sont ignorés (garde pure).
- */
-export function buildGraphNeighborhoods(
-  graph: KnowledgeGraph,
-  terms: string[],
-  options: { depth?: number; maxNodes?: number } = {}
-): Array<{ term: string; text: string }> {
-  const out: Array<{ term: string; text: string }> = [];
-  for (const term of terms) {
-    if (!term.trim()) continue;
-    const node = findNode(graph, term);
-    if (!node) continue;
-    const hood = queryNeighborhood(graph, node.id, options);
-    out.push({ term, text: formatNeighborhood(hood) });
-  }
-  return out;
 }
 
 export function buildDiffractiveRequest(
@@ -360,15 +296,8 @@ export function buildDiffractiveRequest(
   if (args.bookPlan && args.bookPlan.length > 0) {
     request.bookPlan = args.bookPlan;
   }
-  const neighborhoods =
-    args.graphNeighborhoods && args.graphNeighborhoods.length > 0
-      ? args.graphNeighborhoods
-      : undefined;
-  if (args.bookBibliography || neighborhoods) {
-    request.bookBibliography = {
-      entries: args.bookBibliography?.entries ?? [],
-      graphNeighborhoods: neighborhoods,
-    };
+  if (args.bookBibliography) {
+    request.bookBibliography = args.bookBibliography;
   }
   return request;
 }
