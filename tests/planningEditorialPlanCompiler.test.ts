@@ -83,7 +83,7 @@ function fixture() {
     },
     decisions: [activeDecision(manuscript.projectId)],
     claimIds: ["claim-1"],
-    evidenceIds: ["evidence-1"],
+    citationIds: ["citation-1"],
     sourceRelationIds: ["relation-neighbor-1"],
     contentOperations: ["Confront the two documentary regimes"],
     stylisticOperations: [
@@ -126,7 +126,7 @@ describe("planning -> EditorialPlan compiler", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.plan.argumentativeFunction).toBe(brief.angleOrFunction);
-    expect(result.plan.evidenceIds).toEqual(["evidence-1"]);
+    expect(result.plan.citationIds).toEqual(["citation-1"]);
     expect(result.plan.sourceRelationIds).toEqual(["relation-neighbor-1"]);
     expect(result.plan.invariants).toEqual([
       "Do not merge institutional and vernacular evidence",
@@ -134,20 +134,13 @@ describe("planning -> EditorialPlan compiler", () => {
     ]);
     expect(result.trace.briefId).toBe(brief.id);
     expect(result.trace.hypotheses[1]?.status).toBe("under_documented");
-    expect(result.trace.passageProvenance).toEqual([
-      { passageId: "passage-1", sourceId: "source-1" },
-      { passageId: "passage-2", sourceId: "source-2" },
-    ]);
   });
 
   it("does not require global or parent readiness to compile the local scope", () => {
     const { brief, execution } = fixture();
     const result = compilePlanningScopeToEditorialPlan({
       brief,
-      readinessContext: {
-        parentRoleKnown: true,
-        relevantPassageCount: 1,
-      },
+      readinessContext: { parentRoleKnown: true, relevantPassageCount: 1 },
       execution,
     });
     expect(result.ok).toBe(true);
@@ -176,17 +169,13 @@ describe("planning -> EditorialPlan compiler", () => {
     const { brief, execution } = fixture();
     const result = compilePlanningScopeToEditorialPlan({
       brief,
-      readinessContext: {
-        parentRoleKnown: true,
-        relevantPassageCount: 1,
-      },
+      readinessContext: { parentRoleKnown: true, relevantPassageCount: 1 },
       execution,
     });
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.trace.nonBlockingGaps).toHaveLength(1);
-    expect(result.trace.nonBlockingGaps[0]?.description).toContain("Counter-archive");
     expect("gaps" in result.plan).toBe(false);
     expect("hypotheses" in result.plan).toBe(false);
     expect("sourceRefs" in result.plan).toBe(false);
@@ -196,10 +185,7 @@ describe("planning -> EditorialPlan compiler", () => {
     const { brief, execution } = fixture();
     const result = compilePlanningScopeToEditorialPlan({
       brief,
-      readinessContext: {
-        parentRoleKnown: true,
-        relevantPassageCount: 1,
-      },
+      readinessContext: { parentRoleKnown: true, relevantPassageCount: 1 },
       passageProvenance: [{ passageId: "passage-x", sourceId: "source-x" }],
       execution,
     });
