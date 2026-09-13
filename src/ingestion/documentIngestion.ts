@@ -4,6 +4,7 @@ import {
   IngestedDocumentSchema,
   type IngestedBlock,
   type IngestedDocument,
+  type IngestionStatus,
 } from "../domain/ingestedDocument";
 import { importMarkdown, parseFrontmatter } from "./importers";
 
@@ -20,7 +21,7 @@ export function createIngestedDocument(input: {
   sourceId: string;
   canonicalText: string;
   blocks: IngestedBlock[];
-  ingestionStatus?: "ready" | "degraded" | "unreadable";
+  ingestionStatus?: IngestionStatus;
   diagnostics?: string[];
 }): IngestedDocument {
   const fingerprint = fingerprintDocumentContent(input.canonicalText);
