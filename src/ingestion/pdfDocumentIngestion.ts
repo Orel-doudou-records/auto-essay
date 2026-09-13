@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 import { z } from "zod";
 import {
   IngestedDocumentSchema,
@@ -108,11 +108,11 @@ function runPdfExtractor(filePath: string): Promise<string> {
   const pythonExecutable =
     process.env.AUTO_ESSAY_PYTHON ??
     (process.platform === "win32" ? "python" : "python3");
-  const extractorPath = fileURLToPath(
-    new URL("../../scripts/pdf_text_extractor.py", import.meta.url)
-  );
+  const extractorPath =
+    process.env.AUTO_ESSAY_PDF_EXTRACTOR ??
+    resolve(process.cwd(), "scripts/pdf_text_extractor.py");
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolveOutput, reject) => {
     execFile(
       pythonExecutable,
       [extractorPath, filePath],
@@ -123,7 +123,7 @@ function runPdfExtractor(filePath: string): Promise<string> {
           reject(new Error(`PDF extraction worker failed: ${detail}`));
           return;
         }
-        resolve(stdout);
+        resolveOutput(stdout);
       }
     );
   });
