@@ -262,15 +262,6 @@ function validateGenerationInputs(
     throw new Error("Writer projection does not match paragraph unit");
   }
 
-  const sourceIds = new Set(evidencePack.sourceIds);
-  for (const evidenceId of projection.allowedEvidenceIds) {
-    if (!sourceIds.has(evidenceId)) {
-      throw new Error(
-        `Writer projection introduces evidence outside the evidence pack: ${evidenceId}`
-      );
-    }
-  }
-
   const claimIds = new Set(evidencePack.supportingClaimIds);
   for (const claimId of projection.allowedClaimIds) {
     if (!claimIds.has(claimId)) {
@@ -292,7 +283,7 @@ function renderWriterProjection(projection: WriterEditorialProjection): string {
   return `## Plan éditorial validé
 Fonction argumentative : ${projection.argumentativeFunction}
 Claims autorisés : ${projection.allowedClaimIds.join(", ") || "aucun"}
-Preuves autorisées : ${projection.allowedEvidenceIds.join(", ") || "aucune"}
+Citations autorisées : ${projection.allowedCitationIds.join(", ") || "aucune"}
 Relations documentaires : ${
     projection.allowedSourceRelationIds.join(", ") || "aucune"
   }
