@@ -16,10 +16,7 @@ export const LibrarySchema = z.object({
 
 export type Library = z.infer<typeof LibrarySchema>;
 
-const SectionSynopsisSchema = z.object({
-  synopsis: z.string().min(1),
-});
-
+const SectionSynopsisSchema = z.object({ synopsis: z.string().min(1) });
 const DocumentProfileOutputSchema = z.object({
   subjects: z.array(z.string().min(1)).default([]),
   concepts: z.array(z.string().min(1)).default([]),
@@ -27,9 +24,7 @@ const DocumentProfileOutputSchema = z.object({
 });
 
 export interface BuildProfilesOptions {
-  /** Nombre maximum de blocs envoyés dans une passe locale (défaut 20). */
   maxBlocksPerBatch?: number;
-  /** Blocs volontairement exclus, indexés par IngestedDocument.id. */
   excludedBlockIdsByDocumentId?: Record<string, string[]>;
 }
 
@@ -38,12 +33,6 @@ interface SectionGroup {
   blocks: IngestedBlock[];
 }
 
-/**
- * Construit un profil depuis le contenu réellement ingéré.
- * Chaque bloc non exclu contribue à une synthèse de section avant la synthèse
- * globale du document. Les lots sont transitoires et ne deviennent aucun objet
- * canonique.
- */
 export async function buildProfiles(
   documents: IngestedDocument[],
   client: StructuredModelClient,
@@ -229,9 +218,8 @@ function groupBlocksBySection(blocks: IngestedBlock[]): SectionGroup[] {
   for (const block of [...blocks].sort((a, b) => a.order - b.order)) {
     const key = JSON.stringify(block.sectionPath);
     const existing = groups.get(key);
-    if (existing) {
-      existing.blocks.push(block);
-    } else {
+    if (existing) existing.blocks.push(block);
+    else {
       groups.set(key, {
         sectionPath: [...block.sectionPath],
         blocks: [block],
@@ -239,6 +227,29 @@ function groupBlocksBySection(blocks: IngestedBlock[]): SectionGroup[] {
     }
   }
   return [...groups.values()];
+}
+
+function profileExactlyCoversDocument(
+  document: IngestedDocument,
+  profile: SourceProfile
+): boolean {
+  if (profile.fingerprint !== document.fingerprint) return false;
+  if (profile.comprehension?.status !== "ready") return false;
+  if (profile.comprehension.totalBlocks !== document.blocks.length) return false;
+
+  const canonical = new Set(document.blocks.map((block) => block.id));
+  const accounted = new Set([
+    ...profile.comprehension.coveredBlockIds,
+    ...profile.comprehension.excludedBlockIds,
+  ]);
+  if (accounted.size !== canonical.size) return false;
+  for (const blockId of canonical) {
+    if (!accounted.has(blockId)) return false;
+  }
+  for (const blockId of accounted) {
+    if (!canonical.has(blockId)) return false;
+  }
+  return true;
 }
 
 export function assessComprehensionClosure(
@@ -275,8 +286,8 @@ export function assessComprehensionClosure(
     const profile = profileBySourceId.get(document.sourceId);
     const ready = Boolean(
       document.ingestionStatus === "ready" &&
-        profile?.fingerprint === document.fingerprint &&
-        profile.comprehension?.status === "ready"
+        profile &&
+        profileExactlyCoversDocument(document, profile)
     );
 
     if (ready) readySourceIds.push(document.sourceId);
