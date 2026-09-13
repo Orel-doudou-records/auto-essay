@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { createReadStream } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import {
@@ -22,24 +22,13 @@ const PdfExtractionOutputSchema = z.object({
   fatal: z.boolean().default(false),
 });
 
-export interface PdfIngestionOptions {
-  pythonExecutable?: string;
-  extractorPath?: string;
-}
-
-export function fingerprintDocumentBytes(content: Uint8Array): string {
-  return createHash("sha256").update(content).digest("hex");
-}
-
 export async function importPdfDocument(
   filePath: string,
-  sourceId: string,
-  options: PdfIngestionOptions = {}
+  sourceId: string
 ): Promise<IngestedDocument> {
-  const bytes = await readFile(filePath);
-  const fingerprint = fingerprintDocumentBytes(bytes);
+  const fingerprint = await fingerprintPdfFile(filePath);
   const extraction = PdfExtractionOutputSchema.parse(
-    JSON.parse(await runPdfExtractor(filePath, options))
+    JSON.parse(await runPdfExtractor(filePath))
   );
 
   const diagnostics = [...extraction.diagnostics];
@@ -92,6 +81,14 @@ export async function importPdfDocument(
   });
 }
 
+async function fingerprintPdfFile(filePath: string): Promise<string> {
+  const digest = createHash("sha256");
+  for await (const chunk of createReadStream(filePath)) {
+    digest.update(chunk);
+  }
+  return digest.digest("hex");
+}
+
 function determinePdfIngestionStatus(
   fatal: boolean,
   pageCount: number,
@@ -107,15 +104,13 @@ function determinePdfIngestionStatus(
   return "ready";
 }
 
-function runPdfExtractor(
-  filePath: string,
-  options: PdfIngestionOptions
-): Promise<string> {
+function runPdfExtractor(filePath: string): Promise<string> {
   const pythonExecutable =
-    options.pythonExecutable ?? process.env.AUTO_ESSAY_PYTHON ?? "python3";
-  const extractorPath =
-    options.extractorPath ??
-    fileURLToPath(new URL("../../scripts/pdf_text_extractor.py", import.meta.url));
+    process.env.AUTO_ESSAY_PYTHON ??
+    (process.platform === "win32" ? "python" : "python3");
+  const extractorPath = fileURLToPath(
+    new URL("../../scripts/pdf_text_extractor.py", import.meta.url)
+  );
 
   return new Promise((resolve, reject) => {
     execFile(
