@@ -6,6 +6,7 @@ import { RelationAnalyzer } from "../src/editorial/relationAnalyzer";
 
 class MockStructuredClient {
   constructor(private readonly output: unknown) {}
+
   async generateJson(): Promise<unknown> {
     return this.output;
   }
@@ -84,11 +85,14 @@ describe("RelationAnalyzer", () => {
     });
 
     expect(relations.filter((relation) => relation.type === "supports")).toHaveLength(2);
-    expect(relations.some((relation) => relation.type === "contradicts")).toBe(true);
+    expect(
+      relations.some((relation) => relation.type === "contradicts")
+    ).toBe(true);
+    expect(relations.every((relation) => relation.origin === "system_detected")).toBe(true);
     expect(relations.every((relation) => relation.citationIds.length === 0)).toBe(true);
   });
 
-  it("accepts verified citation ids on a model relation", async () => {
+  it("accepts verified citation ids on a model relation while preserving deterministic relations", async () => {
     const fixture = createFixture();
     const client = new MockStructuredClient({
       relations: [
@@ -120,6 +124,9 @@ describe("RelationAnalyzer", () => {
 
     const relation = relations.find((item) => item.type === "differs_in_scope");
     expect(relation?.citationIds).toEqual([fixture.verifiedCitation.id]);
+    expect(
+      relations.some((candidate) => candidate.type === "contradicts")
+    ).toBe(true);
   });
 
   it("rejects a non-verified citation proposed as argumentative grounding", async () => {
@@ -152,6 +159,38 @@ describe("RelationAnalyzer", () => {
         citations: [fixture.unverifiedCitation],
       })
     ).rejects.toThrow("non-verified citation citation-unverified");
+  });
+
+  it("rejects a citation id invented by the model", async () => {
+    const fixture = createFixture();
+    const client = new MockStructuredClient({
+      relations: [
+        {
+          type: "qualifies",
+          participants: [
+            { kind: "claim", id: fixture.archiveClaim.id },
+            { kind: "claim", id: fixture.testimonyClaim.id },
+          ],
+          description: "Invented citation grounding.",
+          citationIds: ["citation-invented"],
+          confidence: "low",
+        },
+      ],
+    });
+    const analyzer = new RelationAnalyzer(client);
+
+    await expect(
+      analyzer.analyze({
+        scope: {
+          level: "section",
+          projectId: "project-1",
+          sectionId: "section-1",
+        },
+        sources: [fixture.archive, fixture.testimony],
+        claims: [fixture.archiveClaim, fixture.testimonyClaim],
+        citations: [fixture.verifiedCitation],
+      })
+    ).rejects.toThrow("unknown citation citation-invented");
   });
 
   it("rejects participants invented by the model", async () => {
@@ -221,6 +260,7 @@ describe("RelationAnalyzer", () => {
           (participant) => participant.id === fixture.archiveClaim.id
         )
     );
+
     expect(archiveSupport).toHaveLength(1);
   });
 });
