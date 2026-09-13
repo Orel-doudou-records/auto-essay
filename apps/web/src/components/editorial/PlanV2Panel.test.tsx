@@ -95,10 +95,16 @@ describe("PlanV2Panel", () => {
     applyDiff.mockResolvedValue({ appliedChangeIds: [change.id] });
   });
 
-  it("shows bounded author questions and never applies a structural proposal before Valider", async () => {
+  it("keeps structural proposals local until author validation, supports refusal, and applies the edited diff", async () => {
+    const onApplied = vi.fn();
     render(
       <MemoryRouter>
-        <PlanV2Panel projectId="project-1" chapterId="chapter-1" writingHref="/write" />
+        <PlanV2Panel
+          projectId="project-1"
+          chapterId="chapter-1"
+          writingHref="/write"
+          onApplied={onApplied}
+        />
       </MemoryRouter>
     );
 
@@ -111,16 +117,24 @@ describe("PlanV2Panel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Préparer les changements" }));
     expect(await screen.findByText("Aucun changement n’est appliqué avant votre validation.")).toBeInTheDocument();
     expect(applyDiff).not.toHaveBeenCalled();
+    expect(onApplied).not.toHaveBeenCalled();
 
-    fireEvent.change(screen.getByLabelText("Titre"), { target: { value: "Titre édité par l’auteur" } });
+    fireEvent.change(screen.getByLabelText("Titre"), { target: { value: "Titre refusé" } });
     fireEvent.click(screen.getByRole("button", { name: "Refuser" }));
     expect(applyDiff).not.toHaveBeenCalled();
+    expect(onApplied).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole("button", { name: "Préparer les changements" }));
     await screen.findByText("Aucun changement n’est appliqué avant votre validation.");
+    fireEvent.change(screen.getByLabelText("Titre"), { target: { value: "Titre édité par l’auteur" } });
     fireEvent.click(screen.getByRole("button", { name: "Valider" }));
 
+    const editedChange = {
+      ...change,
+      node: { ...change.node, title: "Titre édité par l’auteur" },
+    };
     await waitFor(() => expect(applyDiff).toHaveBeenCalledTimes(1));
-    expect(applyDiff).toHaveBeenCalledWith("project-1", [change]);
+    expect(applyDiff).toHaveBeenCalledWith("project-1", [editedChange]);
+    expect(onApplied).toHaveBeenCalledTimes(1);
   });
 });
