@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import type {
+  DiffractiveReading,
   PlanningArchitectureProposal,
+  PlanningBrief,
   PlanningQuestionCandidate,
   PlanningStructuralChange,
   PlanningSubjectExploration,
@@ -17,6 +19,7 @@ import {
   applyPlanningStructuralDiff,
   createPlanningBriefFromSubjectRequest,
   createPlanningStructuralDiff,
+  diffractPlanningArchitecture,
   explorePlanningSubjects,
   fetchPlanningGrill,
   fetchPlanningState,
@@ -40,6 +43,9 @@ export function PlanV2Panel({ projectId, chapterId, writingHref, onApplied }: Pl
   const [refinement, setRefinement] = useState<PlanRefinementPayload>();
   const [grillQuestions, setGrillQuestions] = useState<PlanningQuestionCandidate[]>([]);
   const [architectures, setArchitectures] = useState<PlanningArchitectureProposal[]>([]);
+  const [diffractions, setDiffractions] = useState<Record<string, DiffractiveReading>>({});
+  const [diffractionBusy, setDiffractionBusy] = useState<Record<string, boolean>>({});
+  const [diffractionErrors, setDiffractionErrors] = useState<Record<string, string>>({});
   const [changes, setChanges] = useState<PlanningStructuralChange[]>([]);
   const [question, setQuestion] = useState("");
   const [angle, setAngle] = useState("");
@@ -62,6 +68,11 @@ export function PlanV2Panel({ projectId, chapterId, writingHref, onApplied }: Pl
   }
 
   useEffect(() => {
+    setArchitectures([]);
+    setDiffractions({});
+    setDiffractionBusy({});
+    setDiffractionErrors({});
+    setChanges([]);
     void refresh().catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)));
   }, [projectId, chapterId]);
 
@@ -76,6 +87,27 @@ export function PlanV2Panel({ projectId, chapterId, writingHref, onApplied }: Pl
       setError(reason instanceof Error ? reason.message : String(reason));
     } finally {
       setLoading(undefined);
+    }
+  }
+
+  async function reviewArchitecture(brief: PlanningBrief, architecture: PlanningArchitectureProposal) {
+    const key = architecture.structuralDecision;
+    setDiffractionBusy((current) => ({ ...current, [key]: true }));
+    setDiffractionErrors((current) => {
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
+    try {
+      const reading = await diffractPlanningArchitecture(brief, architecture);
+      setDiffractions((current) => ({ ...current, [key]: reading }));
+    } catch (reason) {
+      setDiffractionErrors((current) => ({
+        ...current,
+        [key]: reason instanceof Error ? reason.message : String(reason),
+      }));
+    } finally {
+      setDiffractionBusy((current) => ({ ...current, [key]: false }));
     }
   }
 
@@ -244,9 +276,15 @@ export function PlanV2Panel({ projectId, chapterId, writingHref, onApplied }: Pl
                   setMessage("Précisions enregistrées dans une nouvelle version.");
                 })}>{loading === "clarify" ? "Enregistrement…" : "Préciser"}</Button>
                 <Button type="button" variant="outline" disabled={Boolean(loading)} onClick={() => void run("decompose", async () => {
-                  const result = await proposePlanningDecomposition(projectId, state.activeBrief!.id);
+                  const activeBrief = state.activeBrief!;
+                  const result = await proposePlanningDecomposition(projectId, activeBrief.id);
                   setArchitectures(result.architectures);
+                  setDiffractions({});
+                  setDiffractionErrors({});
                   setChanges([]);
+                  for (const architecture of result.architectures) {
+                    void reviewArchitecture(activeBrief, architecture);
+                  }
                 })}>{loading === "decompose" ? "Proposition…" : "Proposer une structure"}</Button>
               </div>
             </div>
@@ -259,17 +297,76 @@ export function PlanV2Panel({ projectId, chapterId, writingHref, onApplied }: Pl
           <CardHeader><CardTitle>Structures proposées</CardTitle></CardHeader>
           <CardContent>
             <div {...stylex.props(workshopStyles.stack)}>
-              {architectures.map((architecture, index) => (
-                <article key={`${architecture.structuralDecision}-${index}`} {...stylex.props(workshopStyles.compactStack)}>
-                  <strong>{architecture.structuralDecision}</strong>
-                  {architecture.whyDifferent && <span>{architecture.whyDifferent}</span>}
-                  <ul>{architecture.children.map((child) => <li key={`${child.level}-${child.title}`}>{child.title} — {child.rationale}</li>)}</ul>
-                  <Button type="button" disabled={Boolean(loading)} onClick={() => void run("diff", async () => {
-                    const result = await createPlanningStructuralDiff(projectId, state.activeBrief!.id, architecture);
-                    setChanges(result.changes);
-                  })}>Préparer les changements</Button>
-                </article>
-              ))}
+              {architectures.map((architecture, index) => {
+                const key = architecture.structuralDecision;
+                const reading = diffractions[key];
+                const documentaryWarnings = reading?.bibliographyImpacts.filter((impact) => impact.kind === "manquante") ?? [];
+                return (
+                  <article key={`${key}-${index}`} {...stylex.props(workshopStyles.compactStack)}>
+                    <strong>{architecture.structuralDecision}</strong>
+                    {architecture.whyDifferent && <span>{architecture.whyDifferent}</span>}
+                    <ul>{architecture.children.map((child) => <li key={`${child.level}-${child.title}`}>{child.title} — {child.rationale}</li>)}</ul>
+
+                    <section aria-label={`Diffract : ${architecture.structuralDecision}`} {...stylex.props(workshopStyles.compactStack)}>
+                      <strong>Lecture Diffract</strong>
+                      {diffractionBusy[key] && <span>Lecture en cours…</span>}
+                      {diffractionErrors[key] && (
+                        <span role="status">Lecture Diffract indisponible. La proposition reste utilisable.</span>
+                      )}
+                      {reading && (
+                        <>
+                          <span>Recommandation : {reading.verdict} — {reading.action}</span>
+                          <span>{reading.verdictDetail}</span>
+                          {reading.pass3.entanglements.length > 0 && (
+                            <div {...stylex.props(workshopStyles.compactStack)}>
+                              <strong>Tensions</strong>
+                              {reading.pass3.entanglements.map((item) => (
+                                <span key={item.name}>{item.name} — {item.cutIfIntegrated}</span>
+                              ))}
+                            </div>
+                          )}
+                          {reading.planImpacts.length > 0 && (
+                            <div {...stylex.props(workshopStyles.compactStack)}>
+                              <strong>Scopes affectés</strong>
+                              {reading.planImpacts.map((impact, impactIndex) => (
+                                <span key={`${impact.partId}-${impact.entryId ?? impactIndex}`}>{impact.partTitle} — {impact.impact}</span>
+                              ))}
+                            </div>
+                          )}
+                          {reading.tradeoffs.length > 0 && (
+                            <div {...stylex.props(workshopStyles.compactStack)}>
+                              <strong>Conséquences et compromis</strong>
+                              {reading.tradeoffs.map((tradeoff) => <span key={tradeoff.path}>{tradeoff.path} — {tradeoff.leverage} · {tradeoff.distractionTax}</span>)}
+                            </div>
+                          )}
+                        </>
+                      )}
+                      {(state.activeBrief.gaps.length > 0 || documentaryWarnings.length > 0) && (
+                        <div {...stylex.props(workshopStyles.compactStack)}>
+                          <strong>Avertissement documentaire</strong>
+                          {state.activeBrief.gaps.map((gap, gapIndex) => <span key={`${gap.description}-${gapIndex}`}>{gap.description} — {gap.consequence}</span>)}
+                          {documentaryWarnings.map((impact, warningIndex) => <span key={`${impact.sourceId}-${warningIndex}`}>{impact.impact}</span>)}
+                          <span>Valider la structure ne transforme pas ces lacunes en soutien documentaire.</span>
+                        </div>
+                      )}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={Boolean(diffractionBusy[key])}
+                        onClick={() => void reviewArchitecture(state.activeBrief!, architecture)}
+                      >
+                        {diffractionBusy[key] ? "Lecture Diffract…" : "Relancer Diffract"}
+                      </Button>
+                    </section>
+
+                    <Button type="button" disabled={Boolean(loading)} onClick={() => void run("diff", async () => {
+                      const result = await createPlanningStructuralDiff(projectId, state.activeBrief!.id, architecture);
+                      setChanges(result.changes);
+                    })}>Préparer les changements</Button>
+                  </article>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
@@ -295,6 +392,8 @@ export function PlanV2Panel({ projectId, chapterId, writingHref, onApplied }: Pl
                   await applyPlanningStructuralDiff(projectId, changes);
                   setChanges([]);
                   setArchitectures([]);
+                  setDiffractions({});
+                  setDiffractionErrors({});
                   onApplied?.();
                   await refresh();
                   setMessage("Structure validée et appliquée.");
