@@ -44,18 +44,31 @@ jobs:
       - name: Test API
         run: npm run test:api
 
+      - name: Diagnose scope workspace default
+        if: always()
+        run: npm run test -w @auto-essay/web -- src/routes/EditorPage.test.tsx -t "shows book structure and editorial context by default for the selected scope and lets the author collapse them"
+
+      - name: Diagnose scope workspace hierarchy
+        if: always()
+        run: npm run test -w @auto-essay/web -- src/routes/EditorPage.test.tsx -t "selects chapters, sections and paragraphs from one visible manuscript hierarchy"
+
       - name: Test web
+        if: always()
         run: npm run test:web
 
       - name: Build
+        if: always()
         run: npm run build
 
       - name: Synthetic Literacraft demonstration
+        if: always()
         run: npm run demo:synthetic
 
       - name: Station Reverse demonstration
+        if: always()
         run: npm run demo:station-reverse
 
       - name: Security audit
+        if: always()
         run: npm audit --audit-level=high
         continue-on-error: true
