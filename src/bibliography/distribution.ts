@@ -1,16 +1,25 @@
 import { z } from "zod";
 import type { StructuredModelClient } from "../evaluation/evaluateEssay";
-import type { Manuscript } from "../domain/index";
+import type { Manuscript, Source } from "../domain/index";
 import { collectNodeIds } from "../domain/manuscript";
-import type { Source } from "../domain/index";
 import type { SourceProfile } from "../domain/sourceProfile";
+import type { PlanningBrief } from "../domain/planningBrief";
+import type { Citation } from "../domain/citation";
+import type { ContentRelation } from "../domain/contentRelation";
+import type { EditorialPlan } from "../domain/editorialPlan";
+import type { EvidencePack } from "../domain/draftUnit";
+import type {
+  CorpusExplorer,
+  RetrievedPassage,
+  CorroborationProbe,
+} from "./corpusExplorer";
 import {
   BibliographyDistributionEntrySchema,
   type BibliographyDistributionEntry,
   type BibliographyDistributionEntryInput,
 } from "../domain/bibliographyDistribution";
 
-/** Nœud du manuscrit vu par la distribution (id + titre + texte). */
+/** Nœud du manuscrit vu par le fallback historique de distribution. */
 export interface DistributionNode {
   id: string;
   title: string;
@@ -18,7 +27,7 @@ export interface DistributionNode {
 }
 
 export interface DistributeOptions {
-  /** Mode assisté : un appel structuré pour tout le manuscrit (sinon pur). */
+  /** Fallback assisté historique ; n'est plus l'autorité de projection Corpus V2. */
   client?: StructuredModelClient;
 }
 
@@ -36,7 +45,7 @@ export function collectDistributionNodes(tree: Manuscript["tree"]): Distribution
   return nodes;
 }
 
-/** Normalisation minimale d'un terme pour le matching pur. */
+/** Normalisation minimale utilisée uniquement par le fallback historique. */
 export function normalizeTerm(value: string): string {
   return value
     .toLowerCase()
@@ -45,11 +54,7 @@ export function normalizeTerm(value: string): string {
     .trim();
 }
 
-/**
- * Mode POUR (zéro token) : associe une source aux nœuds dont le titre ou le
- * texte contient un de ses sujets/concepts (normalisé, insensible à la casse
- * et aux accents).
- */
+/** @deprecated Fallback metadata-only historique. Corpus V2 utilise projectBibliography(). */
 export function distributeByKeywords(
   profile: SourceProfile,
   nodes: DistributionNode[]
@@ -69,7 +74,7 @@ export function distributeByKeywords(
           rationale: `mots-clés : « ${term} »${matchTitle ? " (titre)" : " (texte)"}`,
           confidence: matchTitle ? 1 : 0.6,
         });
-        break; // un seul lien par source et par nœud
+        break;
       }
     }
   }
@@ -80,10 +85,7 @@ const AssistantDistributionSchema = z.object({
   entries: z.array(BibliographyDistributionEntrySchema).default([]),
 });
 
-/**
- * Prompt du mode assisté : la liste compacte des nœuds (id + titre) et des
- * profils (id + sujets), jamais le corpus.
- */
+/** @deprecated Prompt du fallback metadata-only historique. */
 export function buildDistributePrompt(
   nodes: DistributionNode[],
   profiles: SourceProfile[]
@@ -105,12 +107,7 @@ Réponds en JSON strict uniquement :
 {"entries":[{"sourceId":"...","scopeId":"...","rationale":"pourquoi","confidence":0.8}]}`;
 }
 
-/**
- * Distribution : associe les profils du corpus aux scopes du manuscrit.
- * - Mode POUR (sans client) : `distributeByKeywords`, zéro token.
- * - Mode ASSISTÉ (avec client) : un appel structuré pour tout le manuscrit,
- *   ids inconnus filtrés (garde pure).
- */
+/** @deprecated Fallback historique. N'est plus le chemin cognitif principal. */
 export async function distributeBibliography(
   manuscript: Manuscript,
   profiles: SourceProfile[],
@@ -118,24 +115,22 @@ export async function distributeBibliography(
 ): Promise<BibliographyDistributionEntry[]> {
   const nodes = collectDistributionNodes(manuscript.tree);
   if (options.client) {
-    const raw = await options.client.generateJson(
-      buildDistributePrompt(nodes, profiles)
-    );
+    const raw = await options.client.generateJson(buildDistributePrompt(nodes, profiles));
     const parsed = AssistantDistributionSchema.parse(raw);
     const nodeIds = new Set(nodes.map((n) => n.id));
     const profileIds = new Set(profiles.map((p) => p.sourceId));
     return parsed.entries.filter(
-      (e) => nodeIds.has(e.scopeId) && profileIds.has(e.sourceId)
+      (entry) => nodeIds.has(entry.scopeId) && profileIds.has(entry.sourceId)
     );
   }
   const entries: BibliographyDistributionEntryInput[] = [];
   for (const profile of profiles) {
     entries.push(...distributeByKeywords(profile, nodes));
   }
-  return entries.map((e) => BibliographyDistributionEntrySchema.parse(e));
+  return entries.map((entry) => BibliographyDistributionEntrySchema.parse(entry));
 }
 
-/** Refuse une distribution dont un scopeId n'existe pas dans l'arbre. */
+/** @deprecated Validation du fallback historique source→scope. */
 export function assertDistributionValid(
   distribution: readonly BibliographyDistributionEntry[],
   manuscript: Manuscript
@@ -148,7 +143,7 @@ export function assertDistributionValid(
   }
 }
 
-/** Source projetée dans un scope (ce que le lecteur voit, jamais le corpus). */
+/** Source documentaire visible dans un scope, jamais le corpus intégral. */
 export interface ProjectedSource {
   sourceId: string;
   title: string;
@@ -158,42 +153,275 @@ export interface ProjectedSource {
   abstract?: string;
 }
 
-export interface ProjectedScope {
-  scopeId: string;
-  sources: ProjectedSource[];
+export type DocumentaryRole = "supports" | "contradicts" | "qualifies" | "context";
+
+export interface ProjectedPassage {
+  passage: RetrievedPassage;
+  role: DocumentaryRole;
+  query: string;
 }
 
 /**
- * Projection : par scope, les sources pertinentes (avec leur profil). Les
- * sources sans profil sont projetées avec leurs métadonnées seules.
+ * Projection transitoire et reconstruisible de la matière documentaire d'un scope.
+ * Elle n'est ni un agrégat domaine ni une base canonique de preuves.
  */
-export function projectBibliography(
-  manuscript: Manuscript,
-  distribution: readonly BibliographyDistributionEntry[],
-  librarySources: readonly Source[],
-  profiles: readonly SourceProfile[]
-): ProjectedScope[] {
-  const nodeIds = new Set(collectNodeIds(manuscript.tree));
-  const sourceById = new Map(librarySources.map((s) => [s.id, s]));
-  const profileBySource = new Map(profiles.map((p) => [p.sourceId, p]));
+export interface ProjectedScope {
+  scopeId: string;
+  sources: ProjectedSource[];
+  passages: ProjectedPassage[];
+  citationIds: string[];
+  sourceRelationIds: string[];
+  gaps: string[];
+  unexploredAreas: string[];
+}
 
-  const grouped = new Map<string, ProjectedSource[]>();
-  for (const entry of distribution) {
-    if (!nodeIds.has(entry.scopeId)) continue;
-    const source = sourceById.get(entry.sourceId);
-    const profile = profileBySource.get(entry.sourceId);
-    const projected: ProjectedSource = {
-      sourceId: entry.sourceId,
-      title: source?.title ?? entry.sourceId,
-      authors: source?.authors ?? [],
-      subjects: profile?.subjects ?? [],
-      concepts: profile?.concepts ?? [],
-      abstract: profile?.abstract,
-    };
-    const list = grouped.get(entry.scopeId) ?? [];
-    list.push(projected);
-    grouped.set(entry.scopeId, list);
+export interface ProjectBibliographyInput {
+  planningBrief: PlanningBrief;
+  librarySources: readonly Source[];
+  profiles: readonly SourceProfile[];
+  citations?: readonly Citation[];
+  relations?: readonly ContentRelation[];
+  explorer?: CorpusExplorer;
+  /** Contexte parent/voisins déjà résolu par l'appelant ; aucune lecture du manuscrit ici. */
+  context?: readonly string[];
+  limitPerProbe?: number;
+}
+
+/**
+ * Shared point Corpus V2 : projette pour un scope les sources, passages,
+ * citations/relations déjà qualifiées et lacunes restant ouvertes.
+ *
+ * Le retrieval peut être demandé ici, jamais dans Diffract. Les passages
+ * retournés restent des candidats documentaires : seuls des Citation vérifiées
+ * et ContentRelation qualifiées deviennent des références canoniques downstream.
+ */
+export async function projectBibliography(
+  input: ProjectBibliographyInput
+): Promise<ProjectedScope> {
+  const {
+    planningBrief,
+    librarySources,
+    profiles,
+    citations = [],
+    relations = [],
+    explorer,
+    context = [],
+    limitPerProbe = 1,
+  } = input;
+  const scopeId = planningScopeId(planningBrief);
+  const verifiedCitationById = new Map(
+    citations
+      .filter((citation) => citation.verificationStatus === "verified")
+      .map((citation) => [citation.id, citation])
+  );
+
+  const relevantRelations = relations.filter((relation) => {
+    if (!relationAppliesToScope(relation, planningBrief.projectId, scopeId)) return false;
+    return relation.citationIds.every((citationId) => verifiedCitationById.has(citationId));
+  });
+  const relationCitationIds = relevantRelations.flatMap((relation) => relation.citationIds);
+  const declaredCitationIds = citations
+    .filter(
+      (citation) =>
+        citation.verificationStatus === "verified" &&
+        planningBrief.sourceRefs.includes(citation.sourceId)
+    )
+    .map((citation) => citation.id);
+  const citationIds = unique([...relationCitationIds, ...declaredCitationIds]);
+
+  const passages: ProjectedPassage[] = [];
+  const exploredGapIds = new Set<number>();
+  if (explorer) {
+    const sharedContext = [
+      planningBrief.question,
+      planningBrief.intention,
+      planningBrief.angleOrFunction,
+      ...context,
+    ]
+      .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+      .join("\n");
+
+    for (const hypothesis of planningBrief.hypotheses) {
+      if (hypothesis.status === "rejected") continue;
+      const query = [hypothesis.statement, sharedContext].filter(Boolean).join("\n");
+      const sourceIds = hypothesis.sourceRefs.length > 0 ? hypothesis.sourceRefs : undefined;
+      const retrieved = await explorer.retrieve({
+        mode: "corroboration",
+        query,
+        sourceIds,
+        probes: ["support", "contradiction", "qualification"],
+        limitPerProbe,
+      });
+      for (const passage of retrieved) {
+        passages.push({
+          passage,
+          role: roleForProbe(passage.probe),
+          query: hypothesis.statement,
+        });
+      }
+    }
+
+    for (const [index, gap] of planningBrief.gaps.entries()) {
+      const query = [gap.neededEvidence ?? gap.description, sharedContext]
+        .filter(Boolean)
+        .join("\n");
+      const retrieved = await explorer.retrieve({
+        mode: "exploration",
+        query,
+        limit: 1,
+      });
+      if (retrieved.length > 0) exploredGapIds.add(index);
+      for (const passage of retrieved) {
+        passages.push({ passage, role: "context", query: gap.description });
+      }
+    }
   }
 
-  return [...grouped.entries()].map(([scopeId, sources]) => ({ scopeId, sources }));
+  const dedupedPassages = dedupeProjectedPassages(passages);
+  const projectedSourceIds = new Set<string>(planningBrief.sourceRefs);
+  for (const citationId of citationIds) {
+    const citation = verifiedCitationById.get(citationId);
+    if (citation) projectedSourceIds.add(citation.sourceId);
+  }
+  for (const item of dedupedPassages) projectedSourceIds.add(item.passage.sourceId);
+  for (const relation of relevantRelations) {
+    for (const participant of relation.participants) {
+      if (participant.kind === "source") projectedSourceIds.add(participant.id);
+    }
+  }
+
+  const sourceById = new Map(librarySources.map((source) => [source.id, source]));
+  const profileBySource = new Map(profiles.map((profile) => [profile.sourceId, profile]));
+  const sources = [...projectedSourceIds]
+    .map((sourceId) => projectSource(sourceId, sourceById.get(sourceId), profileBySource.get(sourceId)))
+    .sort((left, right) => left.sourceId.localeCompare(right.sourceId));
+
+  const gaps = planningBrief.gaps.map((gap) => gap.description);
+  const unexploredAreas = planningBrief.gaps
+    .filter((_, index) => !explorer || !exploredGapIds.has(index))
+    .map((gap) => gap.description);
+
+  return {
+    scopeId,
+    sources,
+    passages: dedupedPassages,
+    citationIds,
+    sourceRelationIds: relevantRelations.map((relation) => relation.id),
+    gaps,
+    unexploredAreas,
+  };
+}
+
+/** Ajoute uniquement les références canoniques de la projection à un plan existant. */
+export function projectEditorialPlanReferences(
+  plan: EditorialPlan,
+  projection: ProjectedScope
+): EditorialPlan {
+  return {
+    ...plan,
+    citationIds: unique([...plan.citationIds, ...projection.citationIds]),
+    sourceRelationIds: unique([
+      ...plan.sourceRelationIds,
+      ...projection.sourceRelationIds,
+    ]),
+  };
+}
+
+/**
+ * Projection Writer : réutilise EvidencePack sans en faire une autorité.
+ * Les relations contradictoires deviennent des objections ; leur traçabilité
+ * canonique reste dans EditorialPlan.sourceRelationIds.
+ */
+export function buildEvidencePackFromProjection(
+  projection: ProjectedScope,
+  citations: readonly Citation[],
+  relations: readonly ContentRelation[],
+  supportingClaimIds: readonly string[] = []
+): EvidencePack {
+  const allowedCitationIds = new Set(projection.citationIds);
+  const selectedCitations = citations.filter(
+    (citation) =>
+      allowedCitationIds.has(citation.id) && citation.verificationStatus === "verified"
+  );
+  const relationById = new Map(relations.map((relation) => [relation.id, relation]));
+  const objections = projection.sourceRelationIds
+    .map((relationId) => relationById.get(relationId))
+    .filter((relation): relation is ContentRelation => relation?.type === "contradicts")
+    .map((relation) => ({
+      statement: relation.description,
+      sourceId: relation.participants.find((participant) => participant.kind === "source")?.id,
+    }));
+
+  return {
+    sourceIds: unique([
+      ...projection.sources.map((source) => source.sourceId),
+      ...selectedCitations.map((citation) => citation.sourceId),
+    ]),
+    keyCitations: selectedCitations.map((citation) => ({
+      sourceId: citation.sourceId,
+      quote: citation.quote,
+      pageRange:
+        citation.locator.kind === "page" ? citation.locator.value : undefined,
+      context: citation.context,
+    })),
+    supportingClaimIds: [...supportingClaimIds],
+    objections,
+    authorNotes:
+      projection.unexploredAreas.length > 0
+        ? `Zones documentaires encore ouvertes : ${projection.unexploredAreas.join(" ; ")}`
+        : undefined,
+  };
+}
+
+function planningScopeId(brief: PlanningBrief): string {
+  if (brief.scopeRef.kind === "node") return brief.scopeRef.nodeId;
+  if (brief.scopeRef.kind === "plan_entry") return brief.scopeRef.planEntryId;
+  return brief.scopeRef.manuscriptId;
+}
+
+function relationAppliesToScope(
+  relation: ContentRelation,
+  projectId: string,
+  scopeId: string
+): boolean {
+  if (relation.scope.projectId !== projectId) return false;
+  if (relation.scope.level === "project") return true;
+  if (relation.scope.level === "section") return relation.scope.sectionId === scopeId;
+  return relation.scope.paragraphId === scopeId || relation.scope.sectionId === scopeId;
+}
+
+function roleForProbe(probe: CorroborationProbe | undefined): DocumentaryRole {
+  if (probe === "contradiction" || probe === "counterexample") return "contradicts";
+  if (probe === "qualification" || probe === "alternative") return "qualifies";
+  if (probe === "support") return "supports";
+  return "context";
+}
+
+function projectSource(
+  sourceId: string,
+  source: Source | undefined,
+  profile: SourceProfile | undefined
+): ProjectedSource {
+  return {
+    sourceId,
+    title: source?.title ?? sourceId,
+    authors: source?.authors ?? [],
+    subjects: profile?.subjects ?? [],
+    concepts: profile?.concepts ?? [],
+    abstract: profile?.abstract,
+  };
+}
+
+function dedupeProjectedPassages(passages: ProjectedPassage[]): ProjectedPassage[] {
+  const seen = new Set<string>();
+  return passages.filter((item) => {
+    const key = `${item.passage.id}:${item.role}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function unique(values: readonly string[]): string[] {
+  return [...new Set(values)];
 }
