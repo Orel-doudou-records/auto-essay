@@ -38,7 +38,7 @@ export const WriterEditorialProjectionSchema = ProjectionBaseSchema.extend({
   type: z.literal("writer"),
   argumentativeFunction: z.string().min(1),
   allowedClaimIds: z.array(z.string().min(1)).default([]),
-  allowedEvidenceIds: z.array(z.string().min(1)).default([]),
+  allowedCitationIds: z.array(z.string().min(1)).default([]),
   allowedSourceRelationIds: z.array(z.string().min(1)).default([]),
   directives: z.array(EditorialDirectiveSchema).min(1),
   intendedEffects: ArticulationEffectsSchema,

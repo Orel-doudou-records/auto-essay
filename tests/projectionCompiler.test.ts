@@ -42,7 +42,7 @@ function createFixture() {
     argumentativeFunction: "exposer une contradiction",
     decisions: [accepted.decision],
     claimIds: ["claim-1", "claim-2"],
-    evidenceIds: ["source-1", "source-2"],
+    citationIds: ["citation-1", "citation-2"],
     sourceRelationIds: ["relation-1"],
     contentOperations: ["présenter deux versions"],
     stylisticOperations: accepted.articulation.stylisticOperations,
@@ -72,7 +72,7 @@ describe("ProjectionCompiler", () => {
     expect(bundle.revision.planId).toBe(fixture.plan.id);
     expect(bundle.writer.decisionIds).toEqual([fixture.decision.id]);
     expect(bundle.writer.allowedClaimIds).toEqual(["claim-1", "claim-2"]);
-    expect(bundle.writer.allowedEvidenceIds).toEqual(["source-1", "source-2"]);
+    expect(bundle.writer.allowedCitationIds).toEqual(["citation-1", "citation-2"]);
     expect(bundle.writer.directives).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

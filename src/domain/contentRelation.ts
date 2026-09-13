@@ -116,7 +116,7 @@ export type ContentRelationParticipantInput = z.input<
 
 /**
  * Relation explicite entre les objets de connaissance d'Auto Essay.
- * Le contrat décrit une relation sans fusionner les participants.
+ * Les `citationIds` ancrent documentairement la relation sans devenir des participants.
  */
 export const ContentRelationSchema = z
   .object({
@@ -125,7 +125,7 @@ export const ContentRelationSchema = z
     type: ContentRelationTypeSchema,
     participants: z.array(ContentRelationParticipantSchema).min(1),
     description: z.string().min(1),
-    evidenceIds: z.array(z.string().min(1)).default([]),
+    citationIds: z.array(z.string().min(1)).default([]),
     confidence: z.enum(["low", "medium", "high"]).default("medium"),
     origin: z.enum([
       "author_declared",
@@ -176,7 +176,7 @@ export function createContentRelation(
 ): ContentRelation {
   return ContentRelationSchema.parse({
     id: crypto.randomUUID(),
-    evidenceIds: [],
+    citationIds: [],
     confidence: "medium",
     status: "detected",
     createdAt: new Date().toISOString(),

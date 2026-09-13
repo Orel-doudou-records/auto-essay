@@ -25,7 +25,7 @@ export function prepareIntegratedEvaluationContext(input: {
     argumentativeFunction: input.unit.thesis || input.decision.contentCommitments.join(" "),
     decisions: [input.decision],
     claimIds: input.unit.claimIds,
-    evidenceIds: input.unit.evidencePack.sourceIds,
+    citationIds: [...new Set(input.unit.citationUses.map((use) => use.citationId))],
     contentOperations: input.decision.contentCommitments,
     stylisticOperations: input.articulation.stylisticOperations,
     intendedEffects: input.articulation.intendedEffects,

@@ -20,12 +20,13 @@ describe("ContentRelation", () => {
         { kind: "source", id: "testimony-1", role: "situated chronology" },
       ],
       description: "The testimony dates the closure before the archive records it.",
-      evidenceIds: ["annotation-1", "annotation-2"],
+      citationIds: ["citation-1", "citation-2"],
       origin: "co_constructed",
     });
 
     expect(relation.type).toBe("contradicts");
     expect(relation.participants).toHaveLength(2);
+    expect(relation.citationIds).toEqual(["citation-1", "citation-2"]);
     expect(relation.status).toBe("detected");
     expect(relation.confidence).toBe("medium");
   });
@@ -44,6 +45,7 @@ describe("ContentRelation", () => {
 
     expect(relation.type).toBe("differs_in_scope");
     expect(relation.type).not.toBe("contradicts");
+    expect(relation.citationIds).toEqual([]);
   });
 
   it("should reject a binary relation with only one participant", () => {

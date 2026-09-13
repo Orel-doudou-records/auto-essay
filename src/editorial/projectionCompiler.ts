@@ -53,7 +53,7 @@ export class ProjectionCompiler {
       type: "writer",
       argumentativeFunction: input.plan.argumentativeFunction,
       allowedClaimIds: input.plan.claimIds,
-      allowedEvidenceIds: input.plan.evidenceIds,
+      allowedCitationIds: input.plan.citationIds,
       allowedSourceRelationIds: input.plan.sourceRelationIds,
       directives,
       intendedEffects: input.plan.intendedEffects,
@@ -216,4 +216,3 @@ function buildDirectives(
 
   return directives;
 }
-

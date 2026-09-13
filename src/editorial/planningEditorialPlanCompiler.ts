@@ -44,7 +44,7 @@ export interface PlanningEditorialExecutionInput {
   decisions: EditorialDecision[];
   argumentativeFunction?: string;
   claimIds?: string[];
-  evidenceIds?: string[];
+  citationIds?: string[];
   sourceRelationIds?: string[];
   contentOperations: string[];
   stylisticOperations: PlannedStylisticOperationInput[];
@@ -129,7 +129,7 @@ export function compilePlanningScopeToEditorialPlan(
     argumentativeFunction,
     decisions: input.execution.decisions,
     claimIds: input.execution.claimIds,
-    evidenceIds: input.execution.evidenceIds,
+    citationIds: input.execution.citationIds,
     sourceRelationIds: input.execution.sourceRelationIds,
     contentOperations: input.execution.contentOperations,
     stylisticOperations: input.execution.stylisticOperations,

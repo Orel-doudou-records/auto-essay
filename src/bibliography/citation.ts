@@ -1,7 +1,70 @@
 import type { Manuscript } from "../domain/index";
 import type { Source } from "../domain/index";
-import type { Citation, CitationUse } from "../domain/citation";
+import {
+  CitationSchema,
+  type Citation,
+  type CitationUse,
+} from "../domain/citation";
+import type { ContentRelation } from "../domain/contentRelation";
 import type { BibliographyDistributionEntry } from "../domain/bibliographyDistribution";
+import type { RetrievedPassage } from "./corpusExplorer";
+
+/**
+ * Promote a canonical RetrievedPassage into a Citation.
+ * Retrieval does not imply verification: callers must provide the status.
+ */
+export function promoteRetrievedPassageToCitation(input: {
+  projectId: string;
+  passage: RetrievedPassage;
+  verificationStatus: Citation["verificationStatus"];
+  context?: string;
+  citationId?: string;
+  createdAt?: string;
+}): Citation {
+  const { passage } = input;
+  return CitationSchema.parse({
+    id: input.citationId ?? crypto.randomUUID(),
+    projectId: input.projectId,
+    sourceId: passage.sourceId,
+    quote: passage.text,
+    locator: passage.locator,
+    context: input.context,
+    retrievalProvenance: {
+      retrievedPassageId: passage.id,
+      documentId: passage.span.documentId,
+      blockId: passage.span.blockId,
+      start: passage.span.start,
+      end: passage.span.end,
+      documentFingerprint: passage.fingerprint,
+    },
+    verificationStatus: input.verificationStatus,
+    createdAt: input.createdAt ?? new Date().toISOString(),
+  });
+}
+
+/**
+ * Cross-entity guard for functional evidence: every citation grounding a
+ * relation must resolve and be explicitly verified.
+ */
+export function assertVerifiedRelationCitations(
+  relation: ContentRelation,
+  citations: readonly Citation[]
+): void {
+  const byId = new Map(citations.map((citation) => [citation.id, citation] as const));
+  for (const citationId of relation.citationIds) {
+    const citation = byId.get(citationId);
+    if (!citation) {
+      throw new Error(
+        `ContentRelation '${relation.id}' references unknown citation '${citationId}'`
+      );
+    }
+    if (citation.verificationStatus !== "verified") {
+      throw new Error(
+        `ContentRelation '${relation.id}' references non-verified citation '${citationId}'`
+      );
+    }
+  }
+}
 
 /**
  * Le scope d'une unité rédigée : l'id du nœud dont une entrée de plan (E4,

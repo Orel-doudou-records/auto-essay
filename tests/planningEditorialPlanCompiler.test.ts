@@ -83,7 +83,7 @@ function fixture() {
     },
     decisions: [activeDecision(manuscript.projectId)],
     claimIds: ["claim-1"],
-    evidenceIds: ["evidence-1"],
+    citationIds: ["citation-1"],
     sourceRelationIds: ["relation-neighbor-1"],
     contentOperations: ["Confront the two documentary regimes"],
     stylisticOperations: [
@@ -126,7 +126,7 @@ describe("planning -> EditorialPlan compiler", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.plan.argumentativeFunction).toBe(brief.angleOrFunction);
-    expect(result.plan.evidenceIds).toEqual(["evidence-1"]);
+    expect(result.plan.citationIds).toEqual(["citation-1"]);
     expect(result.plan.sourceRelationIds).toEqual(["relation-neighbor-1"]);
     expect(result.plan.invariants).toEqual([
       "Do not merge institutional and vernacular evidence",

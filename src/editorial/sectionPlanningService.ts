@@ -26,7 +26,7 @@ export interface ParagraphPlanRequest {
   inheritedDecisionIds?: string[];
   localDecisions?: EditorialDecision[];
   claimIds?: string[];
-  evidenceIds?: string[];
+  citationIds?: string[];
   sourceRelationIds?: string[];
   contentOperations: string[];
   stylisticOperations: PlannedStylisticOperationInput[];
@@ -41,7 +41,7 @@ export interface SectionPlanRequest {
   argumentativeFunction: string;
   decisions: EditorialDecision[];
   claimIds?: string[];
-  evidenceIds?: string[];
+  citationIds?: string[];
   sourceRelationIds?: string[];
   contentOperations: string[];
   stylisticOperations: PlannedStylisticOperationInput[];
@@ -79,7 +79,7 @@ export class SectionPlanningService {
       argumentativeFunction: request.argumentativeFunction,
       decisions: request.decisions,
       claimIds: request.claimIds,
-      evidenceIds: request.evidenceIds,
+      citationIds: request.citationIds,
       sourceRelationIds: request.sourceRelationIds,
       contentOperations: request.contentOperations,
       stylisticOperations: request.stylisticOperations,
@@ -172,7 +172,7 @@ export class SectionPlanningService {
       argumentativeFunction: paragraph.argumentativeFunction,
       decisions,
       claimIds: paragraph.claimIds,
-      evidenceIds: paragraph.evidenceIds,
+      citationIds: paragraph.citationIds,
       sourceRelationIds: paragraph.sourceRelationIds,
       contentOperations: paragraph.contentOperations,
       stylisticOperations: paragraph.stylisticOperations,

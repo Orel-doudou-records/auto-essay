@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createClaim } from "../src/domain/claim";
+import type { Citation } from "../src/domain/citation";
 import { createSource } from "../src/domain/source";
 import { RelationAnalyzer } from "../src/editorial/relationAnalyzer";
 
@@ -43,11 +44,33 @@ function createFixture() {
     contradictionOf: archiveClaim.id,
   });
 
-  return { archive, testimony, archiveClaim, testimonyClaim };
+  const verifiedCitation: Citation = {
+    id: "citation-verified",
+    projectId: "project-1",
+    sourceId: archive.id,
+    quote: "Le lieu est enregistré comme disparu.",
+    locator: { kind: "page", value: "4" },
+    verificationStatus: "verified",
+    createdAt: "2026-09-13T12:00:00.000Z",
+  };
+  const unverifiedCitation: Citation = {
+    ...verifiedCitation,
+    id: "citation-unverified",
+    verificationStatus: "unverified",
+  };
+
+  return {
+    archive,
+    testimony,
+    archiveClaim,
+    testimonyClaim,
+    verifiedCitation,
+    unverifiedCitation,
+  };
 }
 
 describe("RelationAnalyzer", () => {
-  it("detects explicit support and contradiction without an LLM", async () => {
+  it("detects source-level support and contradiction without pretending sources are citations", async () => {
     const fixture = createFixture();
     const analyzer = new RelationAnalyzer();
 
@@ -66,9 +89,10 @@ describe("RelationAnalyzer", () => {
       relations.some((relation) => relation.type === "contradicts")
     ).toBe(true);
     expect(relations.every((relation) => relation.origin === "system_detected")).toBe(true);
+    expect(relations.every((relation) => relation.citationIds.length === 0)).toBe(true);
   });
 
-  it("adds a model relation while preserving deterministic relations", async () => {
+  it("accepts verified citation ids on a model relation while preserving deterministic relations", async () => {
     const fixture = createFixture();
     const client = new MockStructuredClient({
       relations: [
@@ -80,7 +104,7 @@ describe("RelationAnalyzer", () => {
           ],
           description:
             "L'archive décrit un statut administratif tandis que le témoignage décrit une pratique vécue.",
-          evidenceIds: [fixture.archive.id, fixture.testimony.id],
+          citationIds: [fixture.verifiedCitation.id],
           confidence: "high",
         },
       ],
@@ -95,14 +119,78 @@ describe("RelationAnalyzer", () => {
       },
       sources: [fixture.archive, fixture.testimony],
       claims: [fixture.archiveClaim, fixture.testimonyClaim],
+      citations: [fixture.verifiedCitation],
     });
 
+    const relation = relations.find((item) => item.type === "differs_in_scope");
+    expect(relation?.citationIds).toEqual([fixture.verifiedCitation.id]);
     expect(
-      relations.some((relation) => relation.type === "differs_in_scope")
+      relations.some((candidate) => candidate.type === "contradicts")
     ).toBe(true);
-    expect(
-      relations.some((relation) => relation.type === "contradicts")
-    ).toBe(true);
+  });
+
+  it("rejects a non-verified citation proposed as argumentative grounding", async () => {
+    const fixture = createFixture();
+    const client = new MockStructuredClient({
+      relations: [
+        {
+          type: "qualifies",
+          participants: [
+            { kind: "claim", id: fixture.archiveClaim.id },
+            { kind: "claim", id: fixture.testimonyClaim.id },
+          ],
+          description: "The testimony qualifies the archive claim.",
+          citationIds: [fixture.unverifiedCitation.id],
+          confidence: "medium",
+        },
+      ],
+    });
+    const analyzer = new RelationAnalyzer(client);
+
+    await expect(
+      analyzer.analyze({
+        scope: {
+          level: "section",
+          projectId: "project-1",
+          sectionId: "section-1",
+        },
+        sources: [fixture.archive, fixture.testimony],
+        claims: [fixture.archiveClaim, fixture.testimonyClaim],
+        citations: [fixture.unverifiedCitation],
+      })
+    ).rejects.toThrow("non-verified citation citation-unverified");
+  });
+
+  it("rejects a citation id invented by the model", async () => {
+    const fixture = createFixture();
+    const client = new MockStructuredClient({
+      relations: [
+        {
+          type: "qualifies",
+          participants: [
+            { kind: "claim", id: fixture.archiveClaim.id },
+            { kind: "claim", id: fixture.testimonyClaim.id },
+          ],
+          description: "Invented citation grounding.",
+          citationIds: ["citation-invented"],
+          confidence: "low",
+        },
+      ],
+    });
+    const analyzer = new RelationAnalyzer(client);
+
+    await expect(
+      analyzer.analyze({
+        scope: {
+          level: "section",
+          projectId: "project-1",
+          sectionId: "section-1",
+        },
+        sources: [fixture.archive, fixture.testimony],
+        claims: [fixture.archiveClaim, fixture.testimonyClaim],
+        citations: [fixture.verifiedCitation],
+      })
+    ).rejects.toThrow("unknown citation citation-invented");
   });
 
   it("rejects participants invented by the model", async () => {
@@ -116,7 +204,7 @@ describe("RelationAnalyzer", () => {
             { kind: "claim", id: "unknown-claim" },
           ],
           description: "Relation inventée",
-          evidenceIds: [],
+          citationIds: [],
           confidence: "low",
         },
       ],
@@ -147,7 +235,7 @@ describe("RelationAnalyzer", () => {
             { kind: "claim", id: fixture.archiveClaim.id },
           ],
           description: "Duplicate support relation",
-          evidenceIds: [fixture.archive.id],
+          citationIds: [fixture.verifiedCitation.id],
           confidence: "high",
         },
       ],
@@ -162,6 +250,7 @@ describe("RelationAnalyzer", () => {
       },
       sources: [fixture.archive, fixture.testimony],
       claims: [fixture.archiveClaim, fixture.testimonyClaim],
+      citations: [fixture.verifiedCitation],
     });
 
     const archiveSupport = relations.filter(

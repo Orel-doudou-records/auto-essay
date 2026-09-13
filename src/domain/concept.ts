@@ -16,10 +16,8 @@ export const ConceptStatusSchema = z.enum([
 export type ConceptStatus = z.infer<typeof ConceptStatusSchema>;
 
 /**
- * Concept : nœud de premier ordre du graphe de connaissance.
- * Un concept est un terme d'analyse situé dans un périmètre éditorial,
- * défini dans le vocabulaire du projet, et ancré dans des sources et des
- * passages (evidenceIds) plutôt que flottant.
+ * Concept : nœud intellectuel situé. Les ancrages documentaires précis sont
+ * des Citation ids ; les sourceIds restent un index bibliographique plus large.
  */
 export const ConceptSchema = z.object({
   id: z.string().min(1),
@@ -28,7 +26,7 @@ export const ConceptSchema = z.object({
   definition: z.string().min(1),
   scope: EditorialScopeSchema,
   sourceIds: z.array(z.string().min(1)).default([]),
-  evidenceIds: z.array(z.string().min(1)).default([]),
+  citationIds: z.array(z.string().min(1)).default([]),
   status: ConceptStatusSchema.default("proposed"),
   createdAt: z.string().datetime(),
 });
@@ -47,7 +45,7 @@ export function createConcept(
   return ConceptSchema.parse({
     id: crypto.randomUUID(),
     sourceIds: [],
-    evidenceIds: [],
+    citationIds: [],
     status: "proposed",
     createdAt: new Date().toISOString(),
     ...partial,
