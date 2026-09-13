@@ -1,13 +1,6 @@
 import { readFileSync } from "node:fs";
-import {
-  buildProfiles,
-  createLibrary,
-  mergeLibraryProfiles,
-  type Library,
-} from "@auto-essay/core";
+import { createLibrary, type Library } from "@auto-essay/core";
 import { importBibTeX } from "@auto-essay/core";
-import { createModelClient } from "../llm/client.js";
-import { StructuredClientAdapter } from "../llm/structuredAdapter.js";
 import {
   loadEnvironmentFile,
   readOptions,
@@ -20,20 +13,22 @@ import {
 loadEnvironmentFile();
 
 /**
- * Ingestion de la bibliothèque (F0) : importe un corpus (.bib), synthétise les
- * profils par lots (métadonnées seules), et écrit library.json.
+ * Ingestion de l'index bibliographique : importe les références BibTeX comme
+ * `Source`, sans prétendre comprendre les documents depuis leurs métadonnées.
+ *
+ * Les `SourceProfile` Corpus V2 sont construits ultérieurement à partir de
+ * vrais `IngestedDocument`.
  *
  * Usage :
  *   npm run ingest -w @auto-essay/api -- \
  *     --bib /chemin/bibliography.bib [--library /chemin/library.json] \
- *     [--out /chemin/library.json] [--batch 20]
+ *     [--out /chemin/library.json]
  */
 async function main(): Promise<void> {
   const options = readOptions(process.argv.slice(2));
   const bibPath = options.bib;
   const libraryPath = options.library;
   const outPath = options.out ?? "library.json";
-  const batch = Number.parseInt(options.batch ?? "20", 10);
 
   if (!bibPath) {
     throw new Error("Missing required --bib <fichier.bib>");
@@ -51,18 +46,12 @@ async function main(): Promise<void> {
     library = { sources, profiles: existing.profiles ?? [] };
   }
 
-  const client = await createModelClient();
-  const structured = new StructuredClientAdapter(client);
-
-  const unprofiled = sources.filter(
-    (s) => !library.profiles.some((p) => p.sourceId === s.id)
-  );
-  const profiles = await buildProfiles(unprofiled, structured, { batchSize: batch });
-
-  const merged = mergeLibraryProfiles(library, profiles);
-  writeJson(merged, outPath);
+  writeJson(library, outPath);
   writeCliMessage(
-    `library.json écrit : ${merged.sources.length} sources, ${merged.profiles.length} profils (${profiles.length} nouveaux).`
+    `library.json écrit : ${library.sources.length} sources, ${library.profiles.length} profils existants.`
+  );
+  writeCliWarning(
+    "Les nouvelles références ne sont plus profilées depuis les seules métadonnées BibTeX ; ingérez leur contenu documentaire avant la Comprehension Closure."
   );
 }
 
