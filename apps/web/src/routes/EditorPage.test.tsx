@@ -76,7 +76,9 @@ describe("EditorPage", () => {
     useProjectNavigation.mockReturnValue({ entries: [], loading: false, error: null, reload: vi.fn() });
   });
 
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
   it("opens the requested prepared draft unit from the URL", async () => {
     renderEditor();
