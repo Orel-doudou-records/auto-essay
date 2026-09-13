@@ -16,6 +16,43 @@ Inspiré de :
 3. **Séparation juge/écrivain** : modèle d'évaluation différent du modèle de rédaction
 4. **Execute → Verify → Report** : pas de livraison sans vérification préalable
 5. **Sorties structurées** : JSON strict, pas de markdown flou
+6. **Autorité documentaire explicite** : `Source` identifie ; `IngestedDocument` porte le contenu canonique ; retrieval, citation et support argumentatif restent distincts
+
+## Chemin documentaire Corpus V2
+
+```text
+Source
+  → IngestedDocument
+  → SourceProfile
+  → Comprehension Closure
+  → CorpusSynthesis / CorpusExplorer
+  → RetrievedPassage
+  → Citation vérifiée
+  → ContentRelation
+  → projection documentaire du scope
+  → PlanningBrief / EditorialPlan
+  → EvidencePack
+  → Writer
+  → Judge
+```
+
+Deux entrées sont supportées :
+
+- **corpus-first** : le sujet peut émerger d'un corpus fermé avant la création du `Manuscript` ; un shell de manuscrit n'est créé qu'au moment où un sujet retenu devient `PlanningBrief` ;
+- **scope-first** : un `PlanningBrief` existant pilote exploration/corroboration, puis les passages rematérialisés et vérifiés alimentent la projection documentaire du scope.
+
+Invariants Corpus V2 :
+
+- `source registered != source understood` ;
+- toute synthèse globale exige la Comprehension Closure des sources actives ou leur exclusion explicite ;
+- `RetrievedPassage` est transitoire et toujours rematérialisé depuis `IngestedDocument` ;
+- `Citation` = provenance vérifiée, `ContentRelation` = fonction argumentative ;
+- `EvidencePack` reste une projection Writer, jamais une autorité documentaire ;
+- `CorpusSynthesis` et les projections de scope sont reconstruisibles, pas canoniques ;
+- aucun `DocumentMap`, `CorpusMap` ou `Evidence` canonique ;
+- Diffract ne déclenche pas le retrieval ;
+- une nouvelle version de source revalide seulement ses dépendances directes et ne réécrit jamais automatiquement `Manuscript.tree` ;
+- PageIndex n'est pas un backend runtime supporté à ce stade ; voir `docs/architecture/CORPUS_V2_PAGEINDEX_BENCHMARK.md`.
 
 ---
 
@@ -23,47 +60,50 @@ Inspiré de :
 
 ### Phase 1 : Intake (Cadrage)
 
-**Input** : `thesis_seed.md` ou formulaire de cadrage
-**Output** : Configuration projet, objectifs
+**Input** : `thesis_seed.md`, formulaire de cadrage **ou corpus seul**
+**Output** : Configuration projet, objectifs ou cadrage initial minimal
 
 Processus :
-1. Définir la question centrale
+1. Définir une question centrale lorsqu'elle existe déjà, sans l'imposer à un flux corpus-first
 2. Choisir la granularité (paragraph / section / chapter / book)
 3. Configurer la voix essayistique (`essay_voice.md`)
 4. Valider le périmètre (`context_scope.md`)
 
-### Phase 2 : Sourcing (Ingestion)
+### Phase 2 : Sourcing (Ingestion + compréhension)
 
 **Input** : PDF, Markdown, BibTeX, Zotero
-**Output** : Sources structurées dans `Source[]`
+**Output** : `Source[]` + `IngestedDocument[]` + `SourceProfile[]`
 
 Processus :
-1. Importer les documents
-2. Extraire les annotations/citations
-3. Vérifier les métadonnées (DOI, auteurs)
-4. Normaliser le format
+1. Enregistrer l'identité bibliographique dans `Source`
+2. Extraire le contenu dans `IngestedDocument` avec fingerprint, blocs, locators et diagnostics
+3. Construire `SourceProfile` depuis le contenu ingéré, jamais depuis les seules métadonnées
+4. Vérifier la Comprehension Closure du corpus actif
+5. Signaler explicitement toute source `degraded` ou `unreadable`
 
-### Phase 3 : Planning (Carte Argumentative)
+### Phase 3 : Planning (Corpus + intention éditoriale)
 
-**Input** : Sources + thèse
-**Output** : `argument_map.md`
+**Input** : corpus fermé ou `PlanningBrief` existant
+**Output** : sujets/axes dérivés, puis `PlanningBrief` et `EditorialPlan`
 
 Processus :
-1. Identifier les preuves majeures
-2. Cartographier les objections
-3. Structurer les transitions
-4. Marquer les dettes documentaires
+1. En corpus-first, comparer les profils fermés et matérialiser les anchors en `RetrievedPassage`
+2. Proposer plusieurs sujets/axes ancrés dans des passages réels
+3. En scope-first, rechercher séparément support, contradiction, qualification, contre-exemple ou alternative
+4. Promouvoir seulement les passages vérifiés en `Citation`
+5. Qualifier leur fonction argumentative via `ContentRelation`
+6. Projeter la matière documentaire pertinente vers le scope
+7. Compiler l'intention retenue en `EditorialPlan` sans muter automatiquement la structure du manuscrit
 
-**Exit Criteria** : `planning_score > 7.5`
-**Max iterations** : 20
+**Exit Criteria** : fondation documentaire traçable + contrat éditorial valide
 
 ### Phase 4 : Drafting (Rédaction)
 
-**Input** : Argument map + Evidence pack
+**Input** : `EditorialPlan` + `EvidencePack`
 **Output** : `draft_units/*.md`
 
 Processus par unité :
-1. Sélectionner sources et citations (evidence pack)
+1. Projeter sources, citations et objections dans l'EvidencePack
 2. Générer le contenu (writer model)
 3. Extraire les claims
 4. Vérifications mécaniques (anti-overclaim)
@@ -114,7 +154,8 @@ Processus :
 packages/essay-core/
 ├── domain/           # Types métier (Source, Claim, DraftUnit, EssayProject)
 ├── state/            # State machine + Registry déterministe
-├── ingestion/        # Import Markdown, BibTeX, PDF, Zotero
+├── ingestion/        # Source + IngestedDocument, Markdown/PDF/BibTeX
+├── bibliography/     # Profiles, closure, retrieval, citations, scope projection
 ├── evaluation/       # Évaluateur read-only + Mechanical checks
 ├── revision/         # Génération de briefs
 ├── pipeline/         # Modes paragraphe/section/chapitre/livre
@@ -229,12 +270,17 @@ Sortie : JSON structuré + Markdown
 
 - [x] Schémas métier (Source, Claim, DraftUnit, EssayProject)
 - [x] State machine + registry déterministe
-- [x] Ingestion Markdown et BibTeX
+- [x] Ingestion Markdown, BibTeX et PDF canonique
+- [x] Comprehension Closure + découverte corpus-first
+- [x] CorpusExplorer exploration/corroboration
+- [x] Citation + ContentRelation sans entité Evidence parallèle
+- [x] Projection documentaire par scope
+- [x] Invalidation ciblée par fingerprint
 - [x] Mode paragraphe (prompt + pipeline)
 - [x] Mechanical checks (anti-overclaim)
 - [x] Évaluateur read-only
 - [x] Reviewer distinct + briefs
-- [x] Tests unitaires passant
+- [x] Tests unitaires + E2E Corpus V2
 - [ ] Export Pandoc/PDF/ZIP
 - [ ] Connecteur Zotero
 - [x] Mode section
@@ -250,3 +296,7 @@ Sortie : JSON structuré + Markdown
 3. Pas de reporting sans vérification → invariant `report_requires_verification`
 4. Pas d'auto-évaluation du writer → judge ≠ writer
 5. Pas de chaîne de pensée exposée → sorties structurées uniquement
+6. Pas de `Source.content` utilisé comme substitut de `IngestedDocument`
+7. Pas de metadata-only `SourceProfile` pour fermer un corpus
+8. Pas de distribution cognitive statique source→scope
+9. Pas de PageIndex/Graphify comme autorité documentaire
