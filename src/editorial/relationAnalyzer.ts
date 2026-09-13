@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { StructuredModelClient } from "../evaluation/evaluateEssay";
 import type { Claim } from "../domain/claim";
 import type { Concept } from "../domain/concept";
+import type { Citation } from "../domain/citation";
 import type { Source } from "../domain/source";
 import type { Tension } from "../domain/tension";
 import {
@@ -18,7 +19,7 @@ const RawContentRelationSchema = z.object({
   type: ContentRelationTypeSchema,
   participants: z.array(ContentRelationParticipantSchema).min(1),
   description: z.string().min(1),
-  evidenceIds: z.array(z.string().min(1)).default([]),
+  citationIds: z.array(z.string().min(1)).default([]),
   confidence: z.enum(["low", "medium", "high"]).default("medium"),
 });
 
@@ -30,6 +31,7 @@ export interface RelationAnalysisRequest {
   scope: EditorialScopeInput;
   sources: Source[];
   claims: Claim[];
+  citations?: Citation[];
   argumentativeFunction?: string;
   objections?: Array<{
     statement: string;
@@ -42,8 +44,9 @@ export interface RelationAnalysisRequest {
 
 /**
  * Produit des relations explicites sans modifier les sources ni les claims.
- * Les relations certaines sont d'abord dérivées mécaniquement, puis complétées
- * par un modèle structuré lorsqu'un client est fourni.
+ * Les relations source-level certaines peuvent être dérivées sans citation ;
+ * tout ancrage citationnel proposé par le modèle doit résoudre vers une
+ * Citation explicitement verified.
  */
 export class RelationAnalyzer {
   constructor(private readonly client?: StructuredModelClient) {}
@@ -61,10 +64,13 @@ export class RelationAnalyzer {
     );
     const parsed = RelationAnalysisOutputSchema.parse(rawOutput);
     const catalog = buildParticipantCatalog(request);
+    const citations = new Map(
+      (request.citations ?? []).map((citation) => [citation.id, citation] as const)
+    );
 
     const modelRelations = parsed.relations.map((rawRelation, index) => {
       assertKnownParticipants(rawRelation.participants, catalog, index);
-      assertKnownEvidence(rawRelation.evidenceIds, catalog, index);
+      assertVerifiedCitationIds(rawRelation.citationIds, citations, index);
 
       return createContentRelation({
         scope,
@@ -110,6 +116,13 @@ export function buildRelationAnalysisPrompt(
       contradictionOf: claim.contradictionOf,
       status: claim.status,
     })),
+    citations: (request.citations ?? []).map((citation) => ({
+      id: citation.id,
+      sourceId: citation.sourceId,
+      quote: citation.quote,
+      locator: citation.locator,
+      verificationStatus: citation.verificationStatus,
+    })),
     objections: request.objections ?? [],
     concepts: (request.concepts ?? []).map((concept) => ({
       id: concept.id,
@@ -152,6 +165,8 @@ ${JSON.stringify(payload, null, 2)}
 - Une différence de périmètre doit être classée \`differs_in_scope\`, pas \`contradicts\`.
 - Un silence peut avoir un seul participant, mais sa description doit préciser ce qui manque et pourquoi l'absence compte.
 - N'infère pas qu'une source est supérieure à une autre à partir de son régime.
+- \`citationIds\` ne peut contenir que des ids de Citations fournies avec verificationStatus=verified.
+- Une relation sans Citation précise peut avoir \`citationIds: []\`; n'utilise jamais un sourceId comme citationId.
 - Retourne zéro relation supplémentaire lorsque les données ne les soutiennent pas.
 
 ## Format JSON strict
@@ -167,7 +182,7 @@ ${JSON.stringify(payload, null, 2)}
         }
       ],
       "description": "relation précise et vérifiable",
-      "evidenceIds": ["identifiant fourni"],
+      "citationIds": ["citation-id-verifie"],
       "confidence": "low|medium|high"
     }
   ]
@@ -184,9 +199,7 @@ function detectDeterministicRelations(
 
   for (const claim of request.claims) {
     for (const sourceId of claim.sourceIds) {
-      if (!sourceIds.has(sourceId)) {
-        continue;
-      }
+      if (!sourceIds.has(sourceId)) continue;
 
       relations.push(
         createContentRelation({
@@ -197,7 +210,7 @@ function detectDeterministicRelations(
             { kind: "claim", id: claim.id, role: "supported_claim" },
           ],
           description: `Source ${sourceId} is recorded as supporting claim ${claim.id}`,
-          evidenceIds: [sourceId],
+          citationIds: [],
           confidence: "high",
           origin: "system_detected",
           status: "detected",
@@ -207,7 +220,6 @@ function detectDeterministicRelations(
 
     if (claim.contradictionOf) {
       const contradictedClaim = claimsById.get(claim.contradictionOf);
-
       if (contradictedClaim) {
         relations.push(
           createContentRelation({
@@ -222,9 +234,7 @@ function detectDeterministicRelations(
               },
             ],
             description: `Claim ${claim.id} is explicitly recorded as contradicting claim ${contradictedClaim.id}`,
-            evidenceIds: Array.from(
-              new Set([...claim.sourceIds, ...contradictedClaim.sourceIds])
-            ),
+            citationIds: [],
             confidence: "high",
             origin: "system_detected",
             status: "detected",
@@ -263,19 +273,21 @@ function assertKnownParticipants(
   }
 }
 
-function assertKnownEvidence(
-  evidenceIds: string[],
-  catalog: Map<ContentRelationParticipant["kind"], Set<string>>,
+function assertVerifiedCitationIds(
+  citationIds: string[],
+  citations: Map<string, Citation>,
   relationIndex: number
 ): void {
-  const knownIds = new Set(
-    Array.from(catalog.values()).flatMap((ids) => Array.from(ids))
-  );
-
-  for (const evidenceId of evidenceIds) {
-    if (!knownIds.has(evidenceId)) {
+  for (const citationId of citationIds) {
+    const citation = citations.get(citationId);
+    if (!citation) {
       throw new Error(
-        `Relation ${relationIndex} references unknown evidence ${evidenceId}`
+        `Relation ${relationIndex} references unknown citation ${citationId}`
+      );
+    }
+    if (citation.verificationStatus !== "verified") {
+      throw new Error(
+        `Relation ${relationIndex} references non-verified citation ${citationId}`
       );
     }
   }
@@ -291,10 +303,7 @@ function deduplicateRelations(relations: ContentRelation[]): ContentRelation[] {
       .join("|");
     const key = `${relation.type}:${participants}`;
 
-    if (seen.has(key)) {
-      return false;
-    }
-
+    if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
