@@ -217,17 +217,12 @@ export async function projectBibliography(
 
   const relevantRelations = relations.filter((relation) => {
     if (!relationAppliesToScope(relation, planningBrief.projectId, scopeId)) return false;
+    if (relation.citationIds.length === 0) return false;
     return relation.citationIds.every((citationId) => verifiedCitationById.has(citationId));
   });
-  const relationCitationIds = relevantRelations.flatMap((relation) => relation.citationIds);
-  const declaredCitationIds = citations
-    .filter(
-      (citation) =>
-        citation.verificationStatus === "verified" &&
-        planningBrief.sourceRefs.includes(citation.sourceId)
-    )
-    .map((citation) => citation.id);
-  const citationIds = unique([...relationCitationIds, ...declaredCitationIds]);
+  const citationIds = unique(
+    relevantRelations.flatMap((relation) => relation.citationIds)
+  );
 
   const passages: ProjectedPassage[] = [];
   const exploredGapIds = new Set<number>();
@@ -244,20 +239,25 @@ export async function projectBibliography(
     for (const hypothesis of planningBrief.hypotheses) {
       if (hypothesis.status === "rejected") continue;
       const query = [hypothesis.statement, sharedContext].filter(Boolean).join("\n");
-      const sourceIds = hypothesis.sourceRefs.length > 0 ? hypothesis.sourceRefs : undefined;
-      const retrieved = await explorer.retrieve({
-        mode: "corroboration",
-        query,
-        sourceIds,
-        probes: ["support", "contradiction", "qualification"],
-        limitPerProbe,
-      });
-      for (const passage of retrieved) {
-        passages.push({
-          passage,
-          role: roleForProbe(passage.probe),
-          query: hypothesis.statement,
+      const probes: CorroborationProbe[] = [
+        "support",
+        "contradiction",
+        "qualification",
+      ];
+      for (const probe of probes) {
+        const retrieved = await explorer.retrieve({
+          mode: "corroboration",
+          query,
+          probe,
+          limit: limitPerProbe,
         });
+        for (const passage of retrieved) {
+          passages.push({
+            passage,
+            role: roleForProbe(passage.probe),
+            query: hypothesis.statement,
+          });
+        }
       }
     }
 
