@@ -341,10 +341,10 @@ export function PlanV2Panel({ projectId, chapterId, writingHref, onApplied }: Pl
                           )}
                         </>
                       )}
-                      {(state.activeBrief.gaps.length > 0 || documentaryWarnings.length > 0) && (
+                      {(state.activeBrief!.gaps.length > 0 || documentaryWarnings.length > 0) && (
                         <div {...stylex.props(workshopStyles.compactStack)}>
                           <strong>Avertissement documentaire</strong>
-                          {state.activeBrief.gaps.map((gap, gapIndex) => <span key={`${gap.description}-${gapIndex}`}>{gap.description} — {gap.consequence}</span>)}
+                          {state.activeBrief!.gaps.map((gap, gapIndex) => <span key={`${gap.description}-${gapIndex}`}>{gap.description} — {gap.consequence}</span>)}
                           {documentaryWarnings.map((impact, warningIndex) => <span key={`${impact.sourceId}-${warningIndex}`}>{impact.impact}</span>)}
                           <span>Valider la structure ne transforme pas ces lacunes en soutien documentaire.</span>
                         </div>
