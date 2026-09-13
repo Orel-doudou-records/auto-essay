@@ -72,6 +72,12 @@ export const ContentRelationTypeSchema = z.enum([
 
 export type ContentRelationType = z.infer<typeof ContentRelationTypeSchema>;
 
+/**
+ * Rôles canoniques des participants d'une relation atomique.
+ * Le type de relation détermine la lecture de chaque position :
+ * la relation est un atome binaire (sauf « silences », unaire), pas un
+ * graphe n-aire ambigu. L'ordre des participants est signifiant.
+ */
 export const ContentRelationRoleMap: Record<
   ContentRelationType,
   readonly [string, string] | readonly [string]
@@ -110,7 +116,7 @@ export type ContentRelationParticipantInput = z.input<
 
 /**
  * Relation explicite entre les objets de connaissance d'Auto Essay.
- * `citationIds` ground the relation documentarily; they are not participants.
+ * Les `citationIds` ancrent documentairement la relation sans devenir des participants.
  */
 export const ContentRelationSchema = z
   .object({
