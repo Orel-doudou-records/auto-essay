@@ -131,7 +131,6 @@ export async function runFullPipelineDemo(
     argumentativeFunction: definition.sectionTitle,
     decisions: [decision],
     claimIds: claims.map((claim) => claim.id),
-    evidenceIds: sources.map((source) => source.id),
     sourceRelationIds: [selectedRelation.id],
     contentOperations: definition.paragraphs.flatMap(
       (paragraph) => paragraph.contentOperations
@@ -147,9 +146,6 @@ export async function runFullPipelineDemo(
       argumentativeFunction: paragraph.argumentativeFunction,
       claimIds: paragraph.claimKeys.map(
         (key) => required(claimByKey.get(key), `Unknown claim ${key}`).id
-      ),
-      evidenceIds: paragraph.sourceKeys.map(
-        (key) => required(sourceByKey.get(key), `Unknown source ${key}`).id
       ),
       sourceRelationIds: [selectedRelation.id],
       contentOperations: paragraph.contentOperations,
