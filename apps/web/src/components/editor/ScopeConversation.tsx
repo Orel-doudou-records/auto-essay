@@ -6,6 +6,7 @@ import {
   type ScopeConversationMessage,
   type ScopeConversationRef,
 } from "@/api/scopeConversation";
+import { ScopeContext } from "@/components/editor/ScopeContext";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { themeVars } from "../../styles/tokens.stylex";
@@ -61,41 +62,44 @@ export function ScopeConversation({
   }
 
   return (
-    <section aria-label="Conversation du scope" {...stylex.props(styles.root)}>
-      <header>
-        <p {...stylex.props(styles.eyebrow)}>Conversation située</p>
-        <p {...stylex.props(styles.help)}>
-          Ce fil aide à réfléchir ici. Les décisions et modifications restent dans leurs outils dédiés.
-        </p>
-      </header>
-      {loading ? (
-        <p {...stylex.props(styles.status)}>Chargement de la conversation…</p>
-      ) : messages.length > 0 ? (
-        <ol {...stylex.props(styles.messages)} aria-label="Échanges du scope">
-          {messages.map((entry) => (
-            <li key={entry.id} {...stylex.props(styles.message)}>
-              <strong {...stylex.props(styles.role)}>{entry.role === "author" ? "Vous" : "AutoEssay"}</strong>
-              <p {...stylex.props(styles.content)}>{entry.content}</p>
-            </li>
-          ))}
-        </ol>
-      ) : (
-        <p {...stylex.props(styles.status)}>Aucun échange dans ce scope.</p>
-      )}
-      <form onSubmit={(event) => void submit(event)} {...stylex.props(styles.form)}>
-        <Textarea
-          aria-label="Message à AutoEssay pour ce scope"
-          value={message}
-          onChange={(event) => setMessage(event.target.value)}
-          placeholder="Discuter de ce passage…"
-          rows={3}
-        />
-        <Button type="submit" size="sm" disabled={!message.trim() || sending} fullWidth>
-          {sending ? "Réponse…" : "Envoyer"}
-        </Button>
-      </form>
-      {error && <p role="alert" {...stylex.props(styles.error)}>{error}</p>}
-    </section>
+    <>
+      <ScopeContext projectId={projectId} scope={scope} />
+      <section aria-label="Conversation du scope" {...stylex.props(styles.root)}>
+        <header>
+          <p {...stylex.props(styles.eyebrow)}>Conversation située</p>
+          <p {...stylex.props(styles.help)}>
+            Ce fil aide à réfléchir ici. Les décisions et modifications restent dans leurs outils dédiés.
+          </p>
+        </header>
+        {loading ? (
+          <p {...stylex.props(styles.status)}>Chargement de la conversation…</p>
+        ) : messages.length > 0 ? (
+          <ol {...stylex.props(styles.messages)} aria-label="Échanges du scope">
+            {messages.map((entry) => (
+              <li key={entry.id} {...stylex.props(styles.message)}>
+                <strong {...stylex.props(styles.role)}>{entry.role === "author" ? "Vous" : "AutoEssay"}</strong>
+                <p {...stylex.props(styles.content)}>{entry.content}</p>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p {...stylex.props(styles.status)}>Aucun échange dans ce scope.</p>
+        )}
+        <form onSubmit={(event) => void submit(event)} {...stylex.props(styles.form)}>
+          <Textarea
+            aria-label="Message à AutoEssay pour ce scope"
+            value={message}
+            onChange={(event) => setMessage(event.target.value)}
+            placeholder="Discuter de ce passage…"
+            rows={3}
+          />
+          <Button type="submit" size="sm" disabled={!message.trim() || sending} fullWidth>
+            {sending ? "Réponse…" : "Envoyer"}
+          </Button>
+        </form>
+        {error && <p role="alert" {...stylex.props(styles.error)}>{error}</p>}
+      </section>
+    </>
   );
 }
 
