@@ -10,10 +10,7 @@ import type {
   RetrievedPassage,
 } from "../src/bibliography/corpusExplorer";
 import {
-  collectDistributionNodes,
-  distributeBibliography,
-  distributeByKeywords,
-  normalizeTerm,
+  assertDistributionValid,
   projectBibliography,
   projectEditorialPlanReferences,
   buildEvidencePackFromProjection,
@@ -220,18 +217,19 @@ describe("Corpus V2 documentary scope projection", () => {
   });
 });
 
-describe("legacy keyword distribution fallback", () => {
-  it("remains explicit compatibility behavior, not the Corpus V2 projection", async () => {
-    expect(normalizeTerm(" Mémoire ")).toBe("memoire");
-    const nodes = collectDistributionNodes(manuscript.tree);
-    expect(distributeByKeywords(profiles[0], nodes)).toHaveLength(1);
-    const entries = await distributeBibliography(manuscript, profiles);
-    expect(entries).toHaveLength(2);
-    expect(entries).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ sourceId: "src-1", scopeId: "chap-1" }),
-        expect.objectContaining({ sourceId: "src-2", scopeId: "chap-1" }),
-      ])
-    );
+describe("persisted distribution compatibility", () => {
+  it("only validates stored scope references and does not generate cognitive mappings", () => {
+    expect(() =>
+      assertDistributionValid(
+        [{ sourceId: "src-1", scopeId: "chap-1" }],
+        manuscript
+      )
+    ).not.toThrow();
+    expect(() =>
+      assertDistributionValid(
+        [{ sourceId: "src-1", scopeId: "missing" }],
+        manuscript
+      )
+    ).toThrow("Distribution scope 'missing' not found in manuscript");
   });
 });

@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   buildDiffractiveRequest,
-  buildGraphNeighborhoods,
   extractBookBibliography,
   extractConcepts,
   extractTensions,
@@ -10,21 +9,6 @@ import {
   runDiffract,
   splitList,
 } from "../src/editorial/diffractCommand";
-import type { KnowledgeGraph } from "../src/bibliography/graphify";
-
-// Graphe minimal reproduisant la forme du graph.json de graphify.
-const graphFixture: KnowledgeGraph = {
-  nodes: [
-    { id: "asimov", label: "Isaac Asimov", file_type: "concept", source_file: "asimov.md" },
-    { id: "golem", label: "Og ha-Golem", file_type: "concept", source_file: "wandering.md" },
-    { id: "diaspora", label: "Diaspora", file_type: "concept", source_file: "essai.md" },
-    { id: "trek", label: "Star Trek", file_type: "concept", source_file: "trek.md" },
-  ],
-  links: [
-    { source: "asimov", target: "golem", relation: "conceptually_related_to", confidence: "INFERRED", confidence_score: 0.7 },
-    { source: "golem", target: "diaspora", relation: "references", confidence: "EXTRACTED", confidence_score: 1 },
-  ],
-};
 
 describe("diffractCommand", () => {
   describe("parseDiffractArgs", () => {
@@ -72,21 +56,15 @@ describe("diffractCommand", () => {
       expect(args.tensionsPath).toBe("/tmp/tensions.json");
     });
 
-    it("parses bibliography, graph and graph terms", () => {
+    it("parses the projected bibliography path without reading it", () => {
       const args = parseDiffractArgs([
         "--statement",
         "s",
         "--bibliography",
         "/tmp/library.json",
-        "--graph",
-        "/tmp/graph.json",
-        "--graph-terms",
-        "asimov, star trek",
       ]);
 
       expect(args.bibliographyPath).toBe("/tmp/library.json");
-      expect(args.graphPath).toBe("/tmp/graph.json");
-      expect(args.graphTerms).toEqual(["asimov", "star trek"]);
     });
 
     it("throws without a statement", () => {
@@ -161,7 +139,11 @@ describe("diffractCommand", () => {
     it("maps library.json sources + profiles to entries", () => {
       const raw = {
         sources: [
-          { id: "eshun2003", title: "Further Considerations on Afrofuturism", authors: ["Eshun, Kodwo"] },
+          {
+            id: "eshun2003",
+            title: "Further Considerations on Afrofuturism",
+            authors: ["Eshun, Kodwo"],
+          },
           { id: "sans-profil", title: "Ignorée", authors: [] },
         ],
         profiles: [
@@ -208,33 +190,6 @@ describe("diffractCommand", () => {
     });
   });
 
-  describe("buildGraphNeighborhoods", () => {
-    it("formats one neighborhood per found term", () => {
-      const neighborhoods = buildGraphNeighborhoods(graphFixture, ["asimov", "diaspora"]);
-
-      expect(neighborhoods).toHaveLength(2);
-      expect(neighborhoods[0].term).toBe("asimov");
-      expect(neighborhoods[0].text).toContain("Isaac Asimov");
-      expect(neighborhoods[1].text).toContain("--references [EXTRACTED 1]-->");
-    });
-
-    it("skips unknown terms and keeps order", () => {
-      const neighborhoods = buildGraphNeighborhoods(graphFixture, ["introuvable", "golem", "  "]);
-
-      expect(neighborhoods).toHaveLength(1);
-      expect(neighborhoods[0].term).toBe("golem");
-    });
-
-    it("respects the budget options", () => {
-      const neighborhoods = buildGraphNeighborhoods(graphFixture, ["asimov"], {
-        depth: 1,
-        maxNodes: 2,
-      });
-
-      expect(neighborhoods[0].text).toContain("(2 nœuds");
-    });
-  });
-
   describe("buildDiffractiveRequest", () => {
     it("maps args to a request", () => {
       const request = buildDiffractiveRequest({
@@ -265,7 +220,30 @@ describe("diffractCommand", () => {
       expect(request.tensions).toEqual([{ label: "t", description: "desc" }]);
     });
 
-    it("omits empty concepts and tensions", () => {
+    it("forwards an already projected bibliography without running retrieval", () => {
+      const request = buildDiffractiveRequest({
+        statement: "s",
+        claimIds: [],
+        sourceIds: [],
+        bookBibliography: {
+          entries: [{ sourceId: "eshun2003" }],
+          passages: [
+            {
+              sourceId: "eshun2003",
+              text: "Passage canonique.",
+              locator: "page:3",
+              role: "supports",
+              query: "question",
+            },
+          ],
+        },
+      });
+
+      expect(request.bookBibliography?.entries).toEqual([{ sourceId: "eshun2003" }]);
+      expect(request.bookBibliography?.passages?.[0]?.text).toBe("Passage canonique.");
+    });
+
+    it("omits empty concepts, tensions and bibliography", () => {
       const request = buildDiffractiveRequest({
         statement: "s",
         claimIds: [],
@@ -276,46 +254,6 @@ describe("diffractCommand", () => {
 
       expect(request.concepts).toBeUndefined();
       expect(request.tensions).toBeUndefined();
-    });
-  });
-
-  describe("buildDiffractiveRequest with graph", () => {
-    it("wires graph neighborhoods into bookBibliography", () => {
-      const request = buildDiffractiveRequest({
-        statement: "s",
-        claimIds: [],
-        sourceIds: [],
-        graphNeighborhoods: [{ term: "asimov", text: "Voisinage..." }],
-      });
-
-      expect(request.bookBibliography).toEqual({
-        entries: [],
-        graphNeighborhoods: [{ term: "asimov", text: "Voisinage..." }],
-      });
-    });
-
-    it("merges bibliography entries with graph neighborhoods", () => {
-      const request = buildDiffractiveRequest({
-        statement: "s",
-        claimIds: [],
-        sourceIds: [],
-        bookBibliography: { entries: [{ sourceId: "eshun2003" }] },
-        graphNeighborhoods: [{ term: "golem", text: "Voisinage..." }],
-      });
-
-      expect(request.bookBibliography?.entries).toEqual([{ sourceId: "eshun2003" }]);
-      expect(request.bookBibliography?.graphNeighborhoods).toEqual([
-        { term: "golem", text: "Voisinage..." },
-      ]);
-    });
-
-    it("omits bookBibliography when nothing is provided", () => {
-      const request = buildDiffractiveRequest({
-        statement: "s",
-        claimIds: [],
-        sourceIds: [],
-      });
-
       expect(request.bookBibliography).toBeUndefined();
     });
   });

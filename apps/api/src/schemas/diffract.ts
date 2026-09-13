@@ -74,14 +74,21 @@ const BookBibliographySchema = z.object({
       })
     )
     .default([]),
-  graphNeighborhoods: z
+  passages: z
     .array(
       z.object({
-        term: z.string().min(1),
+        sourceId: z.string().min(1),
         text: z.string().min(1),
+        locator: z.string().min(1),
+        role: z.enum(["supports", "contradicts", "qualifies", "context"]),
+        query: z.string().min(1),
       })
     )
     .optional(),
+  citationIds: z.array(z.string().min(1)).optional(),
+  relationIds: z.array(z.string().min(1)).optional(),
+  gaps: z.array(z.string().min(1)).optional(),
+  unexploredAreas: z.array(z.string().min(1)).optional(),
 });
 
 export const DiffractBodySchema = z.object({

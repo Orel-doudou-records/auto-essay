@@ -66,6 +66,23 @@ Implemented by PR #29.
 - prototype concepts mapped to canonical integrated objects
 - architecture, provenance roles, source limits and MVP boundaries documented
 
+## Corpus V2 — documentary core ✅
+
+Delivered by SPEC #212 and tickets #213–#222.
+
+- `Source` is bibliographic/epistemic identity; `IngestedDocument` owns canonical extracted content, fingerprint, blocks, locators and ingestion diagnostics.
+- Markdown and PDF converge on the same `IngestedDocument` contract.
+- `SourceProfile` is rebuilt from ingested content through hierarchical whole-source comprehension.
+- corpus-first synthesis requires explicit Comprehension Closure for every active source unless the author excludes it.
+- `CorpusSynthesis` remains transient/rebuildable; there is no canonical `CorpusMap` or `DocumentMap`.
+- one `CorpusExplorer` exposes exploration/corroboration while every `RetrievedPassage` is rematerialized from canonical document text.
+- `Citation` owns verified documentary provenance; `ContentRelation` owns argumentative function; there is no canonical `Evidence` entity.
+- documentary scope projection feeds `EditorialPlan` and `EvidencePack`; Diffract consumes projected material but never retrieves the corpus itself.
+- source fingerprint changes trigger targeted revalidation of profiles, citations, relations and affected plans without automatic manuscript rewriting.
+- PageIndex runtime integration is rejected until a same-corpus benchmark proves material gain; the generic locator seam remains available.
+- Graphify and static keyword/metadata distribution generation are removed from the core. Persisted `BibliographyDistributionEntry[]` survives only as a read-compatibility format for historical workspaces.
+- `tests/corpusV2E2E.test.ts` locks corpus-only discovery, scope-to-Writer/Judge documentary flow, targeted invalidation and forbidden parallel authorities.
+
 ## Preserved invariants
 
 - `DraftUnit` remains the unit of generation, evaluation, revision and versioning.
@@ -81,6 +98,8 @@ Implemented by PR #29.
 - Prompts are projections and never the canonical source of a decision.
 - `AuthorStyleConstellation` is a derived consultation view and never connects directly to the writer.
 - Real editorial materials retain explicit epistemic limits and do not become factual authority outside their scope.
+- `Manuscript.tree` remains the sole canonical book structure; Corpus V2 never mutates it automatically.
+- retrieval relevance is not citation verification, and citation verification is not argumentative support.
 
 ## Verification
 
@@ -94,22 +113,25 @@ npm run demo:synthetic
 npm run demo:station-reverse
 ```
 
-All five steps passed on PR #29. The two demonstration commands compile an isolated CommonJS runtime, execute the complete path and publish into ignored local registries.
+The CI also installs the bounded PDF extraction dependency used by Corpus V2. The two demonstration commands compile an isolated CommonJS runtime, execute the complete writing path and publish into ignored local registries.
 
 ## MVP status
 
 The integrated MVP now covers:
 
 ```text
-sources and claims
-→ grounded observations and content relations
-→ situated articulation proposals
-→ explicit author decisions
-→ section and paragraph planning
-→ specialized projections
+bibliographic Source
+→ canonical IngestedDocument
+→ whole-source comprehension + closure
+→ corpus synthesis / retrieval
+→ verified Citation + ContentRelation
+→ documentary scope projection
+→ PlanningBrief / EditorialPlan
+→ EvidencePack
 → paragraph and section generation
 → transformation traces
 → independent documentary and editorial evaluation
+→ targeted source-version invalidation
 → relational revision briefs
 → reproducible delivery manifests and registry versions
 ```
