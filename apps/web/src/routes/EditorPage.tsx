@@ -11,6 +11,7 @@ import {
   type PublicCollaborativeRevisionWork,
   type RevisionSuggestionPayload,
 } from "@/api/revisionWork";
+import { ScopeConversation } from "@/components/editor/ScopeConversation";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -446,6 +447,7 @@ function NodeContextPanel({ projectId, scope }: { projectId: string; scope: Node
         <p {...stylex.props(styles.eyebrow)}>Contexte du scope</p>
         <h2 {...stylex.props(styles.inspectorTitle)}>{scope.title}</h2>
       </header>
+      <ScopeConversation projectId={projectId} scope={{ kind: "node", id: scope.id }} />
       <p {...stylex.props(styles.resultText)}>
         Les outils de planification restent sur l’écran existant jusqu’à leur intégration dans ce workspace.
       </p>
@@ -664,6 +666,7 @@ function ChatPanel({ projectId, unit, manuscript, onGenerate, onApplyProposal, o
 
   return (
     <section {...stylex.props(styles.inspectorContent)}>
+      <ScopeConversation projectId={projectId} scope={{ kind: "unit", id: unit.id }} />
       <header>
         <p {...stylex.props(styles.eyebrow)}>Contexte du scope · {levelLabel}</p>
         <h2 {...stylex.props(styles.inspectorTitle)}>Révision assistée</h2>
