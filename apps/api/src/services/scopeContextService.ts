@@ -182,19 +182,15 @@ function explorationView(
   sources: Array<{ included: boolean; state: SourceExplorationState }>,
   brief: PlanningBrief | undefined
 ) {
-  const complete =
-    sources.length > 0 &&
-    sources.every((source) => source.state === "explored" || source.state === "unusable");
   const hasIncludedSources = sources.some((source) => source.included);
+  const complete = false;
   return {
     complete,
     status: hasIncludedSources
       ? "has_context" as const
       : sources.length === 0
         ? "empty_library" as const
-        : complete
-          ? "no_result" as const
-          : "incomplete" as const,
+        : "incomplete" as const,
     gaps: brief?.gaps.map((gap) => ({
       description: gap.description,
       consequence: gap.consequence,
