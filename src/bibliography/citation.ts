@@ -66,6 +66,11 @@ export function assertVerifiedRelationCitations(
   }
 }
 
+/**
+ * Le scope d'une unité rédigée : l'id du nœud dont une entrée de plan (E4,
+ * `PlanEntry.unitId`) ou une feuille (T1, `leaf.unitId`) référence l'unité.
+ * Pour une feuille, le scope est l'id du nœud parent.
+ */
 export function findUnitScope(
   manuscript: Manuscript,
   unitId: string
@@ -89,6 +94,7 @@ export function findUnitScope(
   return walk(manuscript.tree, undefined);
 }
 
+/** Les usages de citation d'une unité (via CitationUse.draftUnitId). */
 export function citationsForUnit(
   unitId: string,
   citationUses: readonly CitationUse[]
@@ -96,6 +102,11 @@ export function citationsForUnit(
   return citationUses.filter((use) => use.draftUnitId === unitId);
 }
 
+/**
+ * Garde pure (F2) : toute citation utilisée par un paragraphe doit référencer
+ * une source distribuée sur le scope de ce paragraphe. Sans scope résolu, rien
+ * à vérifier (l'unité n'est pas encore rattachée au plan).
+ */
 export function assertCiteable(
   manuscript: Manuscript,
   unitId: string,
@@ -123,12 +134,14 @@ export function assertCiteable(
   }
 }
 
+/** Année d'une source (4 premiers caractères de publicationDate). */
 export function sourceYear(source: Source): string {
   return source.publicationDate ? source.publicationDate.slice(0, 4) : "s.d.";
 }
 
 export type CitationStyle = "parenthetical" | "footnote";
 
+/** Formateur de citation classique depuis une Source. */
 export function formatCitation(
   source: Source,
   style: CitationStyle = "parenthetical"
