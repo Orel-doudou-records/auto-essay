@@ -34,7 +34,7 @@ export const EditorialPlanSchema = z.object({
   scope: EditorialScopeSchema,
   argumentativeFunction: z.string().min(1),
   claimIds: z.array(z.string().min(1)).default([]),
-  evidenceIds: z.array(z.string().min(1)).default([]),
+  citationIds: z.array(z.string().min(1)).default([]),
   sourceRelationIds: z.array(z.string().min(1)).default([]),
   decisionIds: z.array(z.string().min(1)).min(1),
   articulationIds: z.array(z.string().min(1)).min(1),
@@ -57,7 +57,7 @@ export interface CreateEditorialPlanInput {
   argumentativeFunction: string;
   decisions: EditorialDecision[];
   claimIds?: string[];
-  evidenceIds?: string[];
+  citationIds?: string[];
   sourceRelationIds?: string[];
   contentOperations: string[];
   stylisticOperations: PlannedStylisticOperationInput[];
@@ -92,7 +92,7 @@ export function createEditorialPlan(
     scope: input.scope,
     argumentativeFunction: input.argumentativeFunction,
     claimIds: input.claimIds ?? [],
-    evidenceIds: input.evidenceIds ?? [],
+    citationIds: input.citationIds ?? [],
     sourceRelationIds: input.sourceRelationIds ?? [],
     decisionIds,
     articulationIds,
@@ -110,10 +110,6 @@ export function isEditorialPlanExecutable(plan: EditorialPlan): boolean {
   return plan.status === "validated";
 }
 
-/**
- * Plan local d'un paragraphe. Les décisions héritées et locales sont séparées
- * pour que la projection future puisse expliquer l'origine de chaque contrainte.
- */
 export const ParagraphEditorialPlanSchema = z
   .object({
     id: z.string(),
@@ -156,9 +152,6 @@ export type ParagraphEditorialPlanInput = z.input<
   typeof ParagraphEditorialPlanSchema
 >;
 
-/**
- * Agrégat de planification d'une section et de ses paragraphes.
- */
 export const SectionEditorialPlanSchema = z
   .object({
     id: z.string(),
@@ -207,4 +200,3 @@ export type SectionEditorialPlan = z.infer<typeof SectionEditorialPlanSchema>;
 export type SectionEditorialPlanInput = z.input<
   typeof SectionEditorialPlanSchema
 >;
-
