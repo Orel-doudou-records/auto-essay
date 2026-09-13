@@ -2,7 +2,6 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { HomePage } from "@/routes/HomePage";
 import { ProjectPage } from "@/routes/ProjectPage";
 import { SourcesPage } from "@/routes/SourcesPage";
-import { EditorPage } from "@/routes/EditorPage";
 import { EvaluatePage } from "@/routes/EvaluatePage";
 import { DemoPage } from "@/routes/DemoPage";
 import { AuthorWorkshopPage } from "@/routes/AuthorWorkshopPage";
@@ -11,6 +10,7 @@ import { WorkspaceLandingPage } from "@/routes/WorkspaceLandingPage";
 import { ManuscriptImportPage } from "@/routes/ManuscriptImportPage";
 import { ProjectEntryPage } from "@/routes/ProjectEntryPage";
 import { PlanImportPage } from "@/routes/PlanImportPage";
+import { ScopeWorkspacePrototypePage } from "@/routes/ScopeWorkspacePrototypePage";
 
 function App() {
   return (
@@ -25,7 +25,7 @@ function App() {
         <Route path="/projects/:projectId/plan-import" element={<PlanImportPage />} />
         <Route path="/projects/:projectId/reimport" element={<ManuscriptImportPage mode="reimport" />} />
         <Route path="/projects/:projectId/sources" element={<SourcesPage />} />
-        <Route path="/projects/:projectId/editor" element={<EditorPage />} />
+        <Route path="/projects/:projectId/editor" element={<ScopeWorkspacePrototypePage />} />
         <Route path="/projects/:projectId/atelier" element={<AuthorWorkshopPage />} />
         <Route path="/projects/:projectId/chapitre" element={<ChapterWorkshopPage />} />
         <Route path="/projects/:projectId/evaluate/:unitId" element={<EvaluatePage />} />
