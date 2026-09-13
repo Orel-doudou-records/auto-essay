@@ -13,7 +13,6 @@ export * from "./chapterEditorialProjection.js";
 export * from "./planPreview.js";
 export * from "./planDrafting.js";
 export * from "./planningSubjects.js";
-export * from "./planningCorpusAdapter.js";
 export * from "./planRefinement.js";
 export * from "./planningDecomposition.js";
 export * from "./planningStructuralDiff.js";
