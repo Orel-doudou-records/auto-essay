@@ -4,6 +4,7 @@
  */
 
 export * from "./importers";
+export * from "./documentIngestion";
 export * from "./docxImport";
 export * from "./manuscriptImport";
 export * from "./odtImport";
