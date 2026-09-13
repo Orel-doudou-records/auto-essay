@@ -10,6 +10,9 @@ vi.mock("@/api/scopeConversation", () => ({
   fetchScopeConversation: vi.fn(),
   sendScopeConversationMessage: vi.fn(),
 }));
+vi.mock("./ScopeContext", () => ({
+  ScopeContext: () => <section aria-label="Contexte inspectable du scope" />,
+}));
 
 const fetchConversation = vi.mocked(fetchScopeConversation);
 const sendMessage = vi.mocked(sendScopeConversationMessage);
