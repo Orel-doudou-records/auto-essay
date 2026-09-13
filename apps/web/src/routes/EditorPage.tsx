@@ -232,18 +232,22 @@ export function EditorPage() {
                     <h2 {...stylex.props(styles.panelTitle)}>Structure</h2>
                   </div>
                 </div>
-                <form {...stylex.props(styles.createForm)} onSubmit={handleAddUnit}>
-                  <Input
-                    value={newSection}
-                    onChange={(event) => setNewSection(event.target.value)}
-                    placeholder="Nouvelle section"
-                    aria-label="Nouvelle section"
-                  />
-                  <Button type="submit" size="sm" disabled={!newSection.trim() || isCreating}>
-                    {isCreating ? "Création…" : "Créer"}
-                  </Button>
-                </form>
-                {createError && <p role="alert" {...stylex.props(styles.errorMessage)}>{createError}</p>}
+                {(!requestedNewUnit || units.length > 0) && (
+                  <>
+                    <form {...stylex.props(styles.createForm)} onSubmit={handleAddUnit}>
+                      <Input
+                        value={newSection}
+                        onChange={(event) => setNewSection(event.target.value)}
+                        placeholder="Nouvelle section"
+                        aria-label="Nouvelle section"
+                      />
+                      <Button type="submit" size="sm" disabled={!newSection.trim() || isCreating}>
+                        {isCreating ? "Création…" : "Créer"}
+                      </Button>
+                    </form>
+                    {createError && <p role="alert" {...stylex.props(styles.errorMessage)}>{createError}</p>}
+                  </>
+                )}
                 {(loading || navigationLoading) && <p {...stylex.props(styles.panelMessage)}>Chargement…</p>}
                 {error && <p {...stylex.props(styles.errorMessage)}>{error.message}</p>}
                 {navigationError && <p {...stylex.props(styles.errorMessage)}>{navigationError.message}</p>}
