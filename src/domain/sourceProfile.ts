@@ -66,7 +66,8 @@ export type SourceComprehension = z.infer<typeof SourceComprehensionSchema>;
  *
  * Les champs historiques restent parseables pour les callers legacy, mais un
  * profil n'est considéré comme compris pour Corpus V2 que s'il possède un
- * fingerprint courant et une couverture de compréhension `ready`.
+ * fingerprint courant et une couverture de compréhension vérifiée contre le
+ * document canonique par `assessComprehensionClosure`.
  */
 export const SourceProfileSchema = z.object({
   sourceId: z.string().min(1),
@@ -83,8 +84,4 @@ export type SourceProfileInput = z.input<typeof SourceProfileSchema>;
 
 export function createSourceProfile(input: SourceProfileInput): SourceProfile {
   return SourceProfileSchema.parse(input);
-}
-
-export function isComprehensionReady(profile: SourceProfile): boolean {
-  return Boolean(profile.fingerprint && profile.comprehension?.status === "ready");
 }
