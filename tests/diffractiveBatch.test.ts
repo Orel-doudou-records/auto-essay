@@ -82,7 +82,7 @@ describe("DiffractiveBatchRunner", () => {
     expect(result.failures).toEqual([]);
   });
 
-  it("forwards bookBibliography (graph neighborhoods) into the prompt", async () => {
+  it("forwards legacy graph neighborhoods as historical signals", async () => {
     const generateJson = vi.fn(async () => validOutput());
     const runner = createDiffractiveBatchRunner({ generateJson });
 
@@ -101,7 +101,8 @@ describe("DiffractiveBatchRunner", () => {
 
     expect(result.readings).toHaveLength(1);
     const prompt = generateJson.mock.calls[0][0] as string;
-    expect(prompt).toContain("Signaux du graphe de la bibliothèque");
+    expect(prompt).toContain("Signaux historiques du graphe de la bibliothèque");
     expect(prompt).toContain("#### Terme du graphe : star trek");
+    expect(prompt).toContain("jamais l'autorité documentaire Corpus V2");
   });
 });
