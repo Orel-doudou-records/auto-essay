@@ -2,13 +2,11 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  buildGraphNeighborhoods,
   DraftUnitSchema,
   extractBookBibliography,
   extractConcepts,
   extractTensions,
   ManuscriptSchema,
-  parseKnowledgeGraph,
   projectBookState,
   type BookBibliographyInput,
   type BookPartInput,
@@ -17,30 +15,18 @@ import {
 
 /**
  * Démo distribuable : contexte de lecture du projet Judéofuturisme, chapitre 2
- * « Le salon » (bibliothèque graphifiée, corpus Jews in space).
+ * « Le salon ».
  *
  * Le endpoint sert un contexte PRÊT À POSTER sur POST /api/diffract :
  * l'état du livre (projectBookState appliqué au manuscrit), le plan, les
- * concepts/tensions, la bibliothèque du chapitre et les voisinages du graphe
- * (G1). Aucune logique côté client : la page de démo ne fait que relayer.
+ * concepts/tensions et la bibliothèque déjà projetée du chapitre.
+ * Aucune logique de retrieval ni de graphe n'est exécutée ici : Diffract
+ * consomme uniquement une matière documentaire préparée en amont.
  */
 
 const here = dirname(fileURLToPath(import.meta.url));
 const assets = join(here, "..", "demo", "judeofuturisme");
 const read = (name: string): string => readFileSync(join(assets, name), "utf8");
-
-/** Termes du chap. 2 alignés sur plan.json — mêmes que build-graph-chap2.mjs. */
-const GRAPH_TERMS = [
-  "asimov",
-  "gernsback",
-  "joanna russ",
-  "star trek",
-  "superman",
-  "jews in space",
-  "wandering stars",
-  "golem",
-  "diaspora",
-];
 
 export interface SuggestedFragment {
   label: string;
@@ -58,7 +44,6 @@ export interface JudeofuturismeDemo {
     tensions: Array<{ label: string; description: string }>;
     bookBibliography: BookBibliographyInput;
   };
-  graphSummary: { nodes: number; links: number; terms: string[] };
   sourcesCount: number;
   suggestedFragments: SuggestedFragment[];
 }
@@ -86,12 +71,6 @@ function buildDemo(): JudeofuturismeDemo {
     JSON.parse(read("library-chap2.json"))
   ) ?? { entries: [] };
 
-  const graph = parseKnowledgeGraph(JSON.parse(read("graph-chap2.json")));
-  const graphNeighborhoods = buildGraphNeighborhoods(graph, GRAPH_TERMS, {
-    depth: 2,
-    maxNodes: 30,
-  });
-
   return {
     id: "judeofuturisme",
     title: manuscript.title,
@@ -101,16 +80,7 @@ function buildDemo(): JudeofuturismeDemo {
       bookPlan,
       concepts,
       tensions,
-      bookBibliography: {
-        entries: bookBibliography.entries,
-        graphNeighborhoods:
-          graphNeighborhoods.length > 0 ? graphNeighborhoods : undefined,
-      },
-    },
-    graphSummary: {
-      nodes: graph.nodes.length,
-      links: graph.links.length,
-      terms: GRAPH_TERMS,
+      bookBibliography,
     },
     sourcesCount: bookBibliography.entries.length,
     suggestedFragments: [
@@ -140,7 +110,7 @@ function buildDemo(): JudeofuturismeDemo {
 
 let cached: JudeofuturismeDemo | undefined;
 
-/** Contexte de démo (calculé une fois : projection + voisinages, zéro I/O ensuite). */
+/** Contexte de démo calculé une fois ; zéro I/O après initialisation. */
 export function getJudeofuturismeDemo(): JudeofuturismeDemo {
   cached ??= buildDemo();
   return cached;
