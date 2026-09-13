@@ -199,7 +199,9 @@ function detectDeterministicRelations(
 
   for (const claim of request.claims) {
     for (const sourceId of claim.sourceIds) {
-      if (!sourceIds.has(sourceId)) continue;
+      if (!sourceIds.has(sourceId)) {
+        continue;
+      }
 
       relations.push(
         createContentRelation({
@@ -220,6 +222,7 @@ function detectDeterministicRelations(
 
     if (claim.contradictionOf) {
       const contradictedClaim = claimsById.get(claim.contradictionOf);
+
       if (contradictedClaim) {
         relations.push(
           createContentRelation({
@@ -303,7 +306,10 @@ function deduplicateRelations(relations: ContentRelation[]): ContentRelation[] {
       .join("|");
     const key = `${relation.type}:${participants}`;
 
-    if (seen.has(key)) return false;
+    if (seen.has(key)) {
+      return false;
+    }
+
     seen.add(key);
     return true;
   });
