@@ -1,13 +1,71 @@
 import type { Manuscript } from "../domain/index";
 import type { Source } from "../domain/index";
-import type { Citation, CitationUse } from "../domain/citation";
+import {
+  CitationSchema,
+  type Citation,
+  type CitationUse,
+} from "../domain/citation";
+import type { ContentRelation } from "../domain/contentRelation";
 import type { BibliographyDistributionEntry } from "../domain/bibliographyDistribution";
+import type { RetrievedPassage } from "./corpusExplorer";
 
 /**
- * Le scope d'une unité rédigée : l'id du nœud dont une entrée de plan (E4,
- * `PlanEntry.unitId`) ou une feuille (T1, `leaf.unitId`) référence l'unité.
- * Pour une feuille, le scope est l'id du nœud parent.
+ * Promote a canonical RetrievedPassage into a Citation.
+ * Retrieval does not imply verification: callers must provide the status.
  */
+export function promoteRetrievedPassageToCitation(input: {
+  projectId: string;
+  passage: RetrievedPassage;
+  verificationStatus: Citation["verificationStatus"];
+  context?: string;
+  citationId?: string;
+  createdAt?: string;
+}): Citation {
+  const { passage } = input;
+  return CitationSchema.parse({
+    id: input.citationId ?? crypto.randomUUID(),
+    projectId: input.projectId,
+    sourceId: passage.sourceId,
+    quote: passage.text,
+    locator: passage.locator,
+    context: input.context,
+    retrievalProvenance: {
+      retrievedPassageId: passage.id,
+      documentId: passage.span.documentId,
+      blockId: passage.span.blockId,
+      start: passage.span.start,
+      end: passage.span.end,
+      documentFingerprint: passage.fingerprint,
+    },
+    verificationStatus: input.verificationStatus,
+    createdAt: input.createdAt ?? new Date().toISOString(),
+  });
+}
+
+/**
+ * Cross-entity guard for functional evidence: every citation grounding a
+ * relation must resolve and be explicitly verified.
+ */
+export function assertVerifiedRelationCitations(
+  relation: ContentRelation,
+  citations: readonly Citation[]
+): void {
+  const byId = new Map(citations.map((citation) => [citation.id, citation] as const));
+  for (const citationId of relation.citationIds) {
+    const citation = byId.get(citationId);
+    if (!citation) {
+      throw new Error(
+        `ContentRelation '${relation.id}' references unknown citation '${citationId}'`
+      );
+    }
+    if (citation.verificationStatus !== "verified") {
+      throw new Error(
+        `ContentRelation '${relation.id}' references non-verified citation '${citationId}'`
+      );
+    }
+  }
+}
+
 export function findUnitScope(
   manuscript: Manuscript,
   unitId: string
@@ -31,7 +89,6 @@ export function findUnitScope(
   return walk(manuscript.tree, undefined);
 }
 
-/** Les usages de citation d'une unité (via CitationUse.draftUnitId). */
 export function citationsForUnit(
   unitId: string,
   citationUses: readonly CitationUse[]
@@ -39,11 +96,6 @@ export function citationsForUnit(
   return citationUses.filter((use) => use.draftUnitId === unitId);
 }
 
-/**
- * Garde pure (F2) : toute citation utilisée par un paragraphe doit référencer
- * une source distribuée sur le scope de ce paragraphe. Sans scope résolu, rien
- * à vérifier (l'unité n'est pas encore rattachée au plan).
- */
 export function assertCiteable(
   manuscript: Manuscript,
   unitId: string,
@@ -71,14 +123,12 @@ export function assertCiteable(
   }
 }
 
-/** Année d'une source (4 premiers caractères de publicationDate). */
 export function sourceYear(source: Source): string {
   return source.publicationDate ? source.publicationDate.slice(0, 4) : "s.d.";
 }
 
 export type CitationStyle = "parenthetical" | "footnote";
 
-/** Formateur de citation classique depuis une Source. */
 export function formatCitation(
   source: Source,
   style: CitationStyle = "parenthetical"
