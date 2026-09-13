@@ -1,6 +1,7 @@
 // Sources et preuves
 export * from "./source";
 export * from "./citation";
+export * from "./ingestedDocument";
 
 // Profils sémantiques compacts (bibliothèque, spec F)
 export * from "./sourceProfile";
