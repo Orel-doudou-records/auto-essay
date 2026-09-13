@@ -3,6 +3,7 @@ import type { Manuscript, Source } from "../src/domain";
 import type { Citation, CitationUse } from "../src/domain/citation";
 import { createContentRelation } from "../src/domain/contentRelation";
 import type { RetrievedPassage } from "../src/bibliography/corpusExplorer";
+import type { ProjectedScope } from "../src/bibliography/distribution";
 import {
   assertCiteable,
   assertVerifiedRelationCitations,
@@ -40,10 +41,23 @@ const manuscript = {
   ],
 } as unknown as Manuscript;
 
-const distribution = [
-  { sourceId: "src-1", scopeId: "chap-2" },
-  { sourceId: "src-2", scopeId: "chap-2" },
-];
+const projection: ProjectedScope = {
+  scopeId: "chap-2",
+  sources: [
+    {
+      sourceId: "src-1",
+      title: "Source 1",
+      authors: [],
+      subjects: [],
+      concepts: [],
+    },
+  ],
+  passages: [],
+  citationIds: ["cit-1"],
+  sourceRelationIds: [],
+  gaps: [],
+  unexploredAreas: [],
+};
 
 const citations: Citation[] = [
   {
@@ -190,21 +204,21 @@ describe("citationsForUnit + assertCiteable", () => {
     ]);
   });
 
-  it("accepte une citation dont la source est distribuée sur le scope", () => {
+  it("accepte une citation autorisée par la projection documentaire du scope", () => {
     expect(() =>
-      assertCiteable(manuscript, "u-par", distribution, [uses[0]], citations)
+      assertCiteable(manuscript, "u-par", [projection], [uses[0]], citations)
     ).not.toThrow();
   });
 
-  it("refuse une citation dont la source n'est pas distribuée sur le scope", () => {
+  it("refuse une citation absente de la projection documentaire du scope", () => {
     expect(() =>
-      assertCiteable(manuscript, "u-par", distribution, uses, citations)
-    ).toThrow("not distributed on scope 'chap-2'");
+      assertCiteable(manuscript, "u-par", [projection], uses, citations)
+    ).toThrow("not projected on scope 'chap-2'");
   });
 
   it("ne vérifie rien si l'unité n'a pas de scope", () => {
     expect(() =>
-      assertCiteable(manuscript, "absente", distribution, uses, citations)
+      assertCiteable(manuscript, "absente", [projection], uses, citations)
     ).not.toThrow();
   });
 });
