@@ -12,6 +12,7 @@ import {
   type RevisionSuggestionPayload,
 } from "@/api/revisionWork";
 import { ScopeConversation } from "@/components/editor/ScopeConversation";
+import { PlanV2Panel } from "@/components/editorial/PlanV2Panel";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -277,7 +278,11 @@ export function EditorPage() {
                 granularityError={granularityError}
               />
             ) : selectedNode ? (
-              <NodeScopeView projectId={projectId ?? ""} scope={selectedNode} />
+              <NodeScopeView
+                projectId={projectId ?? ""}
+                scope={selectedNode}
+                onPlanApplied={() => void reloadNavigation()}
+              />
             ) : requestedNewUnit && !loading && units.length === 0 ? (
               <StartWritingForm
                 section={newSection}
@@ -422,19 +427,33 @@ function ManuscriptNavigationEntryView({
   );
 }
 
-function NodeScopeView({ projectId, scope }: { projectId: string; scope: NodeScope }) {
+function NodeScopeView({
+  projectId,
+  scope,
+  onPlanApplied,
+}: {
+  projectId: string;
+  scope: NodeScope;
+  onPlanApplied: () => void;
+}) {
   const label = scope.depth === 0 ? "Chapitre" : "Section";
   return (
     <section {...stylex.props(styles.scopeOverview)} aria-label={`Scope courant : ${scope.title}`}>
       <p {...stylex.props(styles.eyebrow)}>Scope courant · {label}</p>
       <h1 {...stylex.props(styles.manuscriptTitle)}>{scope.title}</h1>
-      <p {...stylex.props(styles.scopeDescription)}>
-        Ce niveau est maintenant le contexte de travail. Sélectionnez un passage rédigé pour écrire ou réviser son texte.
-      </p>
-      {scope.depth === 0 && (
-        <Link to={`/projects/${projectId}/chapitre?chapterId=${scope.id}`} {...stylex.props(styles.primaryLink)}>
-          Travailler le plan du chapitre
-        </Link>
+      {scope.depth === 0 ? (
+        <>
+          <p {...stylex.props(styles.scopeDescription)}>
+            Précisez ici le cadrage et la structure de ce chapitre. Le manuscrit ne change qu’après votre validation explicite du diff.
+          </p>
+          <div {...stylex.props(styles.scopePlanning)}>
+            <PlanV2Panel projectId={projectId} chapterId={scope.id} onApplied={onPlanApplied} />
+          </div>
+        </>
+      ) : (
+        <p {...stylex.props(styles.scopeDescription)}>
+          Ce niveau est maintenant le contexte de travail. Sélectionnez un passage rédigé pour écrire ou réviser son texte.
+        </p>
       )}
     </section>
   );
@@ -448,14 +467,6 @@ function NodeContextPanel({ projectId, scope }: { projectId: string; scope: Node
         <h2 {...stylex.props(styles.inspectorTitle)}>{scope.title}</h2>
       </header>
       <ScopeConversation projectId={projectId} scope={{ kind: "node", id: scope.id }} />
-      <p {...stylex.props(styles.resultText)}>
-        Les outils de planification restent sur l’écran existant jusqu’à leur intégration dans ce workspace.
-      </p>
-      {scope.depth === 0 && (
-        <Link to={`/projects/${projectId}/chapitre?chapterId=${scope.id}`} {...stylex.props(styles.evaluationLink)}>
-          Ouvrir le plan du chapitre
-        </Link>
-      )}
     </section>
   );
 }
@@ -762,6 +773,7 @@ const styles = stylex.create({
   emptyActions: { display: "flex", flexWrap: "wrap", gap: "0.75rem", marginTop: "1.75rem" },
   scopeOverview: { alignSelf: "flex-start", maxWidth: "48rem", width: "100%" },
   scopeDescription: { color: themeVars.textSecondary, fontFamily: themeVars.fontManuscript, fontSize: "1.05rem", lineHeight: 1.7, maxWidth: "38rem" },
+  scopePlanning: { marginTop: "2rem" },
   primaryLink: { color: themeVars.accent, display: "inline-block", fontSize: "0.9rem", fontWeight: 600, marginTop: "1rem", textDecoration: "none" },
   manuscript: {
     display: "flex", flexDirection: "column", maxWidth: "48rem",
