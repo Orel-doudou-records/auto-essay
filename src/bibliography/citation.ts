@@ -6,8 +6,8 @@ import {
   type CitationUse,
 } from "../domain/citation";
 import type { ContentRelation } from "../domain/contentRelation";
-import type { BibliographyDistributionEntry } from "../domain/bibliographyDistribution";
 import type { RetrievedPassage } from "./corpusExplorer";
+import type { ProjectedScope } from "./distribution";
 
 /**
  * Promote a canonical RetrievedPassage into a Citation.
@@ -103,32 +103,30 @@ export function citationsForUnit(
 }
 
 /**
- * Garde pure (F2) : toute citation utilisée par un paragraphe doit référencer
- * une source distribuée sur le scope de ce paragraphe. Sans scope résolu, rien
- * à vérifier (l'unité n'est pas encore rattachée au plan).
+ * Garde pure Corpus V2 : toute citation utilisée par un paragraphe doit être
+ * explicitement autorisée par la projection documentaire de son scope. Sans
+ * scope résolu, rien à vérifier (l'unité n'est pas encore rattachée au plan).
  */
 export function assertCiteable(
   manuscript: Manuscript,
   unitId: string,
-  distribution: readonly BibliographyDistributionEntry[],
+  projections: readonly ProjectedScope[],
   citationUses: readonly CitationUse[],
   citations: readonly Citation[]
 ): void {
   const scope = findUnitScope(manuscript, unitId);
   if (!scope) return;
-  const allowed = new Set(
-    distribution
-      .filter((entry) => entry.scopeId === scope)
-      .map((entry) => entry.sourceId)
-  );
+  const projection = projections.find((item) => item.scopeId === scope);
+  const allowedCitationIds = new Set(projection?.citationIds ?? []);
+
   for (const use of citationsForUnit(unitId, citationUses)) {
-    const citation = citations.find((c) => c.id === use.citationId);
+    const citation = citations.find((candidate) => candidate.id === use.citationId);
     if (!citation) {
       throw new Error(`Citation '${use.citationId}' not found`);
     }
-    if (!allowed.has(citation.sourceId)) {
+    if (!allowedCitationIds.has(citation.id)) {
       throw new Error(
-        `Citation '${citation.id}' uses source '${citation.sourceId}' not distributed on scope '${scope}'`
+        `Citation '${citation.id}' is not projected on scope '${scope}'`
       );
     }
   }

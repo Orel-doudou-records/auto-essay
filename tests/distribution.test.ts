@@ -1,18 +1,22 @@
 import { describe, expect, it } from "vitest";
 import type { Manuscript, Source } from "../src/domain";
 import type { SourceProfile } from "../src/domain/sourceProfile";
-import {
-  createBibliographyDistribution,
-  BibliographyDistributionSchema,
-} from "../src/domain/bibliographyDistribution";
+import type { PlanningBrief } from "../src/domain/planningBrief";
+import type { Citation } from "../src/domain/citation";
+import type { EditorialPlan } from "../src/domain/editorialPlan";
+import { createContentRelation } from "../src/domain/contentRelation";
+import type {
+  CorpusExplorer,
+  RetrievedPassage,
+} from "../src/bibliography/corpusExplorer";
 import {
   collectDistributionNodes,
   distributeBibliography,
   distributeByKeywords,
   normalizeTerm,
-  assertDistributionValid,
   projectBibliography,
-  buildDistributePrompt,
+  projectEditorialPlanReferences,
+  buildEvidencePackFromProjection,
 } from "../src/bibliography/distribution";
 
 const manuscript = {
@@ -22,141 +26,212 @@ const manuscript = {
   tree: [
     {
       kind: "node" as const,
-      id: "acte-1",
-      title: "Acte I — La machine à différer",
-      text: "La diaspora comme condition de l'archive.",
-      children: [
-        {
-          kind: "leaf" as const,
-          unitId: "u1",
-          version: 1,
-          id: "u1",
-          title: "Chapitre 1 — Écrire après la machine",
-        },
-      ],
-    },
-    {
-      kind: "node" as const,
-      id: "chap-4",
-      title: "Chapitre 4 — La Terre promise comme protocole",
+      id: "chap-1",
+      title: "Chapitre 1 — Archive et diaspora",
       children: [],
     },
   ],
 } as unknown as Manuscript;
 
+const sources: Source[] = [
+  { id: "src-1", type: "book", title: "Archive", authors: ["A"], content: "" },
+  { id: "src-2", type: "book", title: "Contre-archive", authors: ["B"], content: "" },
+];
+
 const profiles: SourceProfile[] = [
   { sourceId: "src-1", subjects: ["diaspora"], concepts: ["archive"] },
-  { sourceId: "src-2", subjects: ["philosophie"], concepts: ["langage"] },
+  { sourceId: "src-2", subjects: ["archive"], concepts: ["contre-archive"] },
 ];
 
-const sources: Source[] = [
-  { id: "src-1", type: "book" as const, title: "La diaspora", authors: ["A"], content: "" },
-  { id: "src-2", type: "book" as const, title: "Philosophie", authors: ["B"], content: "" },
-];
+const brief: PlanningBrief = {
+  id: "brief-1",
+  projectId: "p1",
+  scopeRef: {
+    kind: "node",
+    projectId: "p1",
+    manuscriptId: "m1",
+    nodeId: "chap-1",
+  },
+  version: 1,
+  question: "Comment l'archive organise-t-elle la diaspora ?",
+  hypotheses: [
+    {
+      statement: "L'archive stabilise la mémoire diasporique.",
+      status: "emergent",
+      sourceRefs: [],
+    },
+  ],
+  gaps: [
+    {
+      description: "Manque un point de vue sur les archives sonores.",
+      consequence: "Le chapitre reste centré sur l'écrit.",
+      neededEvidence: "archive sonore diaspora",
+    },
+  ],
+  constraints: [],
+  sourceRefs: ["src-1"],
+  createdAt: "2026-09-13T12:00:00.000Z",
+  updatedAt: "2026-09-13T12:00:00.000Z",
+};
 
-describe("normalizeTerm + collectDistributionNodes", () => {
-  it("normalise casse et accents", () => {
-    expect(normalizeTerm(" Mémoire ")).toBe("memoire");
-  });
+const verifiedCitation: Citation = {
+  id: "cit-1",
+  projectId: "p1",
+  sourceId: "src-1",
+  quote: "Une archive stabilise certains récits.",
+  locator: { kind: "page", value: "42" },
+  verificationStatus: "verified",
+  createdAt: "2026-09-13T12:00:00.000Z",
+};
 
-  it("collecte les nœuds (pas les feuilles)", () => {
-    const nodes = collectDistributionNodes(manuscript.tree);
-    expect(nodes.map((n) => n.id)).toEqual(["acte-1", "chap-4"]);
-  });
+const contradiction = createContentRelation({
+  id: "rel-1",
+  scope: { level: "section", projectId: "p1", sectionId: "chap-1" },
+  type: "contradicts",
+  participants: [
+    { kind: "source", id: "src-1" },
+    { kind: "claim", id: "claim-1" },
+  ],
+  description: "La source contredit la stabilisation totale de la mémoire.",
+  citationIds: ["cit-1"],
+  origin: "co_constructed",
 });
 
-describe("distributeByKeywords (mode pur)", () => {
-  it("relie 'diaspora' au chapitre dont le titre contient le terme", () => {
-    const nodes = collectDistributionNodes(manuscript.tree);
-    const entries = distributeByKeywords(profiles[0], nodes);
-    expect(entries.some((e) => e.scopeId === "acte-1")).toBe(true);
-    expect(entries).toHaveLength(1);
-  });
+function passage(
+  id: string,
+  sourceId: string,
+  probe: RetrievedPassage["probe"],
+  text: string
+): RetrievedPassage {
+  return {
+    id,
+    sourceId,
+    fingerprint: "a".repeat(64),
+    span: { documentId: `doc-${sourceId}`, blockId: "b1", start: 0, end: text.length },
+    locator: { kind: "page", value: sourceId === "src-1" ? "12" : "18" },
+    text,
+    mode: "corroboration",
+    probe,
+  };
+}
 
-  it("relie aussi par correspondance de texte (confiance moindre)", () => {
-    const nodes = collectDistributionNodes(manuscript.tree);
-    const entries = distributeByKeywords(
-      { sourceId: "src-x", subjects: ["archive"], concepts: [] },
-      nodes
-    );
-    expect(entries[0].scopeId).toBe("acte-1");
-    expect(entries[0].confidence).toBe(0.6);
-  });
-
-  it("ne produit rien si aucun terme ne matche", () => {
-    const nodes = collectDistributionNodes(manuscript.tree);
-    expect(distributeByKeywords(profiles[1], nodes)).toHaveLength(0);
-  });
-});
-
-describe("distributeBibliography", () => {
-  it("mode pur : sans client, mapping par mots-clés", async () => {
-    const entries = await distributeBibliography(manuscript, profiles);
-    expect(entries).toHaveLength(1);
-    expect(entries[0].sourceId).toBe("src-1");
-    expect(entries[0].scopeId).toBe("acte-1");
-  });
-
-  it("mode assisté : filtre les ids inconnus", async () => {
-    const fake = {
-      generateJson: async (): Promise<unknown> => ({
-        entries: [
-          { sourceId: "src-1", scopeId: "acte-1", rationale: "ok" },
-          { sourceId: "inconnu", scopeId: "chap-4", rationale: "nok" },
-          { sourceId: "src-2", scopeId: "absent", rationale: "nok" },
-        ],
-      }),
+describe("Corpus V2 documentary scope projection", () => {
+  it("projects support, contradiction and qualification passages while preserving unresolved gaps", async () => {
+    const byProbe = {
+      support: passage("p-support", "src-1", "support", "Support exact."),
+      contradiction: passage(
+        "p-contradict",
+        "src-2",
+        "contradiction",
+        "Contradiction exacte."
+      ),
+      qualification: passage(
+        "p-qualify",
+        "src-2",
+        "qualification",
+        "Qualification exacte."
+      ),
+    } as const;
+    const explorer: CorpusExplorer = {
+      retrieve: async (input) => {
+        if (input.mode === "exploration") return [];
+        return input.probe && input.probe in byProbe
+          ? [byProbe[input.probe as keyof typeof byProbe]]
+          : [];
+      },
     };
-    const entries = await distributeBibliography(manuscript, profiles, {
-      client: fake,
+
+    const projected = await projectBibliography({
+      planningBrief: brief,
+      librarySources: sources,
+      profiles,
+      citations: [verifiedCitation],
+      relations: [contradiction],
+      explorer,
     });
-    expect(entries).toHaveLength(1);
-    expect(entries[0].sourceId).toBe("src-1");
+
+    expect(projected.scopeId).toBe("chap-1");
+    expect(projected.passages.map((item) => item.role)).toEqual([
+      "supports",
+      "contradicts",
+      "qualifies",
+    ]);
+    expect(projected.passages.map((item) => item.passage.text)).toContain(
+      "Contradiction exacte."
+    );
+    expect(projected.sources.map((source) => source.sourceId)).toEqual([
+      "src-1",
+      "src-2",
+    ]);
+    expect(projected.citationIds).toEqual(["cit-1"]);
+    expect(projected.sourceRelationIds).toEqual(["rel-1"]);
+    expect(projected.gaps).toEqual([
+      "Manque un point de vue sur les archives sonores.",
+    ]);
+    expect(projected.unexploredAreas).toEqual(projected.gaps);
   });
 
-  it("buildDistributePrompt contient les scopes et les profils, pas le contenu", () => {
-    const nodes = collectDistributionNodes(manuscript.tree);
-    const prompt = buildDistributePrompt(nodes, profiles);
-    expect(prompt).toContain("acte-1 | Acte I — La machine à différer");
-    expect(prompt).toContain("src-1 | diaspora");
-    expect(prompt).toContain('"entries"');
-  });
-});
-
-describe("assertDistributionValid + projectBibliography", () => {
-  it("refuse un scopeId inconnu", () => {
-    expect(() =>
-      assertDistributionValid(
-        [{ sourceId: "src-1", scopeId: "absent" }],
-        manuscript
-      )
-    ).toThrow("not found");
-  });
-
-  it("projette les sources par scope avec leur profil", () => {
-    const entries = [{ sourceId: "src-1", scopeId: "acte-1" }];
-    const projected = projectBibliography(manuscript, entries, sources, profiles);
-    expect(projected).toHaveLength(1);
-    expect(projected[0].scopeId).toBe("acte-1");
-    expect(projected[0].sources[0].subjects).toEqual(["diaspora"]);
-    expect(projected[0].sources[0].title).toBe("La diaspora");
-  });
-});
-
-describe("BibliographyDistribution (domaine)", () => {
-  it("refuse les doublons source↔scope", () => {
-    const result = BibliographyDistributionSchema.safeParse({
+  it("feeds canonical citation/relation refs to EditorialPlan and only projects them into EvidencePack", async () => {
+    const projected = await projectBibliography({
+      planningBrief: brief,
+      librarySources: sources,
+      profiles,
+      citations: [verifiedCitation],
+      relations: [contradiction],
+    });
+    const plan = {
+      id: "ep-1",
       projectId: "p1",
-      entries: [
-        { sourceId: "a", scopeId: "n1" },
-        { sourceId: "a", scopeId: "n1" },
-      ],
-    });
-    expect(result.success).toBe(false);
-  });
+      scope: { level: "section", projectId: "p1", sectionId: "chap-1" },
+      claimIds: [],
+      citationIds: [],
+      sourceRelationIds: [],
+      decisions: [],
+      articulations: [],
+      derivedFromRevisionIds: [],
+      status: "draft",
+      createdAt: "2026-09-13T12:00:00.000Z",
+      updatedAt: "2026-09-13T12:00:00.000Z",
+    } as unknown as EditorialPlan;
 
-  it("crée une distribution vide", () => {
-    const d = createBibliographyDistribution({ projectId: "p1" });
-    expect(d.entries).toEqual([]);
+    const projectedPlan = projectEditorialPlanReferences(plan, projected);
+    expect(projectedPlan.citationIds).toEqual(["cit-1"]);
+    expect(projectedPlan.sourceRelationIds).toEqual(["rel-1"]);
+
+    const evidencePack = buildEvidencePackFromProjection(
+      projected,
+      [verifiedCitation],
+      [contradiction],
+      ["claim-1"]
+    );
+    expect(evidencePack.keyCitations).toEqual([
+      {
+        sourceId: "src-1",
+        quote: "Une archive stabilise certains récits.",
+        pageRange: "42",
+        context: undefined,
+      },
+    ]);
+    expect(evidencePack.objections[0]).toMatchObject({
+      statement: contradiction.description,
+      sourceId: "src-1",
+    });
+    expect(evidencePack.supportingClaimIds).toEqual(["claim-1"]);
+  });
+});
+
+describe("legacy keyword distribution fallback", () => {
+  it("remains explicit compatibility behavior, not the Corpus V2 projection", async () => {
+    expect(normalizeTerm(" Mémoire ")).toBe("memoire");
+    const nodes = collectDistributionNodes(manuscript.tree);
+    expect(distributeByKeywords(profiles[0], nodes)).toHaveLength(1);
+    const entries = await distributeBibliography(manuscript, profiles);
+    expect(entries).toHaveLength(2);
+    expect(entries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ sourceId: "src-1", scopeId: "chap-1" }),
+        expect.objectContaining({ sourceId: "src-2", scopeId: "chap-1" }),
+      ])
+    );
   });
 });

@@ -45,7 +45,6 @@ function candidateArticulation() {
   });
 }
 
-
 describe("DiffractivePipeline", () => {
   it("diffracts a fragment into a reading", async () => {
     const generateJson = vi.fn(async () => readingOutput());
@@ -75,9 +74,7 @@ describe("DiffractivePipeline", () => {
     expect(articulation.diffractiveReading).toBeUndefined();
   });
 
-
-
-  it("passes bookBibliography from the context into the prompt", async () => {
+  it("passes legacy graph neighborhoods from the context as historical signals", async () => {
     const generateJson = vi.fn(async () => readingOutput());
     const pipeline = createDiffractivePipeline({ generateJson });
 
@@ -97,7 +94,8 @@ describe("DiffractivePipeline", () => {
     );
 
     const prompt = generateJson.mock.calls[0][0] as string;
-    expect(prompt).toContain("Signaux du graphe de la bibliothèque");
+    expect(prompt).toContain("Signaux historiques du graphe de la bibliothèque");
     expect(prompt).toContain("#### Terme du graphe : golem");
+    expect(prompt).toContain("jamais l'autorité documentaire Corpus V2");
   });
 });

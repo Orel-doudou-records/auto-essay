@@ -45,10 +45,11 @@ describe("assertBibliographyValid + formatage", () => {
     expect(line).toContain("concepts : golem");
   });
 
-  it("construit la section avec la consigne de redistribution", () => {
+  it("construit la section documentaire sans déclencher de retrieval dans Diffract", () => {
     const section = buildBibliographySection(bibliography);
-    expect(section).toContain("## La bibliothèque du chapitre");
-    expect(section).toContain("redistribuer la bibliographie");
+    expect(section).toContain("## Matière documentaire du scope");
+    expect(section).toContain("Diffract n'effectue aucun retrieval");
+    expect(section).toContain("ne les transforme pas en preuve par simple similarité");
     expect(section).toContain("src-2 | Sans titre");
   });
 });
@@ -100,8 +101,8 @@ describe("applyBibliographyImpacts", () => {
     ];
     const next = applyBibliographyImpacts(distribution, impacts);
     expect(next).toHaveLength(2);
-    expect(next.find((e) => e.sourceId === "src-1")?.scopeId).toBe("chap-3");
-    expect(distribution[0].scopeId).toBe("chap-2"); // pas de mutation
+    expect(next.find((entry) => entry.sourceId === "src-1")?.scopeId).toBe("chap-3");
+    expect(distribution[0].scopeId).toBe("chap-2");
   });
 
   it("rapprocher : ajoute le lien s'il n'existe pas, sans dupliquer", () => {
@@ -110,7 +111,7 @@ describe("applyBibliographyImpacts", () => {
       { sourceId: "src-9", scopeId: "chap-2", kind: "rapprocher", impact: "duplicata" },
     ];
     const next = applyBibliographyImpacts(distribution, impacts);
-    const links = next.filter((e) => e.sourceId === "src-9");
+    const links = next.filter((entry) => entry.sourceId === "src-9");
     expect(links).toHaveLength(1);
     expect(links[0].confidence).toBe(0.7);
   });
