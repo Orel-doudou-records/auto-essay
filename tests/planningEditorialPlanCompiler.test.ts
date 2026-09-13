@@ -134,13 +134,20 @@ describe("planning -> EditorialPlan compiler", () => {
     ]);
     expect(result.trace.briefId).toBe(brief.id);
     expect(result.trace.hypotheses[1]?.status).toBe("under_documented");
+    expect(result.trace.passageProvenance).toEqual([
+      { passageId: "passage-1", sourceId: "source-1" },
+      { passageId: "passage-2", sourceId: "source-2" },
+    ]);
   });
 
   it("does not require global or parent readiness to compile the local scope", () => {
     const { brief, execution } = fixture();
     const result = compilePlanningScopeToEditorialPlan({
       brief,
-      readinessContext: { parentRoleKnown: true, relevantPassageCount: 1 },
+      readinessContext: {
+        parentRoleKnown: true,
+        relevantPassageCount: 1,
+      },
       execution,
     });
     expect(result.ok).toBe(true);
@@ -169,13 +176,17 @@ describe("planning -> EditorialPlan compiler", () => {
     const { brief, execution } = fixture();
     const result = compilePlanningScopeToEditorialPlan({
       brief,
-      readinessContext: { parentRoleKnown: true, relevantPassageCount: 1 },
+      readinessContext: {
+        parentRoleKnown: true,
+        relevantPassageCount: 1,
+      },
       execution,
     });
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.trace.nonBlockingGaps).toHaveLength(1);
+    expect(result.trace.nonBlockingGaps[0]?.description).toContain("Counter-archive");
     expect("gaps" in result.plan).toBe(false);
     expect("hypotheses" in result.plan).toBe(false);
     expect("sourceRefs" in result.plan).toBe(false);
@@ -185,7 +196,10 @@ describe("planning -> EditorialPlan compiler", () => {
     const { brief, execution } = fixture();
     const result = compilePlanningScopeToEditorialPlan({
       brief,
-      readinessContext: { parentRoleKnown: true, relevantPassageCount: 1 },
+      readinessContext: {
+        parentRoleKnown: true,
+        relevantPassageCount: 1,
+      },
       passageProvenance: [{ passageId: "passage-x", sourceId: "source-x" }],
       execution,
     });
