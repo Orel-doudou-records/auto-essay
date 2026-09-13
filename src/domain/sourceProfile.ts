@@ -74,7 +74,7 @@ export const SourceProfileSchema = z.object({
   concepts: z.array(z.string().min(1)).default([]),
   abstract: z.string().optional(),
   fingerprint: z.string().regex(/^[a-f0-9]{64}$/).optional(),
-  sections: z.array(SourceProfileSectionSchema).default([]),
+  sections: z.array(SourceProfileSectionSchema).optional(),
   comprehension: SourceComprehensionSchema.optional(),
 });
 
