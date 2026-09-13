@@ -9,6 +9,22 @@ import { EditorPage } from "./EditorPage";
 vi.mock("@/hooks/useUnits", () => ({ useUnits: vi.fn() }));
 vi.mock("@/hooks/useManuscriptNavigation", () => ({ useManuscriptNavigation: vi.fn() }));
 vi.mock("@/api", () => ({ exportProject: vi.fn() }));
+vi.mock("@/components/editorial/PlanV2Panel", () => ({
+  PlanV2Panel: ({
+    projectId,
+    chapterId,
+    onApplied,
+  }: {
+    projectId: string;
+    chapterId: string;
+    onApplied?: () => void;
+  }) => (
+    <section aria-label="Préparation du plan">
+      <span>{`Plan ${projectId}/${chapterId}`}</span>
+      <button type="button" onClick={onApplied}>Simuler la validation du plan</button>
+    </section>
+  ),
+}));
 
 const useProjectUnits = vi.mocked(useUnits);
 const useProjectNavigation = vi.mocked(useManuscriptNavigation);
@@ -258,7 +274,8 @@ describe("EditorPage", () => {
     expect(screen.getByRole("complementary", { name: "Inspecteur éditorial" })).toBeInTheDocument();
   });
 
-  it("selects chapters, sections and paragraphs from one visible manuscript hierarchy", async () => {
+  it("selects chapters, sections and paragraphs from one visible manuscript hierarchy and keeps Plan V2 in the chapter workspace", async () => {
+    const reloadNavigation = vi.fn();
     useProjectNavigation.mockReturnValue({
       entries: [{
         kind: "node",
@@ -279,20 +296,24 @@ describe("EditorPage", () => {
       }],
       loading: false,
       error: null,
-      reload: vi.fn(),
+      reload: reloadNavigation,
     });
     renderEditor();
 
     const navigation = await screen.findByRole("navigation", { name: "Structure du manuscrit" });
     fireEvent.click(within(navigation).getByRole("button", { name: "Ouverture" }));
     expect(screen.getByRole("region", { name: "Scope courant : Ouverture" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Travailler le plan du chapitre" })).toHaveAttribute(
-      "href", "/projects/project-1/chapitre?chapterId=chapter-1"
-    );
+    expect(screen.getByRole("region", { name: "Préparation du plan" })).toHaveTextContent("Plan project-1/chapter-1");
+    expect(screen.queryByRole("link", { name: "Travailler le plan du chapitre" })).not.toBeInTheDocument();
     expect(screen.getByRole("complementary", { name: "Inspecteur éditorial" })).toHaveTextContent("Ouverture");
+    expect(reloadNavigation).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Simuler la validation du plan" }));
+    expect(reloadNavigation).toHaveBeenCalledTimes(1);
 
     fireEvent.click(within(navigation).getByRole("button", { name: "Le point de départ" }));
     expect(screen.getByRole("region", { name: "Scope courant : Le point de départ" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Préparation du plan" })).not.toBeInTheDocument();
 
     fireEvent.click(within(navigation).getByRole("button", { name: /Paragraphe 1/ }));
     expect(await screen.findByRole("textbox", { name: "Manuscrit : Unité préparée" })).toBeInTheDocument();
