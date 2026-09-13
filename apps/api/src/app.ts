@@ -7,6 +7,7 @@ import { unitsRoutes } from "./routes/units.js";
 import { generateRoutes } from "./routes/generate.js";
 import { reviseChatRoutes } from "./routes/reviseChat.js";
 import { revisionWorkRoutes } from "./routes/revisionWork.js";
+import { scopeConversationRoutes } from "./routes/scopeConversation.js";
 import { evaluateRoutes } from "./routes/evaluate.js";
 import { exportRoutes } from "./routes/export.js";
 import { diffractRoutes } from "./routes/diffract.js";
@@ -57,6 +58,7 @@ export function createApp(options: AppOptions = {}): Hono {
     "/api/projects/:projectId/units/:unitId/evaluate",
     evaluateRoutes(modelClientFactory, judgeRoutingPolicy)
   );
+  app.route("/api/projects/:projectId/scope-conversation", scopeConversationRoutes(modelClientFactory));
   app.route("/api/projects/:projectId/export", exportRoutes());
   app.route("/api/projects/:projectId/editorial", editorialRoutes(modelClientFactory));
   app.route("/api/projects/:projectId/planning", planningRoutes(modelClientFactory));
