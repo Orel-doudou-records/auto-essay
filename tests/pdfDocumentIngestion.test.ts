@@ -1,12 +1,10 @@
+import { createHash } from "node:crypto";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { readIngestedSpan } from "../src/domain/ingestedDocument";
-import {
-  fingerprintDocumentBytes,
-  importPdfDocument,
-} from "../src/ingestion/pdfDocumentIngestion";
+import { importPdfDocument } from "../src/ingestion/pdfDocumentIngestion";
 
 describe("PDF documentary ingestion", () => {
   it("ingests a real multi-page PDF with byte fingerprint and exact page provenance", async () => {
@@ -19,7 +17,9 @@ describe("PDF documentary ingestion", () => {
       const document = await importPdfDocument(filePath, "source-pdf-1");
 
       expect(document.ingestionStatus).toBe("ready");
-      expect(document.fingerprint).toBe(fingerprintDocumentBytes(bytes));
+      expect(document.fingerprint).toBe(
+        createHash("sha256").update(bytes).digest("hex")
+      );
       expect(document.blocks).toHaveLength(2);
       expect(document.blocks[0]).toMatchObject({
         id: "page-1",
