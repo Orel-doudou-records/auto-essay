@@ -1,7 +1,6 @@
 import { readFileSync } from "node:fs";
 import {
   buildDiffractiveRequest,
-  buildGraphNeighborhoods,
   extractBookParts,
   extractBookBibliography,
   extractConcepts,
@@ -10,7 +9,6 @@ import {
   extractTensions,
   formatReading,
   parseDiffractArgs,
-  parseKnowledgeGraph,
   runDiffract,
 } from "@auto-essay/core";
 import { createModelClient } from "../llm/client.js";
@@ -28,10 +26,9 @@ loadEnvironmentFile();
  *     --statement "Le messianisme se technicise." \
  *     --book-file /chemin/vers/manuscrit.txt \
  *     --concepts /chemin/concepts.json --tensions /chemin/tensions.json \
- *     --claims claim-1,claim-2 --sources source-1
+ *     --claims claim-1,claim-2 --sources source-1 \
  *     --book-parts /chemin/bookParts.json --cuts /chemin/cuts.json \
- *     --bibliography /chemin/library.json \
- *     --graph /chemin/graph.json --graph-terms asimov,star trek,diaspora
+ *     --bibliography /chemin/library.json
  */
 async function main(): Promise<void> {
   const args = parseDiffractArgs(process.argv.slice(2));
@@ -45,13 +42,6 @@ async function main(): Promise<void> {
   const bookBibliography = extractBookBibliography(
     readJson(args.bibliographyPath)
   );
-  const graph = args.graphPath
-    ? parseKnowledgeGraph(readJson(args.graphPath))
-    : undefined;
-  const graphNeighborhoods =
-    graph && args.graphTerms && args.graphTerms.length > 0
-      ? buildGraphNeighborhoods(graph, args.graphTerms)
-      : undefined;
 
   const request = buildDiffractiveRequest({
     ...args,
@@ -62,7 +52,6 @@ async function main(): Promise<void> {
     bookPlan,
     existingCuts,
     bookBibliography,
-    graphNeighborhoods,
   });
 
   const client = await createModelClient();
