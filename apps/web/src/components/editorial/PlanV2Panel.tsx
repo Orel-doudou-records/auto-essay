@@ -31,9 +31,10 @@ interface PlanV2PanelProps {
   projectId: string;
   chapterId: string;
   writingHref?: string;
+  onApplied?: () => void;
 }
 
-export function PlanV2Panel({ projectId, chapterId, writingHref }: PlanV2PanelProps) {
+export function PlanV2Panel({ projectId, chapterId, writingHref, onApplied }: PlanV2PanelProps) {
   const [state, setState] = useState<PlanningStatePayload>();
   const [exploration, setExploration] = useState<PlanningSubjectExploration>();
   const [refinement, setRefinement] = useState<PlanRefinementPayload>();
@@ -294,6 +295,7 @@ export function PlanV2Panel({ projectId, chapterId, writingHref }: PlanV2PanelPr
                   await applyPlanningStructuralDiff(projectId, changes);
                   setChanges([]);
                   setArchitectures([]);
+                  onApplied?.();
                   await refresh();
                   setMessage("Structure validée et appliquée.");
                 })}>{loading === "apply" ? "Validation…" : "Valider"}</Button>
