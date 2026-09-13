@@ -87,7 +87,7 @@ export function DemoPage() {
           <h1 {...stylex.props(workshopStyles.title)}>Lecture diffractive</h1>
           <p {...stylex.props(workshopStyles.copy)}>
             {demo
-              ? `${demo.title} — ${demo.chapter.title}. Bibliothèque graphifiée : ${demo.sourcesCount} sources, graphe de ${demo.graphSummary.nodes} nœuds / ${demo.graphSummary.links} arêtes.`
+              ? `${demo.title} — ${demo.chapter.title}. Bibliothèque projetée : ${demo.sourcesCount} sources.`
               : "Chargement du contexte de démonstration…"}
           </p>
         </header>
@@ -105,72 +105,43 @@ export function DemoPage() {
           </CardHeader>
           <CardContent>
             <div {...stylex.props(workshopStyles.stack)}>
-            <Textarea
-              value={statement}
-              onChange={(e) => setStatement(e.target.value)}
-              placeholder="Pose un fragment dans le chapitre 2…"
-              rows={3}
-            />
-            {demo && demo.suggestedFragments.length > 0 && (
+              <Textarea
+                value={statement}
+                onChange={(e) => setStatement(e.target.value)}
+                placeholder="Pose un fragment dans le chapitre 2…"
+                rows={3}
+              />
+              {demo && demo.suggestedFragments.length > 0 && (
+                <div {...stylex.props(workshopStyles.actionRow)}>
+                  {demo.suggestedFragments.map((f) => (
+                    <Button
+                      key={f.label}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setStatement(f.statement);
+                        void handleRun(f.statement);
+                      }}
+                    >
+                      {f.label}
+                    </Button>
+                  ))}
+                </div>
+              )}
               <div {...stylex.props(workshopStyles.actionRow)}>
-                {demo.suggestedFragments.map((f) => (
-                  <Button
-                    key={f.label}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setStatement(f.statement);
-                      void handleRun(f.statement);
-                    }}
-                  >
-                    {f.label}
-                  </Button>
-                ))}
+                <Button onClick={() => void handleRun()} disabled={loading || !demo}>
+                  {loading ? "Lecture en cours…" : "Lire (4 passes + verdict)"}
+                </Button>
+                {error && <p {...stylex.props(workshopStyles.alert)}>{error}</p>}
               </div>
-            )}
-            <div {...stylex.props(workshopStyles.actionRow)}>
-              <Button onClick={() => void handleRun()} disabled={loading || !demo}>
-                {loading ? "Lecture en cours…" : "Lire (4 passes + verdict)"}
-              </Button>
-              {error && <p {...stylex.props(workshopStyles.alert)}>{error}</p>}
-            </div>
             </div>
           </CardContent>
         </Card>
 
-        {demo && demo.context.bookBibliography.graphNeighborhoods && (
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                Signaux du graphe envoyés au lecteur (
-                {demo.context.bookBibliography.graphNeighborhoods.length} voisinages)
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <details>
-                <summary>
-                  Voir les voisinages (BFS budgété, zéro token)
-                </summary>
-                <div>
-                  {demo.context.bookBibliography.graphNeighborhoods.map((n) => (
-                    <div key={n.term}>
-                      <p>Terme : {n.term}</p>
-                      <pre>
-                        {n.text}
-                      </pre>
-                    </div>
-                  ))}
-                </div>
-              </details>
-            </CardContent>
-          </Card>
-        )}
-
         {reading && (
           <div>
             <div>
-              <span
-              >
+              <span>
                 {VERDICT_LABELS[reading.verdict] ?? reading.verdict}
               </span>
               <span>
@@ -254,7 +225,7 @@ export function DemoPage() {
                   </PassCard>
                 )}
                 {bibliographyImpacts.length > 0 && (
-                  <PassCard title="Impacts bibliographiques (signaux du graphe qualifiés)">
+                  <PassCard title="Impacts bibliographiques">
                     <ul>
                       {bibliographyImpacts.map((b, i) => (
                         <li key={i}>
