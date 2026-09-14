@@ -83,6 +83,31 @@ Delivered by SPEC #212 and tickets #213–#222.
 - Graphify and static keyword/metadata distribution generation are removed from the core. Persisted `BibliographyDistributionEntry[]` survives only as a read-compatibility format for historical workspaces.
 - `tests/corpusV2E2E.test.ts` locks corpus-only discovery, scope-to-Writer/Judge documentary flow, targeted invalidation and forbidden parallel authorities.
 
+## Workspace centré sur le scope ✅
+
+Delivered by SPEC #237 and tickets #238–#244.
+
+- chapter/section/paragraph navigation is projected from the canonical manuscript structure;
+- the manuscript remains visually primary while conversation, documentary context and revision stay attached to the active scope;
+- Plan V2 is mounted in the chapter scope and keeps explicit author approval before structural application;
+- Diffract remains consultative at decision points and never gains authority over plan or manuscript mutations;
+- project entry supports manuscript, plan and bibliography as coexisting starting materials;
+- the workspace itself is responsive on small screens: manuscript first, navigation/context docks on demand, explicit focus and keyboard escape behavior.
+
+### Frontend polish deferred — SPEC #153
+
+After the completion of #237–#244, SPEC #153 was reduced to the remaining global frontend polish and intentionally deferred on 2026-09-14.
+
+Still deferred:
+
+- #154: adapt the existing global `AppShell` for small screens and keep the five project areas reachable without a fixed 14rem sidebar;
+- #155: remove chapter/section ID entry as the primary interaction by reusing the existing manuscript navigation projection or redirecting to the scope workspace; do not duplicate Plan V2 or Diffract;
+- #156: improve author-facing labels, empty states, errors, import controls and recovery actions outside the scope workspace.
+
+Already delivered by #244 and therefore removed from #153: responsive workspace docks, `Escape` handling, scope `aria-current`, workspace focus treatment and compact proposal/review behavior.
+
+Guardrails when the deferred work resumes: no core or domain changes, no new API, no second navigation model, no `MobileAppShell`, and no duplicate Plan/Diffract workspace. Recommended order remains #154 → #155 (reduced scope) → #156 → close #153.
+
 ## Preserved invariants
 
 - `DraftUnit` remains the unit of generation, evaluation, revision and versioning.
