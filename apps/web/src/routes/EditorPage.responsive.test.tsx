@@ -89,7 +89,7 @@ function mockNavigation() {
         unitId: preparedUnit.id,
         version: preparedUnit.version,
         status: preparedUnit.status,
-        granularity: preparedUnit.granularity,
+        granularity: "paragraph",
       }],
     }],
     loading: false,
