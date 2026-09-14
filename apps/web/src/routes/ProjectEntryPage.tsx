@@ -4,13 +4,22 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useUnits } from "@/hooks/useUnits";
 import { useManuscriptNavigation } from "@/hooks/useManuscriptNavigation";
+import { useSources } from "@/hooks/useSources";
 
 export function ProjectEntryPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const { units, loading, error, reload } = useUnits(projectId);
   const { entries, loading: navigationLoading } = useManuscriptNavigation(projectId);
+  const {
+    sources,
+    loading: sourcesLoading,
+    error: sourcesError,
+    reload: reloadSources,
+  } = useSources(projectId);
 
-  if (loading || navigationLoading) return <AppShell projectId={projectId}>Chargement du manuscrit…</AppShell>;
+  if (loading || navigationLoading || sourcesLoading) {
+    return <AppShell projectId={projectId}>Chargement du projet…</AppShell>;
+  }
   if (error) {
     return (
       <AppShell projectId={projectId}>
@@ -25,35 +34,92 @@ export function ProjectEntryPage() {
     (latest, unit) => (!latest || unit.updatedAt > latest.updatedAt ? unit : latest),
     undefined
   );
-  if (lastUnit) return <Navigate to={`/projects/${projectId}/editor?unitId=${lastUnit.id}`} replace />;
   const firstChapter = entries.find((entry) => entry.kind === "node");
-  if (firstChapter) return <Navigate to={`/projects/${projectId}/chapitre?chapterId=${firstChapter.id}`} replace />;
+  const hasManuscript = Boolean(lastUnit);
+  const hasPlan = Boolean(firstChapter);
+  const hasSources = sources.length > 0;
+  const activeMatterCount = Number(hasManuscript) + Number(hasPlan) + Number(hasSources);
+
+  if (!sourcesError && activeMatterCount === 1) {
+    if (lastUnit) {
+      return <Navigate to={`/projects/${projectId}/editor?unitId=${lastUnit.id}`} replace />;
+    }
+    if (firstChapter) {
+      return <Navigate to={`/projects/${projectId}/chapitre?chapterId=${firstChapter.id}`} replace />;
+    }
+    if (hasSources) {
+      return <Navigate to={`/projects/${projectId}/sources`} replace />;
+    }
+  }
+
+  const isEmpty = activeMatterCount === 0;
 
   return (
     <AppShell projectId={projectId}>
-      <section aria-label="Commencer le manuscrit">
-        <h1>Comment voulez-vous commencer ?</h1>
-        <p>Vous pouvez reprendre un texte existant ou ouvrir une première section vide.</p>
+      <section aria-label={isEmpty ? "Commencer le projet" : "État du projet"}>
+        <h1>{isEmpty ? "Comment voulez-vous commencer ?" : "Reprendre votre essai"}</h1>
+        <p>
+          {isEmpty
+            ? "Manuscrit, plan et bibliographie peuvent être commencés dans l’ordre qui correspond à votre travail."
+            : "Manuscrit, plan et bibliographie restent indépendants : reprenez ou enrichissez chaque matière selon vos besoins."}
+        </p>
+
+        {sourcesError && (
+          <p role="alert">
+            Impossible de vérifier la bibliographie. <Button type="button" variant="link" onClick={() => void reloadSources()}>Réessayer</Button>
+          </p>
+        )}
+
         <div>
           <Card>
-            <CardHeader><CardTitle>Importer un manuscrit</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Manuscrit</CardTitle></CardHeader>
             <CardContent>
-              <p>Préparez puis corrigez un aperçu Markdown avant toute création.</p>
-              <Link to={`/projects/${projectId}/import`}>Importer un manuscrit</Link>
+              {lastUnit ? (
+                <>
+                  <p>Un texte est déjà en cours. Vous pouvez reprendre la dernière section travaillée ou comparer un nouveau fichier.</p>
+                  <Link to={`/projects/${projectId}/editor?unitId=${lastUnit.id}`}>Reprendre le manuscrit</Link>
+                  {" · "}
+                  <Link to={`/projects/${projectId}/reimport`}>Comparer un nouveau fichier</Link>
+                </>
+              ) : (
+                <>
+                  <p>Importez un texte existant ou créez une première section sans attendre que le plan soit complet.</p>
+                  <Link to={`/projects/${projectId}/import`}>Importer un manuscrit</Link>
+                  {" · "}
+                  <Link to={`/projects/${projectId}/editor?new=1`}>Créer la première section</Link>
+                </>
+              )}
             </CardContent>
           </Card>
+
           <Card>
-            <CardHeader><CardTitle>Importer un plan</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Plan</CardTitle></CardHeader>
             <CardContent>
-              <p>Corrigez la structure avant de créer un plan sans texte rédigé.</p>
-              <Link to={`/projects/${projectId}/plan-import`}>Importer un plan</Link>
+              {firstChapter ? (
+                <>
+                  <p>Une structure existe déjà. Vous pouvez travailler ce chapitre même si d’autres parties du livre restent provisoires.</p>
+                  <Link to={`/projects/${projectId}/chapitre?chapterId=${firstChapter.id}`}>Reprendre le plan</Link>
+                  {" · "}
+                  <Link to={`/projects/${projectId}/plan-import`}>Importer un plan</Link>
+                </>
+              ) : (
+                <>
+                  <p>Importez une structure sans créer artificiellement de texte rédigé.</p>
+                  <Link to={`/projects/${projectId}/plan-import`}>Importer un plan</Link>
+                </>
+              )}
             </CardContent>
           </Card>
+
           <Card>
-            <CardHeader><CardTitle>Créer la première section</CardTitle></CardHeader>
+            <CardHeader><CardTitle>Bibliographie</CardTitle></CardHeader>
             <CardContent>
-              <p>Donnez un titre à votre première section, puis écrivez.</p>
-              <Link to={`/projects/${projectId}/editor?new=1`}>Créer la première section</Link>
+              <p>
+                {hasSources
+                  ? `${sources.length} source${sources.length > 1 ? "s" : ""} enregistrée${sources.length > 1 ? "s" : ""}. Vous pouvez les compléter indépendamment du manuscrit et du plan.`
+                  : "Ajoutez des sources dès maintenant ou plus tard, sans bloquer le manuscrit ni le plan."}
+              </p>
+              <Link to={`/projects/${projectId}/sources`}>{hasSources ? "Reprendre les sources" : "Ajouter des sources"}</Link>
             </CardContent>
           </Card>
         </div>
