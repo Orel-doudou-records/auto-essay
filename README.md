@@ -119,6 +119,7 @@ const result = await generator.generateParagraph(unit.evidencePack, [source]);
   - [ADR-004 — Workspace beta frontend](docs/adr/adr-004-workspace-beta-frontend.md)
 - **Planification**
   - [Plan de la beta frontend](docs/superpowers/plans/beta-frontend-tasks.md)
+  - [État d’implémentation et travaux différés](docs/IMPLEMENTATION_STATUS.md)
 
 ## Scripts disponibles
 
@@ -181,6 +182,7 @@ Ce moteur est en phase MVP. Les fonctionnalités suivantes sont opérationnelles
 - [x] Tests unitaires passants
 - [x] API locale Hono
 - [x] Interface web React (beta)
+- [x] Workspace centré sur le scope avec Plan V2, contexte, conversation, Diffract et responsive interne
 
 Fonctionnalités à venir :
 
@@ -189,13 +191,13 @@ Fonctionnalités à venir :
 - [ ] Mode section/chapitre/livre complet dans l'UI
 - [ ] Intégration Git
 
+Le polissage frontend global regroupé dans la SPEC #153 est **reporté**. Son reliquat est limité au shell mobile global (#154), à la suppression des saisies d’ID dans les parcours Plan/Lectures sans dupliquer le workspace (#155), et aux labels/états vides/accessibilité hors workspace (#156). Les comportements responsive internes du workspace sont déjà livrés par #244 et ne doivent pas être réimplémentés.
+
 ## Démo distribuable
 
 Une démo autonome de la lecture diffractive (chapitre 2 du Judéofuturisme,
 bibliothèque graphifiée) vit dans [DEMO.md](DEMO.md) : lancement en deux
-commandes (
-pm install + 
-pm run dev), page http://localhost:5173/demo,
+commandes (npm install + npm run dev), page http://localhost:5173/demo,
 et architecture du chemin complet (web → API → lecteur diffractif → Ollama).
 
 ## Licence
