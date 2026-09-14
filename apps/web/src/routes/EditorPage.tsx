@@ -25,6 +25,11 @@ type SaveStatus = "idle" | "dirty" | "saving" | "saved" | "error";
 type NodeScope = { id: string; title: string; depth: number };
 
 const SAVE_DELAY_MS = 600;
+const COMPACT_VIEWPORT_QUERY = "(max-width: 48rem)";
+
+function isCompactScreen() {
+  return typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia(COMPACT_VIEWPORT_QUERY).matches;
+}
 
 export function EditorPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -36,14 +41,15 @@ export function EditorPage() {
     error: navigationError,
     reload: reloadNavigation,
   } = useManuscriptNavigation(projectId);
+  const requestedUnitId = searchParams.get("unitId");
+  const [isCompactViewport, setCompactViewport] = useState(isCompactScreen);
   const [selectedUnit, setSelectedUnit] = useState<DraftUnit | null>(null);
   const [selectedNode, setSelectedNode] = useState<NodeScope | null>(null);
   const [newSection, setNewSection] = useState("");
   const [isCreating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string>();
-  const [isNavigationOpen, setNavigationOpen] = useState(true);
-  const requestedUnitId = searchParams.get("unitId");
-  const [isInspectorOpen, setInspectorOpen] = useState(Boolean(requestedUnitId));
+  const [isNavigationOpen, setNavigationOpen] = useState(() => !isCompactScreen());
+  const [isInspectorOpen, setInspectorOpen] = useState(() => Boolean(requestedUnitId) && !isCompactScreen());
   const [draftContent, setDraftContent] = useState("");
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [granularityBusy, setGranularityBusy] = useState(false);
@@ -57,6 +63,23 @@ export function EditorPage() {
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
   }
 
+  function openNavigation() {
+    setNavigationOpen(true);
+    if (isCompactViewport) setInspectorOpen(false);
+  }
+
+  function toggleNavigation() {
+    const nextOpen = !isNavigationOpen;
+    setNavigationOpen(nextOpen);
+    if (nextOpen && isCompactViewport) setInspectorOpen(false);
+  }
+
+  function toggleInspector() {
+    const nextOpen = !isInspectorOpen;
+    setInspectorOpen(nextOpen);
+    if (nextOpen && isCompactViewport) setNavigationOpen(false);
+  }
+
   function selectUnit(unit: DraftUnit) {
     clearPendingSave();
     saveSequence.current += 1;
@@ -65,7 +88,12 @@ export function EditorPage() {
     setSelectedUnit(unit);
     setDraftContent(unit.content);
     setSaveStatus("saved");
-    setInspectorOpen(true);
+    if (isCompactViewport) {
+      setNavigationOpen(false);
+      setInspectorOpen(false);
+    } else {
+      setInspectorOpen(true);
+    }
   }
 
   function selectNode(scope: NodeScope) {
@@ -76,8 +104,44 @@ export function EditorPage() {
     setSelectedNode(scope);
     setDraftContent("");
     setSaveStatus("idle");
-    setInspectorOpen(true);
+    if (isCompactViewport) {
+      setNavigationOpen(false);
+      setInspectorOpen(false);
+    } else {
+      setInspectorOpen(true);
+    }
   }
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const media = window.matchMedia(COMPACT_VIEWPORT_QUERY);
+    const handleChange = (event: MediaQueryListEvent) => {
+      setCompactViewport(event.matches);
+      if (event.matches) {
+        setNavigationOpen(false);
+        setInspectorOpen(false);
+      }
+    };
+    setCompactViewport(media.matches);
+    if (media.matches) {
+      setNavigationOpen(false);
+      setInspectorOpen(false);
+    }
+    media.addEventListener("change", handleChange);
+    return () => media.removeEventListener("change", handleChange);
+  }, []);
+
+  useEffect(() => {
+    if (!isCompactViewport) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setNavigationOpen(false);
+        setInspectorOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isCompactViewport]);
 
   useEffect(() => {
     if (!requestedUnitId) return;
@@ -199,7 +263,7 @@ export function EditorPage() {
               type="button"
               variant="ghost"
               size="sm"
-              onClick={() => setNavigationOpen((open) => !open)}
+              onClick={toggleNavigation}
               aria-expanded={isNavigationOpen}
               aria-controls="manuscript-navigation"
             >
@@ -215,7 +279,7 @@ export function EditorPage() {
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => setInspectorOpen((open) => !open)}
+              onClick={toggleInspector}
               aria-expanded={isInspectorOpen}
               aria-controls="editorial-inspector"
             >
@@ -292,7 +356,7 @@ export function EditorPage() {
                 error={createError}
               />
             ) : (
-              <EmptyEditorState onCreate={() => setNavigationOpen(true)} onChoose={() => setNavigationOpen(true)} />
+              <EmptyEditorState onCreate={openNavigation} onChoose={openNavigation} />
             )}
           </main>
 
@@ -380,11 +444,13 @@ function ManuscriptNavigationEntryView({
   position: number;
 }) {
   if (entry.kind === "node") {
+    const active = selectedNodeId === entry.id;
     return (
       <li {...stylex.props(styles.treeNode)}>
         <button
           type="button"
-          {...stylex.props(styles.nodeButton, selectedNodeId === entry.id && styles.unitButtonActive)}
+          aria-current={active ? "location" : undefined}
+          {...stylex.props(styles.nodeButton, active && styles.unitButtonActive)}
           onClick={() => onSelectNode({ id: entry.id, title: entry.title, depth })}
         >
           {entry.title}
@@ -411,11 +477,13 @@ function ManuscriptNavigationEntryView({
   }
   const unit = unitsById.get(entry.unitId);
   if (!unit) return null;
+  const active = selectedUnitId === unit.id;
   return (
     <li>
       <button
         type="button"
-        {...stylex.props(styles.unitButton, selectedUnitId === unit.id && styles.unitButtonActive)}
+        aria-current={active ? "location" : undefined}
+        {...stylex.props(styles.unitButton, active && styles.unitButtonActive)}
         onClick={() => onSelectUnit(unit)}
       >
         <span {...stylex.props(styles.unitTitle)}>
@@ -725,8 +793,11 @@ const styles = stylex.create({
     display: "flex", flexWrap: "wrap", gap: "0.5rem", justifyContent: "space-between", minHeight: "3.5rem",
     padding: { default: "0 0.5rem", "@media (max-width: 48rem)": "0.5rem 0.75rem" },
   },
-  toolbarCluster: { alignItems: "center", display: "flex", gap: "0.625rem" },
-  toolbarLink: { color: themeVars.textSecondary, fontSize: "0.875rem", textDecoration: "none" },
+  toolbarCluster: { alignItems: "center", display: "flex", flexWrap: "wrap", gap: "0.625rem" },
+  toolbarLink: {
+    color: themeVars.textSecondary, fontSize: "0.875rem", textDecoration: "none",
+    outline: { ':focus-visible': `2px solid ${themeVars.focus}` }, outlineOffset: { ':focus-visible': "2px" },
+  },
   scopeName: { color: themeVars.textSecondary, fontFamily: themeVars.fontManuscript, fontSize: "0.875rem" },
   eyebrow: { color: themeVars.textSubtle, fontFamily: themeVars.fontInterface, fontSize: "0.72rem", fontWeight: 650, letterSpacing: "0.08em", margin: 0, textTransform: "uppercase" },
   body: { display: "flex", flex: "1", minHeight: 0 },
@@ -743,7 +814,7 @@ const styles = stylex.create({
   },
   panelHeader: { alignItems: "baseline", display: "flex", justifyContent: "space-between", marginBottom: "1rem" },
   panelTitle: { color: themeVars.textPrimary, fontFamily: themeVars.fontManuscript, fontSize: "1.25rem", fontWeight: 500, margin: "0.2rem 0 0" },
-  createForm: { display: "flex", gap: "0.5rem", marginBottom: "1rem" },
+  createForm: { display: "flex", flexWrap: "wrap", gap: "0.5rem", marginBottom: "1rem" },
   panelMessage: { color: themeVars.textSecondary, fontSize: "0.875rem" },
   errorMessage: { color: themeVars.danger, fontSize: "0.875rem" },
   tree: { display: "flex", flexDirection: "column", gap: "0.2rem", listStyle: "none", margin: 0, paddingLeft: "0.7rem" },
@@ -774,12 +845,18 @@ const styles = stylex.create({
   scopeOverview: { alignSelf: "flex-start", maxWidth: "48rem", width: "100%" },
   scopeDescription: { color: themeVars.textSecondary, fontFamily: themeVars.fontManuscript, fontSize: "1.05rem", lineHeight: 1.7, maxWidth: "38rem" },
   scopePlanning: { marginTop: "2rem" },
-  primaryLink: { color: themeVars.accent, display: "inline-block", fontSize: "0.9rem", fontWeight: 600, marginTop: "1rem", textDecoration: "none" },
+  primaryLink: {
+    color: themeVars.accent, display: "inline-block", fontSize: "0.9rem", fontWeight: 600, marginTop: "1rem", textDecoration: "none",
+    outline: { ':focus-visible': `2px solid ${themeVars.focus}` }, outlineOffset: { ':focus-visible': "2px" },
+  },
   manuscript: {
     display: "flex", flexDirection: "column", maxWidth: "48rem",
     minHeight: { default: "min(44rem, calc(100vh - 12rem))", "@media (max-width: 48rem)": "calc(100vh - 11rem)" }, width: "100%",
   },
-  manuscriptHeader: { alignItems: "flex-start", borderBottomColor: themeVars.border, borderBottomStyle: "solid", borderBottomWidth: "1px", display: "flex", gap: "1rem", justifyContent: "space-between", marginBottom: "1.5rem", paddingBottom: "1rem" },
+  manuscriptHeader: {
+    alignItems: "flex-start", borderBottomColor: themeVars.border, borderBottomStyle: "solid", borderBottomWidth: "1px", display: "flex", gap: "1rem",
+    flexDirection: { default: "row", "@media (max-width: 48rem)": "column" }, justifyContent: "space-between", marginBottom: "1.5rem", paddingBottom: "1rem",
+  },
   manuscriptTitle: { color: themeVars.textPrimary, fontFamily: themeVars.fontManuscript, fontSize: "clamp(1.75rem, 3vw, 2.5rem)", fontWeight: 500, letterSpacing: "-0.03em", lineHeight: 1.15, margin: "0.5rem 0 0" },
   granularityActions: { display: "flex", flexWrap: "wrap", gap: "0.25rem", marginTop: "0.5rem" },
   saveIndicator: { color: themeVars.textSubtle, fontSize: "0.75rem", margin: 0 },
@@ -808,6 +885,9 @@ const styles = stylex.create({
   reviewResult: { borderTopColor: themeVars.border, borderTopStyle: "solid", borderTopWidth: "1px", paddingTop: "1rem" },
   resultTitle: { color: themeVars.textPrimary, fontSize: "0.875rem", fontWeight: 650, margin: 0 },
   resultText: { color: themeVars.textSecondary, fontSize: "0.875rem", lineHeight: 1.5, margin: "0.5rem 0 0", whiteSpace: "pre-wrap" },
-  resultActions: { display: "flex", gap: "0.5rem", marginTop: "0.75rem" },
-  evaluationLink: { color: themeVars.accent, fontSize: "0.875rem", fontWeight: 600, textDecoration: "none" },
+  resultActions: { display: "flex", flexWrap: "wrap", gap: "0.5rem", marginTop: "0.75rem" },
+  evaluationLink: {
+    color: themeVars.accent, fontSize: "0.875rem", fontWeight: 600, textDecoration: "none",
+    outline: { ':focus-visible': `2px solid ${themeVars.focus}` }, outlineOffset: { ':focus-visible': "2px" },
+  },
 });
