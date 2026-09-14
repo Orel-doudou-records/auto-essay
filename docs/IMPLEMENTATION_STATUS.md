@@ -106,6 +106,8 @@ Still deferred:
 
 Already delivered by #244 and therefore removed from #153: responsive workspace docks, `Escape` handling, scope `aria-current`, workspace focus treatment and compact proposal/review behavior.
 
+This work is intentionally **not scheduled for immediate execution**. When resumed, the parent and child issues must first be moved back into an executable state; until then they are backlog memory, not active work.
+
 Guardrails when the deferred work resumes: no core or domain changes, no new API, no second navigation model, no `MobileAppShell`, and no duplicate Plan/Diffract workspace. Recommended order remains #154 → #155 (reduced scope) → #156 → close #153.
 
 ## Preserved invariants
