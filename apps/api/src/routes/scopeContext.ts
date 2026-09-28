@@ -6,7 +6,7 @@ import {
   type WorkspaceScope,
 } from "../services/scopeContextService.js";
 
-const ScopeKindSchema = z.enum(["node", "unit"]);
+const ScopeKindSchema = z.enum(["node", "unit", "source"]);
 const SourceSelectionBodySchema = z.object({ included: z.boolean() });
 
 export function scopeContextRoutes(): Hono {

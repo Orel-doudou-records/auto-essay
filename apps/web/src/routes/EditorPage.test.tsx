@@ -1,4 +1,11 @@
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  within,
+  waitFor,
+} from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DraftUnit, RevisionProposal } from "@auto-essay/core";
@@ -7,7 +14,9 @@ import { useManuscriptNavigation } from "@/hooks/useManuscriptNavigation";
 import { EditorPage } from "./EditorPage";
 
 vi.mock("@/hooks/useUnits", () => ({ useUnits: vi.fn() }));
-vi.mock("@/hooks/useManuscriptNavigation", () => ({ useManuscriptNavigation: vi.fn() }));
+vi.mock("@/hooks/useManuscriptNavigation", () => ({
+  useManuscriptNavigation: vi.fn(),
+}));
 vi.mock("@/api", () => ({ exportProject: vi.fn() }));
 vi.mock("@/components/editorial/PlanV2Panel", () => ({
   PlanV2Panel: ({
@@ -21,7 +30,9 @@ vi.mock("@/components/editorial/PlanV2Panel", () => ({
   }) => (
     <section aria-label="Préparation du plan">
       <span>{`Plan ${projectId}/${chapterId}`}</span>
-      <button type="button" onClick={onApplied}>Simuler la validation du plan</button>
+      <button type="button" onClick={onApplied}>
+        Simuler la validation du plan
+      </button>
     </section>
   ),
 }));
@@ -76,20 +87,30 @@ function mockUnits(overrides: Partial<ReturnType<typeof useUnits>> = {}) {
   });
 }
 
-function renderEditor(entry = "/projects/project-1/editor?unitId=unit-prepared") {
+function renderEditor(
+  entry = "/projects/project-1/editor?unitId=unit-prepared",
+) {
   return render(
     <MemoryRouter initialEntries={[entry]}>
-      <Routes><Route path="/projects/:projectId/editor" element={<EditorPage />} /></Routes>
-    </MemoryRouter>
+      <Routes>
+        <Route path="/projects/:projectId/editor" element={<EditorPage />} />
+      </Routes>
+    </MemoryRouter>,
   );
 }
 
 describe("EditorPage", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    localStorage.clear();
     updateUnit.mockResolvedValue(preparedUnit);
     mockUnits();
-    useProjectNavigation.mockReturnValue({ entries: [], loading: false, error: null, reload: vi.fn() });
+    useProjectNavigation.mockReturnValue({
+      entries: [],
+      loading: false,
+      error: null,
+      reload: vi.fn(),
+    });
   });
 
   afterEach(() => {
@@ -98,7 +119,9 @@ describe("EditorPage", () => {
 
   it("opens the requested prepared draft unit from the URL", async () => {
     renderEditor();
-    expect(await screen.findByRole("heading", { name: "Unité préparée" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Unité préparée" }),
+    ).toBeInTheDocument();
   });
 
   it("lets the author explicitly split an imported section after it is saved", async () => {
@@ -111,61 +134,106 @@ describe("EditorPage", () => {
       appliedDecisionIds: [],
       appliedArticulationIds: [],
     };
-    const firstParagraph = { ...importedUnit, id: "paragraph-1", granularity: "paragraph" as const, content: "Premier paragraphe." };
-    const secondParagraph = { ...importedUnit, id: "paragraph-2", granularity: "paragraph" as const, content: "Deuxième paragraphe." };
-    splitUnit.mockResolvedValue({ units: [firstParagraph, secondParagraph], unitIds: [firstParagraph.id, secondParagraph.id] });
+    const firstParagraph = {
+      ...importedUnit,
+      id: "paragraph-1",
+      granularity: "paragraph" as const,
+      content: "Premier paragraphe.",
+    };
+    const secondParagraph = {
+      ...importedUnit,
+      id: "paragraph-2",
+      granularity: "paragraph" as const,
+      content: "Deuxième paragraphe.",
+    };
+    splitUnit.mockResolvedValue({
+      units: [firstParagraph, secondParagraph],
+      unitIds: [firstParagraph.id, secondParagraph.id],
+    });
     mockUnits({ units: [importedUnit] });
     renderEditor("/projects/project-1/editor?unitId=unit-imported");
 
-    const split = await screen.findByRole("button", { name: "Scinder en paragraphes" });
+    const split = await screen.findByRole("button", {
+      name: "Scinder en paragraphes",
+    });
     expect(split).toBeEnabled();
     fireEvent.click(split);
 
-    await vi.waitFor(() => expect(splitUnit).toHaveBeenCalledWith("unit-imported"));
-    expect(await screen.findByRole("textbox", { name: "Manuscrit : Ouverture" })).toHaveValue("Premier paragraphe.");
+    await vi.waitFor(() =>
+      expect(splitUnit).toHaveBeenCalledWith("unit-imported"),
+    );
+    expect(
+      await screen.findByRole("textbox", { name: "Manuscrit : Ouverture" }),
+    ).toHaveValue("Premier paragraphe.");
   });
 
   it("saves after a short pause and keeps the author informed", async () => {
     renderEditor();
-    const manuscript = await screen.findByRole("textbox", { name: "Manuscrit : Unité préparée" });
+    const manuscript = await screen.findByRole("textbox", {
+      name: "Manuscrit : Unité préparée",
+    });
     vi.useFakeTimers();
     fireEvent.change(manuscript, { target: { value: "Un texte révisé." } });
 
     expect(screen.getByText("Modifications à enregistrer")).toBeInTheDocument();
     expect(updateUnit).not.toHaveBeenCalled();
-    await act(async () => void await vi.advanceTimersByTimeAsync(600));
+    await act(async () => void (await vi.advanceTimersByTimeAsync(600)));
 
-    expect(updateUnit).toHaveBeenCalledWith("unit-prepared", { content: "Un texte révisé." });
+    expect(updateUnit).toHaveBeenCalledWith("unit-prepared", {
+      content: "Un texte révisé.",
+    });
     expect(screen.getByText("Enregistré")).toBeInTheDocument();
   });
 
   it("shows an in-progress save before confirming persistence", async () => {
     let resolveSave: (unit: DraftUnit) => void = () => undefined;
-    updateUnit.mockImplementationOnce(() => new Promise<DraftUnit>((resolve) => { resolveSave = resolve; }));
+    updateUnit.mockImplementationOnce(
+      () =>
+        new Promise<DraftUnit>((resolve) => {
+          resolveSave = resolve;
+        }),
+    );
     renderEditor();
-    const manuscript = await screen.findByRole("textbox", { name: "Manuscrit : Unité préparée" });
+    const manuscript = await screen.findByRole("textbox", {
+      name: "Manuscrit : Unité préparée",
+    });
     vi.useFakeTimers();
     fireEvent.change(manuscript, { target: { value: "Un texte en attente." } });
 
-    await act(async () => void await vi.advanceTimersByTimeAsync(600));
+    await act(async () => void (await vi.advanceTimersByTimeAsync(600)));
     expect(screen.getByText("Enregistrement…")).toBeInTheDocument();
-    await act(async () => { resolveSave(preparedUnit); await Promise.resolve(); });
+    await act(async () => {
+      resolveSave(preparedUnit);
+      await Promise.resolve();
+    });
     expect(screen.getByText("Enregistré")).toBeInTheDocument();
   });
 
   it("keeps a newer local change pending when an older save finishes", async () => {
     let resolveFirstSave: (unit: DraftUnit) => void = () => undefined;
-    updateUnit.mockImplementationOnce(() => new Promise<DraftUnit>((resolve) => { resolveFirstSave = resolve; }));
+    updateUnit.mockImplementationOnce(
+      () =>
+        new Promise<DraftUnit>((resolve) => {
+          resolveFirstSave = resolve;
+        }),
+    );
     renderEditor();
-    const manuscript = await screen.findByRole("textbox", { name: "Manuscrit : Unité préparée" });
+    const manuscript = await screen.findByRole("textbox", {
+      name: "Manuscrit : Unité préparée",
+    });
     vi.useFakeTimers();
     fireEvent.change(manuscript, { target: { value: "Première version." } });
-    await act(async () => void await vi.advanceTimersByTimeAsync(600));
+    await act(async () => void (await vi.advanceTimersByTimeAsync(600)));
     expect(screen.getByText("Enregistrement…")).toBeInTheDocument();
 
-    fireEvent.change(manuscript, { target: { value: "Version plus récente." } });
+    fireEvent.change(manuscript, {
+      target: { value: "Version plus récente." },
+    });
     expect(screen.getByText("Modifications à enregistrer")).toBeInTheDocument();
-    await act(async () => { resolveFirstSave(preparedUnit); await Promise.resolve(); });
+    await act(async () => {
+      resolveFirstSave(preparedUnit);
+      await Promise.resolve();
+    });
 
     expect(screen.getByText("Modifications à enregistrer")).toBeInTheDocument();
     expect(manuscript).toHaveValue("Version plus récente.");
@@ -174,10 +242,14 @@ describe("EditorPage", () => {
   it("reports a failed automatic save without losing the editor", async () => {
     updateUnit.mockRejectedValueOnce(new Error("Écriture indisponible"));
     renderEditor();
-    const manuscript = await screen.findByRole("textbox", { name: "Manuscrit : Unité préparée" });
+    const manuscript = await screen.findByRole("textbox", {
+      name: "Manuscrit : Unité préparée",
+    });
     vi.useFakeTimers();
-    fireEvent.change(manuscript, { target: { value: "Un texte à conserver localement." } });
-    await act(async () => void await vi.advanceTimersByTimeAsync(600));
+    fireEvent.change(manuscript, {
+      target: { value: "Un texte à conserver localement." },
+    });
+    await act(async () => void (await vi.advanceTimersByTimeAsync(600)));
 
     expect(screen.getByText("Échec de l’enregistrement")).toBeInTheDocument();
     expect(manuscript).toHaveValue("Un texte à conserver localement.");
@@ -187,15 +259,25 @@ describe("EditorPage", () => {
     mockUnits({ units: [] });
     renderEditor("/projects/project-1/editor");
 
-    const emptyState = screen.getByRole("region", { name: "Aucune section sélectionnée" });
-    expect(within(emptyState).getByRole("heading", { name: "Un espace pour écrire." })).toBeInTheDocument();
-    expect(within(emptyState).getAllByRole("button").map((button) => button.textContent)).toEqual([
-      "Ajouter une section",
-      "Choisir dans le manuscrit",
-    ]);
-    fireEvent.click(screen.getByRole("button", { name: "Ouvrir les outils" }));
-    expect(screen.queryByRole("complementary", { name: "Inspecteur éditorial" })).not.toBeInTheDocument();
-    expect(screen.getByRole("navigation", { name: "Structure du manuscrit" })).toBeInTheDocument();
+    const emptyState = screen.getByRole("region", {
+      name: "Aucune section sélectionnée",
+    });
+    expect(
+      within(emptyState).getByRole("heading", {
+        name: "Un espace pour écrire.",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(emptyState)
+        .getAllByRole("button")
+        .map((button) => button.textContent),
+    ).toEqual(["Ajouter une section", "Choisir dans le manuscrit"]);
+    expect(
+      screen.getByRole("complementary", { name: "Inspecteur éditorial" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("navigation", { name: "Structure du manuscrit" }),
+    ).toBeInTheDocument();
   });
 
   it("creates the first editable section from the project entry path", async () => {
@@ -203,12 +285,20 @@ describe("EditorPage", () => {
     mockUnits({ units: [], add });
     renderEditor("/projects/project-1/editor?new=1");
 
-    expect(screen.getByRole("heading", { name: "Commencer à écrire" })).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText("Titre de votre première section"), { target: { value: "Ouverture" } });
+    expect(
+      screen.getByRole("heading", { name: "Commencer à écrire" }),
+    ).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Titre de votre première section"), {
+      target: { value: "Ouverture" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Créer et écrire" }));
 
     await vi.waitFor(() => expect(add).toHaveBeenCalledWith("Ouverture"));
-    expect(await screen.findByRole("textbox", { name: "Manuscrit : Unité préparée" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("textbox", {
+        name: "Manuscrit : Unité préparée",
+      }),
+    ).toBeInTheDocument();
   });
 
   it("prevents duplicate creation and reports a failed first section", async () => {
@@ -216,113 +306,324 @@ describe("EditorPage", () => {
     mockUnits({ units: [], add });
     renderEditor("/projects/project-1/editor?new=1");
 
-    fireEvent.change(screen.getByLabelText("Titre de votre première section"), { target: { value: "Ouverture" } });
+    fireEvent.change(screen.getByLabelText("Titre de votre première section"), {
+      target: { value: "Ouverture" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Créer et écrire" }));
     fireEvent.click(screen.getByRole("button", { name: "Création…" }));
 
     await vi.waitFor(() => expect(add).toHaveBeenCalledTimes(1));
-    expect(await screen.findByRole("alert")).toHaveTextContent("La section n’a pas pu être créée. Réessayez.");
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "La section n’a pas pu être créée. Réessayez.",
+    );
   });
 
   it("keeps a revision proposal separate, editable, explicit and stale after manuscript changes", async () => {
     const proposal: RevisionProposal = {
-      id: "proposal-1", projectId: "project-1", unitId: "unit-prepared", sourceVersion: 1,
-      before: "", content: "Proposition initiale.", status: "available",
-      createdAt: "2026-08-27T12:00:00.000Z", updatedAt: "2026-08-27T12:00:00.000Z",
+      id: "proposal-1",
+      projectId: "project-1",
+      unitId: "unit-prepared",
+      sourceVersion: 1,
+      before: "",
+      content: "Proposition initiale.",
+      status: "available",
+      createdAt: "2026-08-27T12:00:00.000Z",
+      updatedAt: "2026-08-27T12:00:00.000Z",
     };
     const reviseChat = vi.fn().mockResolvedValue({ proposal });
     mockUnits({ reviseChat });
     renderEditor();
-    const manuscript = await screen.findByRole("textbox", { name: "Manuscrit : Unité préparée" });
-    fireEvent.change(screen.getByRole("textbox", { name: "Instruction de révision" }), { target: { value: "Resserre le passage." } });
+    const manuscript = await screen.findByRole("textbox", {
+      name: "Manuscrit : Unité préparée",
+    });
+    fireEvent.change(
+      screen.getByRole("textbox", { name: "Instruction de révision" }),
+      { target: { value: "Resserre le passage." } },
+    );
     fireEvent.click(screen.getByRole("button", { name: "Réviser" }));
-    expect(await screen.findByRole("region", { name: "Proposition de révision" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("region", { name: "Proposition de révision" }),
+    ).toBeInTheDocument();
     expect(manuscript).toHaveValue("");
     expect(updateUnit).not.toHaveBeenCalled();
-    fireEvent.change(screen.getByRole("textbox", { name: "Texte proposé" }), { target: { value: "Proposition éditée." } });
-    fireEvent.click(screen.getByRole("button", { name: "Appliquer la proposition" }));
-    expect(updateUnit).toHaveBeenCalledWith("unit-prepared", { content: "Proposition éditée.", version: 2 });
+    fireEvent.change(screen.getByRole("textbox", { name: "Texte proposé" }), {
+      target: { value: "Proposition éditée." },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Appliquer la proposition" }),
+    );
+    expect(updateUnit).toHaveBeenCalledWith("unit-prepared", {
+      content: "Proposition éditée.",
+      version: 2,
+    });
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("region", { name: "Proposition de révision" }),
+      ).not.toBeInTheDocument(),
+    );
 
     reviseChat.mockResolvedValueOnce({ proposal });
-    fireEvent.change(screen.getByRole("textbox", { name: "Instruction de révision" }), { target: { value: "Nouvelle proposition." } });
+    fireEvent.change(
+      screen.getByRole("textbox", { name: "Instruction de révision" }),
+      { target: { value: "Nouvelle proposition." } },
+    );
     fireEvent.click(screen.getByRole("button", { name: "Réviser" }));
     await screen.findByRole("region", { name: "Proposition de révision" });
-    fireEvent.change(manuscript, { target: { value: "Le manuscrit a changé." } });
+    fireEvent.change(manuscript, {
+      target: { value: "Le manuscrit a changé." },
+    });
     expect(screen.getByText("Proposition périmée")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Appliquer la proposition" })).toBeDisabled();
-    fireEvent.click(screen.getByRole("button", { name: "Refuser la proposition" }));
-    expect(screen.queryByRole("region", { name: "Proposition de révision" })).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Appliquer la proposition" }),
+    ).toBeDisabled();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Refuser la proposition" }),
+    );
+    expect(
+      screen.queryByRole("region", { name: "Proposition de révision" }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows book structure and editorial context by default for the selected scope and lets the author collapse them", async () => {
     renderEditor();
     await screen.findByRole("heading", { name: "Unité préparée" });
 
-    expect(screen.getByRole("navigation", { name: "Structure du manuscrit" })).toBeInTheDocument();
-    expect(screen.getByRole("complementary", { name: "Inspecteur éditorial" })).toBeInTheDocument();
-    expect(screen.getByText("Contexte du scope · Paragraphe")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Générer une version" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("navigation", { name: "Structure du manuscrit" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("complementary", { name: "Inspecteur éditorial" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Contexte du scope · Paragraphe"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Générer une version" }),
+    ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Fermer la navigation" }));
-    expect(screen.queryByRole("navigation", { name: "Structure du manuscrit" })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Ouvrir la navigation" }));
-    expect(screen.getByRole("navigation", { name: "Structure du manuscrit" })).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Fermer la navigation" }),
+    );
+    expect(
+      screen.queryByRole("navigation", { name: "Structure du manuscrit" }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Ouvrir la navigation" }),
+    );
+    expect(
+      screen.getByRole("navigation", { name: "Structure du manuscrit" }),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Fermer les outils" }));
-    expect(screen.queryByRole("complementary", { name: "Inspecteur éditorial" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("complementary", { name: "Inspecteur éditorial" }),
+    ).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Ouvrir les outils" }));
-    expect(screen.getByRole("complementary", { name: "Inspecteur éditorial" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("complementary", { name: "Inspecteur éditorial" }),
+    ).toBeInTheDocument();
   });
 
   it("selects chapters, sections and paragraphs from one visible manuscript hierarchy and keeps Plan V2 in the chapter workspace", async () => {
     const reloadNavigation = vi.fn();
     useProjectNavigation.mockReturnValue({
-      entries: [{
-        kind: "node",
-        id: "chapter-1",
-        title: "Ouverture",
-        children: [{
+      entries: [
+        {
           kind: "node",
-          id: "section-1",
-          title: "Le point de départ",
-          children: [{
-            kind: "leaf",
-            unitId: "unit-prepared",
-            version: 1,
-            status: "drafting",
-            granularity: "paragraph",
-          }],
-        }],
-      }],
+          id: "chapter-1",
+          title: "Ouverture",
+          children: [
+            {
+              kind: "node",
+              id: "section-1",
+              title: "Le point de départ",
+              children: [
+                {
+                  kind: "leaf",
+                  unitId: "unit-prepared",
+                  version: 1,
+                  status: "drafting",
+                  granularity: "paragraph",
+                },
+              ],
+            },
+          ],
+        },
+      ],
       loading: false,
       error: null,
       reload: reloadNavigation,
     });
     renderEditor();
 
-    const navigation = await screen.findByRole("navigation", { name: "Structure du manuscrit" });
-    fireEvent.click(within(navigation).getByRole("button", { name: "Ouverture" }));
-    expect(screen.getByRole("region", { name: "Scope courant : Ouverture" })).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "Préparation du plan" })).toHaveTextContent("Plan project-1/chapter-1");
-    expect(screen.queryByRole("link", { name: "Travailler le plan du chapitre" })).not.toBeInTheDocument();
-    expect(screen.getByRole("complementary", { name: "Inspecteur éditorial" })).toHaveTextContent("Ouverture");
+    const navigation = await screen.findByRole("navigation", {
+      name: "Structure du manuscrit",
+    });
+    fireEvent.click(
+      within(navigation).getByRole("button", { name: "Ouverture" }),
+    );
+    expect(
+      screen.getByRole("region", { name: "Scope courant : Ouverture" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("region", { name: "Préparation du plan" }),
+    ).toHaveTextContent("Plan project-1/chapter-1");
+    expect(
+      screen.queryByRole("link", { name: "Travailler le plan du chapitre" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("complementary", { name: "Inspecteur éditorial" }),
+    ).toHaveTextContent("Ouverture");
     expect(reloadNavigation).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole("button", { name: "Simuler la validation du plan" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Simuler la validation du plan" }),
+    );
     expect(reloadNavigation).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(within(navigation).getByRole("button", { name: "Le point de départ" }));
-    expect(screen.getByRole("region", { name: "Scope courant : Le point de départ" })).toBeInTheDocument();
-    expect(screen.queryByRole("region", { name: "Préparation du plan" })).not.toBeInTheDocument();
+    fireEvent.click(
+      within(navigation).getByRole("button", { name: "Le point de départ" }),
+    );
+    expect(
+      screen.getByRole("region", {
+        name: "Scope courant : Le point de départ",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("region", { name: "Préparation du plan" }),
+    ).not.toBeInTheDocument();
 
-    fireEvent.click(within(navigation).getByRole("button", { name: /Paragraphe 1/ }));
-    expect(await screen.findByRole("textbox", { name: "Manuscrit : Unité préparée" })).toBeInTheDocument();
-    expect(screen.getByText("Contexte du scope · Paragraphe")).toBeInTheDocument();
+    fireEvent.click(
+      within(navigation).getByRole("button", { name: /Paragraphe 1/ }),
+    );
+    expect(
+      await screen.findByRole("textbox", {
+        name: "Manuscrit : Unité préparée",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Contexte du scope · Paragraphe"),
+    ).toBeInTheDocument();
   });
 
   it("explains when manuscript navigation cannot be loaded", () => {
-    useProjectNavigation.mockReturnValue({ entries: [], loading: false, error: new Error("Navigation indisponible"), reload: vi.fn() });
+    useProjectNavigation.mockReturnValue({
+      entries: [],
+      loading: false,
+      error: new Error("Navigation indisponible"),
+      reload: vi.fn(),
+    });
     renderEditor();
     expect(screen.getByText("Navigation indisponible")).toBeInTheDocument();
+  });
+  it("saves pending text before changing the selected passage and keeps it open on failure", async () => {
+    const second = {
+      ...preparedUnit,
+      id: "unit-second",
+      thesis: "Deuxième passage",
+      content: "Texte B",
+    };
+    mockUnits({ units: [preparedUnit, second] });
+    updateUnit.mockRejectedValueOnce(new Error("Offline"));
+    renderEditor();
+    const manuscript = await screen.findByRole("textbox", {
+      name: "Manuscrit : Unité préparée",
+    });
+    fireEvent.change(manuscript, {
+      target: { value: "Dernière phrase non enregistrée." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Paragraphe 2" }));
+    await screen.findByText("Échec de l’enregistrement");
+    expect(manuscript).toHaveValue("Dernière phrase non enregistrée.");
+    expect(
+      screen.queryByRole("textbox", { name: "Manuscrit : Deuxième passage" }),
+    ).not.toBeInTheDocument();
+    updateUnit.mockResolvedValueOnce({
+      ...preparedUnit,
+      content: "Dernière phrase non enregistrée.",
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Paragraphe 2" }));
+    expect(
+      await screen.findByRole("textbox", {
+        name: "Manuscrit : Deuxième passage",
+      }),
+    ).toHaveValue("Texte B");
+    expect(updateUnit).toHaveBeenLastCalledWith(preparedUnit.id, {
+      content: "Dernière phrase non enregistrée.",
+    });
+  });
+
+  it("offers local recovery without overwriting the current server text automatically", async () => {
+    localStorage.setItem(
+      `auto-essay.draft:project-1:${preparedUnit.id}`,
+      "Brouillon récupérable",
+    );
+    mockUnits({ units: [{ ...preparedUnit, content: "Version du serveur" }] });
+    renderEditor();
+    expect(
+      await screen.findByRole("textbox", {
+        name: "Manuscrit : Unité préparée",
+      }),
+    ).toHaveValue("Version du serveur");
+    expect(
+      screen.getByRole("button", { name: "Restaurer le brouillon local" }),
+    ).toBeInTheDocument();
+    expect(updateUnit).not.toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Conserver le texte du serveur" }),
+    );
+    expect(
+      localStorage.getItem(`auto-essay.draft:project-1:${preparedUnit.id}`),
+    ).toBeNull();
+    expect(updateUnit).not.toHaveBeenCalled();
+  });
+
+  it("keeps the saved text when reselecting the current passage", async () => {
+    renderEditor();
+    const manuscript = await screen.findByRole("textbox", {
+      name: "Manuscrit : Unité préparée",
+    });
+    updateUnit.mockResolvedValueOnce({
+      ...preparedUnit,
+      content: "Texte conservé.",
+    });
+    fireEvent.change(manuscript, { target: { value: "Texte conservé." } });
+    fireEvent.click(screen.getByRole("button", { name: "Paragraphe 1" }));
+    await waitFor(() => expect(updateUnit).toHaveBeenCalledOnce());
+    expect(manuscript).toHaveValue("Texte conservé.");
+  });
+
+  it("waits for persistence before requesting revision and stops on save failure", async () => {
+    const reviseChat = vi.fn();
+    mockUnits({ reviseChat });
+    let finishSave!: (unit: DraftUnit) => void;
+    updateUnit.mockImplementationOnce(
+      () =>
+        new Promise<DraftUnit>((resolve) => {
+          finishSave = resolve;
+        }),
+    );
+    renderEditor();
+    const manuscript = await screen.findByRole("textbox", {
+      name: "Manuscrit : Unité préparée",
+    });
+    fireEvent.change(manuscript, { target: { value: "Texte courant." } });
+    fireEvent.change(
+      screen.getByRole("textbox", { name: "Instruction de révision" }),
+      { target: { value: "Précise." } },
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Réviser" }));
+    await waitFor(() => expect(updateUnit).toHaveBeenCalledOnce());
+    expect(reviseChat).not.toHaveBeenCalled();
+    await act(async () =>
+      finishSave({ ...preparedUnit, content: "Texte courant." }),
+    );
+    await waitFor(() => expect(reviseChat).toHaveBeenCalledOnce());
+    updateUnit.mockRejectedValueOnce(new Error("offline"));
+    fireEvent.change(manuscript, { target: { value: "Nouvelle phrase." } });
+    fireEvent.click(screen.getByRole("button", { name: "Réviser" }));
+    await screen.findByText("La révision n’a pas pu être préparée. Réessayez.");
+    expect(reviseChat).toHaveBeenCalledOnce();
+    expect(manuscript).toHaveValue("Nouvelle phrase.");
   });
 });

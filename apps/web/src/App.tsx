@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { AnalysisPage } from "@/routes/AnalysisPage";
 import { HomePage } from "@/routes/HomePage";
 import { ProjectPage } from "@/routes/ProjectPage";
 import { SourcesPage } from "@/routes/SourcesPage";
@@ -24,6 +25,7 @@ function App() {
         <Route path="/projects/:projectId/import" element={<ManuscriptImportPage />} />
         <Route path="/projects/:projectId/plan-import" element={<PlanImportPage />} />
         <Route path="/projects/:projectId/reimport" element={<ManuscriptImportPage mode="reimport" />} />
+        <Route path="/projects/:projectId/analyse" element={<AnalysisPage />} />
         <Route path="/projects/:projectId/sources" element={<SourcesPage />} />
         <Route path="/projects/:projectId/editor" element={<EditorPage />} />
         <Route path="/projects/:projectId/atelier" element={<AuthorWorkshopPage />} />

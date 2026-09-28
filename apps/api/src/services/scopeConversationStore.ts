@@ -5,7 +5,7 @@ import { getDataDir } from "../config.js";
 import { withProjectWriteLock } from "./projectWriteLock.js";
 
 export const ScopeConversationScopeSchema = z.object({
-  kind: z.enum(["node", "unit"]),
+  kind: z.enum(["node", "unit", "source"]),
   id: z.string().min(1),
 });
 

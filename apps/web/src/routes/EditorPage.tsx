@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import * as stylex from "@stylexjs/stylex";
 import type { DraftUnit, RevisionProposal } from "@auto-essay/core";
-import { exportProject, type ManuscriptNavigationEntry } from "@/api";
+import { exportProject } from "@/api";
 import {
   acceptCollaborativeRevisionWork,
   isCollaborativeRevisionSuggestion,
@@ -11,7 +11,13 @@ import {
   type PublicCollaborativeRevisionWork,
   type RevisionSuggestionPayload,
 } from "@/api/revisionWork";
-import { ScopeConversation } from "@/components/editor/ScopeConversation";
+import { ContextInspector } from "@/components/workspace/ContextInspector";
+import {
+  ProjectNavigation,
+  ProjectAssets,
+  findScopePath,
+  type NodeScope,
+} from "@/components/workspace/ProjectNavigation";
 import { PlanV2Panel } from "@/components/editorial/PlanV2Panel";
 import { AppShell } from "@/components/layout/AppShell";
 import { Button } from "@/components/ui/button";
@@ -22,19 +28,32 @@ import { useManuscriptNavigation } from "@/hooks/useManuscriptNavigation";
 import { themeVars } from "../styles/tokens.stylex";
 
 type SaveStatus = "idle" | "dirty" | "saving" | "saved" | "error";
-type NodeScope = { id: string; title: string; depth: number };
 
 const SAVE_DELAY_MS = 600;
-const COMPACT_VIEWPORT_QUERY = "(max-width: 48rem)";
+const COMPACT_VIEWPORT_QUERY = "(max-width: 68rem)";
 
 function isCompactScreen() {
-  return typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia(COMPACT_VIEWPORT_QUERY).matches;
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia(COMPACT_VIEWPORT_QUERY).matches
+  );
 }
 
 export function EditorPage() {
   const { projectId } = useParams<{ projectId: string }>();
-  const [searchParams] = useSearchParams();
-  const { units, loading, error, add, update, generate, reviseChat, split, mergeNext } = useUnits(projectId);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const {
+    units,
+    loading,
+    error,
+    add,
+    update,
+    generate,
+    reviseChat,
+    split,
+    mergeNext,
+  } = useUnits(projectId);
   const {
     entries: navigationEntries,
     loading: navigationLoading,
@@ -42,20 +61,34 @@ export function EditorPage() {
     reload: reloadNavigation,
   } = useManuscriptNavigation(projectId);
   const requestedUnitId = searchParams.get("unitId");
+  const requestedNodeId =
+    searchParams.get("nodeId") ?? searchParams.get("chapterId");
   const [isCompactViewport, setCompactViewport] = useState(isCompactScreen);
   const [selectedUnit, setSelectedUnit] = useState<DraftUnit | null>(null);
   const [selectedNode, setSelectedNode] = useState<NodeScope | null>(null);
   const [newSection, setNewSection] = useState("");
   const [isCreating, setCreating] = useState(false);
+  const [actionError, setActionError] = useState<string>();
   const [createError, setCreateError] = useState<string>();
-  const [isNavigationOpen, setNavigationOpen] = useState(() => !isCompactScreen());
-  const [isInspectorOpen, setInspectorOpen] = useState(() => Boolean(requestedUnitId) && !isCompactScreen());
+  const [isNavigationOpen, setNavigationOpen] = useState(
+    () => !isCompactScreen(),
+  );
+  const [isInspectorOpen, setInspectorOpen] = useState(
+    () => !isCompactScreen(),
+  );
   const [draftContent, setDraftContent] = useState("");
+  const [recoveredDraft, setRecoveredDraft] = useState<string>();
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const [granularityBusy, setGranularityBusy] = useState(false);
   const [granularityError, setGranularityError] = useState<string>();
   const saveTimer = useRef<number>();
   const saveSequence = useRef(0);
+  const pendingSave = useRef<{
+    unitId: string;
+    content: string;
+    sequence: number;
+  }>();
+  const saveChain = useRef<Promise<boolean>>(Promise.resolve(true));
   const selectedUnitId = useRef<string | null>(null);
   const requestedNewUnit = searchParams.get("new") === "1";
 
@@ -86,7 +119,14 @@ export function EditorPage() {
     selectedUnitId.current = unit.id;
     setSelectedNode(null);
     setSelectedUnit(unit);
+    const recovered = window.localStorage.getItem(
+      `auto-essay.draft:${projectId}:${unit.id}`,
+    );
+    setRecoveredDraft(
+      recovered !== null && recovered !== unit.content ? recovered : undefined,
+    );
     setDraftContent(unit.content);
+    pendingSave.current = undefined;
     setSaveStatus("saved");
     if (isCompactViewport) {
       setNavigationOpen(false);
@@ -103,6 +143,7 @@ export function EditorPage() {
     setSelectedUnit(null);
     setSelectedNode(scope);
     setDraftContent("");
+    setRecoveredDraft(undefined);
     setSaveStatus("idle");
     if (isCompactViewport) {
       setNavigationOpen(false);
@@ -144,16 +185,60 @@ export function EditorPage() {
   }, [isCompactViewport]);
 
   useEffect(() => {
-    if (!requestedUnitId) return;
+    if (!requestedUnitId || requestedUnitId === selectedUnitId.current) return;
     const requestedUnit = units.find((unit) => unit.id === requestedUnitId);
     if (requestedUnit) selectUnit(requestedUnit);
   }, [requestedUnitId, units]);
 
-  useEffect(() => () => clearPendingSave(), []);
+  useEffect(() => {
+    if (requestedUnitId || !requestedNodeId) return;
+    const path = findScopePath(navigationEntries, requestedNodeId);
+    const node = path.at(-1);
+    if (node && selectedNode?.id !== node.id)
+      selectNode({ ...node, depth: path.length - 1 });
+  }, [requestedNodeId, requestedUnitId, navigationEntries]);
+
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => {
+      if (pendingSave.current) {
+        event.preventDefault();
+        event.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => {
+      clearPendingSave();
+      window.removeEventListener("beforeunload", warn);
+    };
+  }, []);
+
+  async function navigateToScope(kind: "unit" | "node", id: string) {
+    if (pendingSave.current && !(await flushSave())) return;
+    // The save updates the selected unit asynchronously; do not reselect its old snapshot.
+    if (
+      (kind === "unit" && selectedUnitId.current === id) ||
+      (kind === "node" && selectedNode?.id === id)
+    )
+      return;
+    const next = new URLSearchParams();
+    next.set(kind === "unit" ? "unitId" : "nodeId", id);
+    const path = findScopePath(navigationEntries, id);
+    const planScope = kind === "node" ? id : path.at(-2)?.id;
+    if (planScope) next.set("chapterId", planScope);
+    setSearchParams(next, { replace: true });
+    if (kind === "unit") {
+      const unit = units.find((item) => item.id === id);
+      if (unit) selectUnit(unit);
+    } else {
+      const node = path.at(-1);
+      if (node) selectNode({ ...node, depth: path.length - 1 });
+    }
+  }
 
   async function handleAddUnit(event: React.FormEvent) {
     event.preventDefault();
     if (!newSection.trim() || isCreating) return;
+    if (pendingSave.current && !(await flushSave())) return;
     setCreating(true);
     setCreateError(undefined);
     try {
@@ -161,6 +246,7 @@ export function EditorPage() {
       if (unit) {
         setNewSection("");
         selectUnit(unit);
+        setSearchParams({ unitId: unit.id }, { replace: true });
         void reloadNavigation();
       }
     } catch {
@@ -171,15 +257,20 @@ export function EditorPage() {
   }
 
   async function handleExport() {
-    if (!projectId) return;
-    const { markdown } = await exportProject(projectId);
-    const blob = new Blob([markdown], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = "export.md";
-    anchor.click();
-    URL.revokeObjectURL(url);
+    if (!projectId || !(await flushSave())) return;
+    setActionError(undefined);
+    try {
+      const { markdown } = await exportProject(projectId);
+      const blob = new Blob([markdown], { type: "text/markdown" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "export.md";
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setActionError("L’export a échoué. Réessayez.");
+    }
   }
 
   function queueSave(content: string) {
@@ -190,39 +281,94 @@ export function EditorPage() {
     const unitId = selectedUnit.id;
     const sequence = saveSequence.current + 1;
     saveSequence.current = sequence;
-    saveTimer.current = window.setTimeout(() => void saveUnit(unitId, content, sequence), SAVE_DELAY_MS);
+    pendingSave.current = { unitId, content, sequence };
+    window.localStorage.setItem(
+      `auto-essay.draft:${projectId}:${unitId}`,
+      content,
+    );
+    saveTimer.current = window.setTimeout(
+      () => void flushSave(false),
+      SAVE_DELAY_MS,
+    );
   }
 
-  async function saveUnit(unitId: string, content: string, sequence: number) {
-    const isCurrentSave = () => selectedUnitId.current === unitId && saveSequence.current === sequence;
-    if (isCurrentSave()) setSaveStatus("saving");
-    try {
-      const savedUnit = await update(unitId, { content });
-      if (savedUnit && isCurrentSave()) setSelectedUnit(savedUnit);
-      if (isCurrentSave()) setSaveStatus("saved");
-    } catch {
-      if (isCurrentSave()) setSaveStatus("error");
-    }
+  async function flushSave(drain = true): Promise<boolean> {
+    clearPendingSave();
+    const pending = pendingSave.current;
+    if (!pending) return saveChain.current;
+    const task = saveChain.current.then(async () => {
+      // A previous flush may already have persisted this exact snapshot.
+      if (pendingSave.current?.sequence !== pending.sequence) return true;
+      setSaveStatus("saving");
+      try {
+        const saved = await update(pending.unitId, {
+          content: pending.content,
+        });
+        if (!saved) throw new Error("Save unavailable");
+        if (pendingSave.current?.sequence === pending.sequence) {
+          pendingSave.current = undefined;
+          window.localStorage.removeItem(
+            `auto-essay.draft:${projectId}:${pending.unitId}`,
+          );
+          if (selectedUnitId.current === pending.unitId) {
+            setSelectedUnit(saved);
+            setSaveStatus("saved");
+          }
+        }
+        return true;
+      } catch {
+        setSaveStatus("error");
+        return false;
+      }
+    });
+    saveChain.current = task;
+    const saved = await task;
+    if (saved && drain && pendingSave.current) return flushSave();
+    return saved;
   }
 
-  async function applyRevisionProposal(proposal: RevisionProposal, content: string) {
-    if (!selectedUnit || selectedUnit.id !== proposal.unitId || selectedUnit.version !== proposal.sourceVersion) return;
-    const applied = await update(proposal.unitId, { content, version: selectedUnit.version + 1 });
+  async function applyRevisionProposal(
+    proposal: RevisionProposal,
+    content: string,
+  ) {
+    if (pendingSave.current && !(await flushSave()))
+      throw new Error("Enregistrement impossible");
+    if (
+      !selectedUnit ||
+      selectedUnit.id !== proposal.unitId ||
+      selectedUnit.version !== proposal.sourceVersion
+    )
+      return;
+    const applied = await update(proposal.unitId, {
+      content,
+      version: selectedUnit.version + 1,
+    });
     if (applied) selectUnit(applied);
   }
 
   async function applyCollaborativeRevision(
     work: PublicCollaborativeRevisionWork,
-    content: string
+    content: string,
   ): Promise<CollaborativeRevisionCommandResult | undefined> {
-    if (!projectId || !selectedUnit || selectedUnit.id !== work.unitId) return;
-    const result = await acceptCollaborativeRevisionWork(projectId, work.unitId, work.id, content);
+    if (
+      !projectId ||
+      !selectedUnit ||
+      selectedUnit.id !== work.unitId ||
+      !(await flushSave())
+    )
+      return;
+    const result = await acceptCollaborativeRevisionWork(
+      projectId,
+      work.unitId,
+      work.id,
+      content,
+    );
     if (result.status === "integrated") selectUnit(result.unit);
     return result;
   }
 
   async function rejectCollaborativeRevision(
-    work: PublicCollaborativeRevisionWork
+    work: PublicCollaborativeRevisionWork,
   ): Promise<CollaborativeRevisionCommandResult | undefined> {
     if (!projectId || !selectedUnit || selectedUnit.id !== work.unitId) return;
     return rejectCollaborativeRevisionWork(projectId, work.unitId, work.id);
@@ -234,17 +380,30 @@ export function EditorPage() {
     if (generated) selectUnit(generated);
   }
 
-  async function changeGranularity(action: (unitId: string) => ReturnType<typeof split>) {
+  async function changeGranularity(
+    action: (unitId: string) => ReturnType<typeof split>,
+  ) {
     if (!selectedUnit || granularityBusy || saveStatus !== "saved") return;
     setGranularityBusy(true);
     setGranularityError(undefined);
     try {
       const result = await action(selectedUnit.id);
-      const nextUnit = result && result.units.find((unit) => unit.id === result.unitIds[0]);
-      if (nextUnit) selectUnit(nextUnit);
+      const nextUnit =
+        result && result.units.find((unit) => unit.id === result.unitIds[0]);
+      if (nextUnit) {
+        selectUnit(nextUnit);
+        const next = new URLSearchParams(searchParams);
+        next.set("unitId", nextUnit.id);
+        next.delete("nodeId");
+        setSearchParams(next, { replace: true });
+      }
       void reloadNavigation();
     } catch (reason) {
-      setGranularityError(reason instanceof Error ? reason.message : "La granularité ne peut pas être modifiée.");
+      setGranularityError(
+        reason instanceof Error
+          ? reason.message
+          : "La granularité ne peut pas être modifiée.",
+      );
     } finally {
       setGranularityBusy(false);
     }
@@ -255,8 +414,11 @@ export function EditorPage() {
     : selectedNode?.title;
 
   return (
-    <AppShell projectId={projectId}>
-      <section {...stylex.props(styles.workspace)} aria-label="Espace d’écriture">
+    <AppShell projectId={projectId} beforeNavigate={flushSave}>
+      <section
+        {...stylex.props(styles.workspace)}
+        aria-label="Espace d’écriture"
+      >
         <header {...stylex.props(styles.toolbar)}>
           <div {...stylex.props(styles.toolbarCluster)}>
             <Button
@@ -267,14 +429,32 @@ export function EditorPage() {
               aria-expanded={isNavigationOpen}
               aria-controls="manuscript-navigation"
             >
-              {isNavigationOpen ? "Fermer la navigation" : "Ouvrir la navigation"}
+              {isNavigationOpen
+                ? "Fermer la navigation"
+                : "Ouvrir la navigation"}
             </Button>
             <p {...stylex.props(styles.eyebrow)}>Manuscrit</p>
-            {activeScopeTitle && <span {...stylex.props(styles.scopeName)}>· {activeScopeTitle}</span>}
+            {activeScopeTitle && (
+              <span {...stylex.props(styles.scopeName)}>
+                · {activeScopeTitle}
+              </span>
+            )}
           </div>
           <div {...stylex.props(styles.toolbarCluster)}>
-            <Link to={`/projects/${projectId}/reimport`} {...stylex.props(styles.toolbarLink)}>Comparer un nouveau fichier</Link>
-            <Button type="button" variant="ghost" size="sm" onClick={handleExport}>Exporter</Button>
+            <Link
+              to={`/projects/${projectId}/reimport`}
+              {...stylex.props(styles.toolbarLink)}
+            >
+              Comparer un nouveau fichier
+            </Link>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleExport}
+            >
+              Exporter
+            </Button>
             <Button
               type="button"
               variant="outline"
@@ -288,10 +468,18 @@ export function EditorPage() {
           </div>
         </header>
 
+        {actionError && (
+          <p role="alert" {...stylex.props(styles.errorMessage)}>
+            {actionError}
+          </p>
+        )}
         <div {...stylex.props(styles.body)}>
           {isNavigationOpen && (
             <aside {...stylex.props(styles.navigationPanel)}>
-              <nav id="manuscript-navigation" aria-label="Structure du manuscrit">
+              <nav
+                id="manuscript-navigation"
+                aria-label="Structure du manuscrit"
+              >
                 <div {...stylex.props(styles.panelHeader)}>
                   <div>
                     <p {...stylex.props(styles.eyebrow)}>Livre</p>
@@ -300,36 +488,89 @@ export function EditorPage() {
                 </div>
                 {(!requestedNewUnit || units.length > 0) && (
                   <>
-                    <form {...stylex.props(styles.createForm)} onSubmit={handleAddUnit}>
+                    <form
+                      {...stylex.props(styles.createForm)}
+                      onSubmit={handleAddUnit}
+                    >
                       <Input
                         value={newSection}
                         onChange={(event) => setNewSection(event.target.value)}
                         placeholder="Nouvelle section"
                         aria-label="Nouvelle section"
                       />
-                      <Button type="submit" size="sm" disabled={!newSection.trim() || isCreating}>
+                      <Button
+                        type="submit"
+                        size="sm"
+                        disabled={!newSection.trim() || isCreating}
+                      >
                         {isCreating ? "Création…" : "Créer"}
                       </Button>
                     </form>
-                    {createError && <p role="alert" {...stylex.props(styles.errorMessage)}>{createError}</p>}
+                    {createError && (
+                      <p role="alert" {...stylex.props(styles.errorMessage)}>
+                        {createError}
+                      </p>
+                    )}
                   </>
                 )}
-                {(loading || navigationLoading) && <p {...stylex.props(styles.panelMessage)}>Chargement…</p>}
-                {error && <p {...stylex.props(styles.errorMessage)}>{error.message}</p>}
-                {navigationError && <p {...stylex.props(styles.errorMessage)}>{navigationError.message}</p>}
-                <ManuscriptNavigation
+                {(loading || navigationLoading) && (
+                  <p {...stylex.props(styles.panelMessage)}>Chargement…</p>
+                )}
+                {error && (
+                  <p {...stylex.props(styles.errorMessage)}>{error.message}</p>
+                )}
+                {navigationError && (
+                  <p {...stylex.props(styles.errorMessage)}>
+                    {navigationError.message}
+                  </p>
+                )}
+                <ProjectNavigation
                   entries={navigationEntries}
                   units={units}
                   selectedNodeId={selectedNode?.id}
                   selectedUnitId={selectedUnit?.id}
-                  onSelectNode={selectNode}
-                  onSelectUnit={selectUnit}
+                  onSelectNode={(node) => void navigateToScope("node", node.id)}
+                  onSelectUnit={(unit) => void navigateToScope("unit", unit.id)}
                 />
               </nav>
+              <ProjectAssets projectId={projectId ?? ""} />
             </aside>
           )}
 
           <main {...stylex.props(styles.editorColumn)}>
+            {recoveredDraft !== undefined && selectedUnit && (
+              <section role="status" {...stylex.props(styles.recovery)}>
+                <p>
+                  Un brouillon local non enregistré est disponible. Le texte du
+                  serveur est affiché.
+                </p>
+                <details>
+                  <summary>Voir le brouillon local</summary>
+                  <p>{recoveredDraft}</p>
+                </details>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    queueSave(recoveredDraft);
+                    setRecoveredDraft(undefined);
+                  }}
+                >
+                  Restaurer le brouillon local
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    window.localStorage.removeItem(
+                      `auto-essay.draft:${projectId}:${selectedUnit.id}`,
+                    );
+                    setRecoveredDraft(undefined);
+                  }}
+                >
+                  Conserver le texte du serveur
+                </Button>
+              </section>
+            )}
             {selectedUnit ? (
               <UnitEditor
                 unit={selectedUnit}
@@ -356,11 +597,14 @@ export function EditorPage() {
                 error={createError}
               />
             ) : (
-              <EmptyEditorState onCreate={openNavigation} onChoose={openNavigation} />
+              <EmptyEditorState
+                onCreate={openNavigation}
+                onChoose={openNavigation}
+              />
             )}
           </main>
 
-          {isInspectorOpen && (selectedUnit || selectedNode) && (
+          {isInspectorOpen && (
             <aside
               id="editorial-inspector"
               role="complementary"
@@ -369,129 +613,33 @@ export function EditorPage() {
             >
               {selectedUnit ? (
                 <ChatPanel
+                  key={selectedUnit.id}
                   projectId={projectId ?? ""}
                   unit={selectedUnit}
                   manuscript={draftContent}
-                  onGenerate={() => void handleGenerate()}
-                  onApplyProposal={(proposal, content) => void applyRevisionProposal(proposal, content)}
+                  onGenerate={handleGenerate}
+                  onApplyProposal={applyRevisionProposal}
                   onApplyCollaborative={applyCollaborativeRevision}
                   onRejectCollaborative={rejectCollaborativeRevision}
-                  onReviseChat={reviseChat}
+                  onReviseChat={async (unitId, instruction) => {
+                    if (!(await flushSave()))
+                      throw new Error("Enregistrement impossible");
+                    return reviseChat(unitId, instruction);
+                  }}
                 />
               ) : selectedNode ? (
-                <NodeContextPanel projectId={projectId ?? ""} scope={selectedNode} />
-              ) : null}
+                <NodeContextPanel
+                  projectId={projectId ?? ""}
+                  scope={selectedNode}
+                />
+              ) : (
+                <ContextInspector projectId={projectId ?? ""} />
+              )}
             </aside>
           )}
         </div>
       </section>
     </AppShell>
-  );
-}
-
-function ManuscriptNavigation({
-  entries,
-  units,
-  selectedNodeId,
-  selectedUnitId,
-  onSelectNode,
-  onSelectUnit,
-}: {
-  entries: ManuscriptNavigationEntry[];
-  units: DraftUnit[];
-  selectedNodeId: string | undefined;
-  selectedUnitId: string | undefined;
-  onSelectNode: (scope: NodeScope) => void;
-  onSelectUnit: (unit: DraftUnit) => void;
-}) {
-  const unitsById = new Map(units.map((unit) => [unit.id, unit]));
-  return (
-    <ul {...stylex.props(styles.tree)}>
-      {entries.map((entry, index) => (
-        <ManuscriptNavigationEntryView
-          key={entry.kind === "node" ? entry.id : `${entry.unitId}:${entry.version}`}
-          entry={entry}
-          unitsById={unitsById}
-          selectedNodeId={selectedNodeId}
-          selectedUnitId={selectedUnitId}
-          onSelectNode={onSelectNode}
-          onSelectUnit={onSelectUnit}
-          depth={0}
-          position={index}
-        />
-      ))}
-    </ul>
-  );
-}
-
-function ManuscriptNavigationEntryView({
-  entry,
-  unitsById,
-  selectedNodeId,
-  selectedUnitId,
-  onSelectNode,
-  onSelectUnit,
-  depth,
-  position,
-}: {
-  entry: ManuscriptNavigationEntry;
-  unitsById: Map<string, DraftUnit>;
-  selectedNodeId: string | undefined;
-  selectedUnitId: string | undefined;
-  onSelectNode: (scope: NodeScope) => void;
-  onSelectUnit: (unit: DraftUnit) => void;
-  depth: number;
-  position: number;
-}) {
-  if (entry.kind === "node") {
-    const active = selectedNodeId === entry.id;
-    return (
-      <li {...stylex.props(styles.treeNode)}>
-        <button
-          type="button"
-          aria-current={active ? "location" : undefined}
-          {...stylex.props(styles.nodeButton, active && styles.unitButtonActive)}
-          onClick={() => onSelectNode({ id: entry.id, title: entry.title, depth })}
-        >
-          {entry.title}
-        </button>
-        {entry.children.length > 0 && (
-          <ul {...stylex.props(styles.tree)}>
-            {entry.children.map((child, childPosition) => (
-              <ManuscriptNavigationEntryView
-                key={child.kind === "node" ? child.id : `${child.unitId}:${child.version}`}
-                entry={child}
-                unitsById={unitsById}
-                selectedNodeId={selectedNodeId}
-                selectedUnitId={selectedUnitId}
-                onSelectNode={onSelectNode}
-                onSelectUnit={onSelectUnit}
-                depth={depth + 1}
-                position={childPosition}
-              />
-            ))}
-          </ul>
-        )}
-      </li>
-    );
-  }
-  const unit = unitsById.get(entry.unitId);
-  if (!unit) return null;
-  const active = selectedUnitId === unit.id;
-  return (
-    <li>
-      <button
-        type="button"
-        aria-current={active ? "location" : undefined}
-        {...stylex.props(styles.unitButton, active && styles.unitButtonActive)}
-        onClick={() => onSelectUnit(unit)}
-      >
-        <span {...stylex.props(styles.unitTitle)}>
-          {entry.granularity === "paragraph" ? `Paragraphe ${position + 1}` : "Section"}
-        </span>
-        <span {...stylex.props(styles.unitMeta)}>{unit.status} · v{entry.version}</span>
-      </button>
-    </li>
   );
 }
 
@@ -506,40 +654,64 @@ function NodeScopeView({
 }) {
   const label = scope.depth === 0 ? "Chapitre" : "Section";
   return (
-    <section {...stylex.props(styles.scopeOverview)} aria-label={`Scope courant : ${scope.title}`}>
+    <section
+      {...stylex.props(styles.scopeOverview)}
+      aria-label={`Scope courant : ${scope.title}`}
+    >
       <p {...stylex.props(styles.eyebrow)}>Scope courant · {label}</p>
       <h1 {...stylex.props(styles.manuscriptTitle)}>{scope.title}</h1>
       {scope.depth === 0 ? (
         <>
           <p {...stylex.props(styles.scopeDescription)}>
-            Précisez ici le cadrage et la structure de ce chapitre. Le manuscrit ne change qu’après votre validation explicite du diff.
+            Précisez ici le cadrage et la structure de ce chapitre. Le manuscrit
+            ne change qu’après votre validation explicite du diff.
           </p>
           <div {...stylex.props(styles.scopePlanning)}>
-            <PlanV2Panel projectId={projectId} chapterId={scope.id} onApplied={onPlanApplied} />
+            <PlanV2Panel
+              projectId={projectId}
+              chapterId={scope.id}
+              onApplied={onPlanApplied}
+            />
           </div>
         </>
       ) : (
         <p {...stylex.props(styles.scopeDescription)}>
-          Ce niveau est maintenant le contexte de travail. Sélectionnez un passage rédigé pour écrire ou réviser son texte.
+          Ce niveau est maintenant le contexte de travail. Sélectionnez un
+          passage rédigé pour écrire ou réviser son texte.
         </p>
       )}
     </section>
   );
 }
 
-function NodeContextPanel({ projectId, scope }: { projectId: string; scope: NodeScope }) {
+function NodeContextPanel({
+  projectId,
+  scope,
+}: {
+  projectId: string;
+  scope: NodeScope;
+}) {
   return (
     <section {...stylex.props(styles.inspectorContent)}>
       <header>
         <p {...stylex.props(styles.eyebrow)}>Contexte du scope</p>
         <h2 {...stylex.props(styles.inspectorTitle)}>{scope.title}</h2>
       </header>
-      <ScopeConversation projectId={projectId} scope={{ kind: "node", id: scope.id }} />
+      <ContextInspector
+        projectId={projectId}
+        scope={{ kind: "node", id: scope.id }}
+      />
     </section>
   );
 }
 
-function StartWritingForm({ section, onChange, onSubmit, isCreating, error }: {
+function StartWritingForm({
+  section,
+  onChange,
+  onSubmit,
+  isCreating,
+  error,
+}: {
   section: string;
   onChange: (section: string) => void;
   onSubmit: (event: React.FormEvent) => Promise<void>;
@@ -547,34 +719,78 @@ function StartWritingForm({ section, onChange, onSubmit, isCreating, error }: {
   error?: string;
 }) {
   return (
-    <section {...stylex.props(styles.emptyState)} aria-label="Commencer à écrire">
+    <section
+      {...stylex.props(styles.emptyState)}
+      aria-label="Commencer à écrire"
+    >
       <p {...stylex.props(styles.eyebrow)}>Manuscrit</p>
       <h1 {...stylex.props(styles.emptyTitle)}>Commencer à écrire</h1>
-      <p {...stylex.props(styles.emptyDescription)}>Donnez un titre à la première section : vous pourrez écrire dès sa création.</p>
-      <form {...stylex.props(styles.createForm)} onSubmit={(event) => void onSubmit(event)}>
-        <Input value={section} onChange={(event) => onChange(event.target.value)} placeholder="Première section" aria-label="Titre de votre première section" />
-        <Button type="submit" disabled={!section.trim() || isCreating}>{isCreating ? "Création…" : "Créer et écrire"}</Button>
+      <p {...stylex.props(styles.emptyDescription)}>
+        Donnez un titre à la première section : vous pourrez écrire dès sa
+        création.
+      </p>
+      <form
+        {...stylex.props(styles.createForm)}
+        onSubmit={(event) => void onSubmit(event)}
+      >
+        <Input
+          value={section}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder="Première section"
+          aria-label="Titre de votre première section"
+        />
+        <Button type="submit" disabled={!section.trim() || isCreating}>
+          {isCreating ? "Création…" : "Créer et écrire"}
+        </Button>
       </form>
-      {error && <p role="alert" {...stylex.props(styles.errorMessage)}>{error}</p>}
+      {error && (
+        <p role="alert" {...stylex.props(styles.errorMessage)}>
+          {error}
+        </p>
+      )}
     </section>
   );
 }
 
-function EmptyEditorState({ onCreate, onChoose }: { onCreate: () => void; onChoose: () => void }) {
+function EmptyEditorState({
+  onCreate,
+  onChoose,
+}: {
+  onCreate: () => void;
+  onChoose: () => void;
+}) {
   return (
-    <section {...stylex.props(styles.emptyState)} aria-label="Aucune section sélectionnée">
+    <section
+      {...stylex.props(styles.emptyState)}
+      aria-label="Aucune section sélectionnée"
+    >
       <p {...stylex.props(styles.eyebrow)}>Manuscrit</p>
       <h1 {...stylex.props(styles.emptyTitle)}>Un espace pour écrire.</h1>
-      <p {...stylex.props(styles.emptyDescription)}>Créez une section ou retrouvez un passage du manuscrit pour commencer.</p>
+      <p {...stylex.props(styles.emptyDescription)}>
+        Créez une section ou retrouvez un passage du manuscrit pour commencer.
+      </p>
       <div {...stylex.props(styles.emptyActions)}>
-        <Button type="button" onClick={onCreate}>Ajouter une section</Button>
-        <Button type="button" variant="outline" onClick={onChoose}>Choisir dans le manuscrit</Button>
+        <Button type="button" onClick={onCreate}>
+          Ajouter une section
+        </Button>
+        <Button type="button" variant="outline" onClick={onChoose}>
+          Choisir dans le manuscrit
+        </Button>
       </div>
     </section>
   );
 }
 
-function UnitEditor({ unit, content, saveStatus, onChange, onSplit, onMergeNext, granularityBusy, granularityError }: {
+function UnitEditor({
+  unit,
+  content,
+  saveStatus,
+  onChange,
+  onSplit,
+  onMergeNext,
+  granularityBusy,
+  granularityError,
+}: {
   unit: DraftUnit;
   content: string;
   saveStatus: SaveStatus;
@@ -584,8 +800,28 @@ function UnitEditor({ unit, content, saveStatus, onChange, onSplit, onMergeNext,
   granularityBusy: boolean;
   granularityError?: string;
 }) {
+  const field = useRef<HTMLTextAreaElement>(null);
+  function format(before: string, after = before) {
+    const start = field.current?.selectionStart ?? content.length;
+    const end = field.current?.selectionEnd ?? start;
+    onChange(
+      content.slice(0, start) +
+        before +
+        content.slice(start, end) +
+        after +
+        content.slice(end),
+    );
+    window.requestAnimationFrame(() => {
+      field.current?.focus();
+      field.current?.setSelectionRange(
+        start + before.length,
+        end + before.length,
+      );
+    });
+  }
   const title = unit.thesis || unit.contextInPlan?.section || "Sans titre";
-  const scopeLabel = unit.granularity === "paragraph" ? "Paragraphe" : "Section";
+  const scopeLabel =
+    unit.granularity === "paragraph" ? "Paragraphe" : "Section";
   return (
     <article {...stylex.props(styles.manuscript)}>
       <header {...stylex.props(styles.manuscriptHeader)}>
@@ -593,24 +829,94 @@ function UnitEditor({ unit, content, saveStatus, onChange, onSplit, onMergeNext,
           <p {...stylex.props(styles.eyebrow)}>Scope courant · {scopeLabel}</p>
           <h1 {...stylex.props(styles.manuscriptTitle)}>{title}</h1>
           <div {...stylex.props(styles.granularityActions)}>
-            <Button type="button" variant="ghost" size="sm" onClick={onSplit} disabled={unit.granularity !== "section" || saveStatus !== "saved" || granularityBusy}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onSplit}
+              disabled={
+                unit.granularity !== "section" ||
+                saveStatus !== "saved" ||
+                granularityBusy
+              }
+            >
               {granularityBusy ? "Modification…" : "Scinder en paragraphes"}
             </Button>
-            <Button type="button" variant="ghost" size="sm" onClick={onMergeNext} disabled={saveStatus !== "saved" || granularityBusy}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onMergeNext}
+              disabled={saveStatus !== "saved" || granularityBusy}
+            >
               Fusionner avec la suivante
             </Button>
           </div>
         </div>
-        <SaveIndicator status={saveStatus} />
       </header>
-      {granularityError && <p role="alert" {...stylex.props(styles.errorMessage)}>{granularityError}</p>}
+      {granularityError && (
+        <p role="alert" {...stylex.props(styles.errorMessage)}>
+          {granularityError}
+        </p>
+      )}
+      <div
+        role="toolbar"
+        aria-label="Mise en forme Markdown"
+        {...stylex.props(styles.formatToolbar)}
+      >
+        <span {...stylex.props(styles.scopeMeta)}>Markdown</span>
+        <Button
+          size="sm"
+          variant="ghost"
+          aria-label="Gras"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => format("**")}
+        >
+          B
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          aria-label="Italique"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => format("*")}
+        >
+          I
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          aria-label="Liste"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => format("\n- ", "")}
+        >
+          ☷
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          aria-label="Citation"
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => format("\n> ", "")}
+        >
+          ❞
+        </Button>
+      </div>
       <textarea
+        ref={field}
         {...stylex.props(styles.manuscriptField)}
         aria-label={`Manuscrit : ${title}`}
         value={content}
         onChange={(event) => onChange(event.target.value)}
         placeholder="Commencez à écrire…"
       />
+      <footer {...stylex.props(styles.manuscriptHeader)}>
+        <span {...stylex.props(styles.scopeMeta)}>
+          {content.trim() ? content.trim().split(/\s+/u).length : 0} mots ·
+          Version {unit.version}
+        </span>
+        <SaveIndicator status={saveStatus} />
+      </footer>
     </article>
   );
 }
@@ -623,32 +929,70 @@ function SaveIndicator({ status }: { status: SaveStatus }) {
     saved: "Enregistré",
     error: "Échec de l’enregistrement",
   }[status];
-  return <p {...stylex.props(styles.saveIndicator, status === "error" && styles.saveError)}>{label}</p>;
+  return (
+    <p
+      role="status"
+      {...stylex.props(
+        styles.saveIndicator,
+        status === "error" && styles.saveError,
+      )}
+    >
+      {label}
+    </p>
+  );
 }
 
-function collaborativeResultMessage(result: CollaborativeRevisionCommandResult): string | undefined {
+function collaborativeResultMessage(
+  result: CollaborativeRevisionCommandResult,
+): string | undefined {
   switch (result.status) {
-    case "stale": return "Le texte a évolué depuis cette proposition. Elle reste consultable mais ne peut pas être appliquée.";
-    case "conflict": return "Cette proposition entre en conflit avec le texte actuel. Elle reste consultable mais ne peut pas être appliquée.";
-    case "recovery_failed": return "La proposition ne peut pas être finalisée pour le moment. Le texte existant n’a pas été modifié.";
+    case "stale":
+      return "Le texte a évolué depuis cette proposition. Elle reste consultable mais ne peut pas être appliquée.";
+    case "conflict":
+      return "Cette proposition entre en conflit avec le texte actuel. Elle reste consultable mais ne peut pas être appliquée.";
+    case "recovery_failed":
+      return "La proposition ne peut pas être finalisée pour le moment. Le texte existant n’a pas été modifié.";
     case "unsupported_projection_drift":
-    case "scope_mismatch": return result.message;
-    default: return undefined;
+    case "scope_mismatch":
+      return result.message;
+    default:
+      return undefined;
   }
 }
 
-function ChatPanel({ projectId, unit, manuscript, onGenerate, onApplyProposal, onApplyCollaborative, onRejectCollaborative, onReviseChat }: {
+function ChatPanel({
+  projectId,
+  unit,
+  manuscript,
+  onGenerate,
+  onApplyProposal,
+  onApplyCollaborative,
+  onRejectCollaborative,
+  onReviseChat,
+}: {
   projectId: string;
   unit: DraftUnit;
   manuscript: string;
-  onGenerate: () => void;
-  onApplyProposal: (proposal: RevisionProposal, content: string) => void;
-  onApplyCollaborative: (work: PublicCollaborativeRevisionWork, content: string) => Promise<CollaborativeRevisionCommandResult | undefined>;
-  onRejectCollaborative: (work: PublicCollaborativeRevisionWork) => Promise<CollaborativeRevisionCommandResult | undefined>;
-  onReviseChat: (unitId: string, instruction: string) => Promise<RevisionSuggestionPayload | undefined>;
+  onGenerate: () => Promise<void>;
+  onApplyProposal: (
+    proposal: RevisionProposal,
+    content: string,
+  ) => Promise<void>;
+  onApplyCollaborative: (
+    work: PublicCollaborativeRevisionWork,
+    content: string,
+  ) => Promise<CollaborativeRevisionCommandResult | undefined>;
+  onRejectCollaborative: (
+    work: PublicCollaborativeRevisionWork,
+  ) => Promise<CollaborativeRevisionCommandResult | undefined>;
+  onReviseChat: (
+    unitId: string,
+    instruction: string,
+  ) => Promise<RevisionSuggestionPayload | undefined>;
 }) {
   const [instruction, setInstruction] = useState("");
-  const [suggestion, setSuggestion] = useState<RevisionSuggestionPayload | null>(null);
+  const [suggestion, setSuggestion] =
+    useState<RevisionSuggestionPayload | null>(null);
   const [proposedContent, setProposedContent] = useState("");
   const [busy, setBusy] = useState(false);
   const [actionBusy, setActionBusy] = useState(false);
@@ -663,24 +1007,42 @@ function ChatPanel({ projectId, unit, manuscript, onGenerate, onApplyProposal, o
       const result = await onReviseChat(unit.id, instruction);
       if (result) {
         setSuggestion(result);
-        setProposedContent(isCollaborativeRevisionSuggestion(result) ? result.work.proposedContent : result.proposal.content);
+        setProposedContent(
+          isCollaborativeRevisionSuggestion(result)
+            ? result.work.proposedContent
+            : result.proposal.content,
+        );
       }
+    } catch {
+      setCommandMessage("La révision n’a pas pu être préparée. Réessayez.");
     } finally {
       setBusy(false);
     }
   }
 
-  const legacyProposal = suggestion && !isCollaborativeRevisionSuggestion(suggestion) ? suggestion.proposal : null;
-  const collaborativeWork = suggestion && isCollaborativeRevisionSuggestion(suggestion) ? suggestion.work : null;
-  const sourceContent = legacyProposal?.before ?? collaborativeWork?.base.content ?? "";
+  const legacyProposal =
+    suggestion && !isCollaborativeRevisionSuggestion(suggestion)
+      ? suggestion.proposal
+      : null;
+  const collaborativeWork =
+    suggestion && isCollaborativeRevisionSuggestion(suggestion)
+      ? suggestion.work
+      : null;
+  const sourceContent =
+    legacyProposal?.before ?? collaborativeWork?.base.content ?? "";
   const suggestionUnitId = legacyProposal?.unitId ?? collaborativeWork?.unitId;
-  const presentationStale = suggestion !== null && (suggestionUnitId !== unit.id || manuscript !== sourceContent);
+  const presentationStale =
+    suggestion !== null &&
+    (suggestionUnitId !== unit.id || manuscript !== sourceContent);
   const backendStale = collaborativeWork?.status === "stale";
   const isStale = presentationStale || backendStale;
   const legacyBlocked = legacyProposal !== null && presentationStale;
   const collaborativeBlocked = collaborativeWork?.status === "stale";
-  const interactionBlocked = Boolean(legacyBlocked || collaborativeBlocked || actionBusy);
-  const levelLabel = unit.granularity === "paragraph" ? "Paragraphe" : "Section";
+  const interactionBlocked = Boolean(
+    legacyBlocked || collaborativeBlocked || actionBusy,
+  );
+  const levelLabel =
+    unit.granularity === "paragraph" ? "Paragraphe" : "Section";
 
   function clearSuggestion() {
     setSuggestion(null);
@@ -690,24 +1052,30 @@ function ChatPanel({ projectId, unit, manuscript, onGenerate, onApplyProposal, o
 
   async function applySuggestion() {
     if (!suggestion || interactionBlocked) return;
-    if (!isCollaborativeRevisionSuggestion(suggestion)) {
-      onApplyProposal(suggestion.proposal, proposedContent);
-      clearSuggestion();
-      return;
-    }
     setActionBusy(true);
     setCommandMessage(undefined);
     try {
-      const result = await onApplyCollaborative(suggestion.work, proposedContent);
+      if (!isCollaborativeRevisionSuggestion(suggestion)) {
+        await onApplyProposal(suggestion.proposal, proposedContent);
+        clearSuggestion();
+        return;
+      }
+      const result = await onApplyCollaborative(
+        suggestion.work,
+        proposedContent,
+      );
       if (!result) return;
       if (result.status === "integrated") {
         clearSuggestion();
         return;
       }
-      if ("work" in result && result.work) setSuggestion({ kind: "collaborative", work: result.work });
+      if ("work" in result && result.work)
+        setSuggestion({ kind: "collaborative", work: result.work });
       setCommandMessage(collaborativeResultMessage(result));
     } catch {
-      setCommandMessage("La proposition n’a pas pu être appliquée. Le texte existant n’a pas été modifié.");
+      setCommandMessage(
+        "La proposition n’a pas pu être appliquée. Le texte existant n’a pas été modifié.",
+      );
     } finally {
       setActionBusy(false);
     }
@@ -729,165 +1097,506 @@ function ChatPanel({ projectId, unit, manuscript, onGenerate, onApplyProposal, o
       }
       if (result) setCommandMessage(collaborativeResultMessage(result));
     } catch {
-      setCommandMessage("La proposition n’a pas pu être refusée. Le texte existant n’a pas été modifié.");
+      setCommandMessage(
+        "La proposition n’a pas pu être refusée. Le texte existant n’a pas été modifié.",
+      );
     } finally {
       setActionBusy(false);
     }
   }
 
-  const presentationMessage = commandMessage ?? (
-    isStale
+  const presentationMessage =
+    commandMessage ??
+    (isStale
       ? legacyBlocked || backendStale
         ? "Le manuscrit a changé depuis cette proposition. Elle reste consultable, mais ne peut pas être appliquée."
         : "Le manuscrit a changé depuis cette proposition. Elle reste consultable ; sa compatibilité sera vérifiée au moment de l’application."
-      : "Le manuscrit ne change qu’après votre application explicite."
-  );
+      : "Le manuscrit ne change qu’après votre application explicite.");
 
   return (
-    <section {...stylex.props(styles.inspectorContent)}>
-      <ScopeConversation projectId={projectId} scope={{ kind: "unit", id: unit.id }} />
-      <header>
-        <p {...stylex.props(styles.eyebrow)}>Contexte du scope · {levelLabel}</p>
-        <h2 {...stylex.props(styles.inspectorTitle)}>Révision assistée</h2>
-        <p {...stylex.props(styles.scopeMeta)}>{unit.status} · v{unit.version}</p>
-      </header>
-      <Button type="button" variant="outline" size="sm" onClick={onGenerate} fullWidth>Générer une version</Button>
-      <form {...stylex.props(styles.reviewForm)} onSubmit={handleSubmit}>
-        <Textarea
-          aria-label="Instruction de révision"
-          value={instruction}
-          onChange={(event) => setInstruction(event.target.value)}
-          placeholder="Que voulez-vous travailler ici ?"
-          rows={4}
-        />
-        <Button type="submit" size="sm" disabled={busy} fullWidth>{busy ? "Révision…" : "Réviser"}</Button>
-      </form>
+    <ContextInspector
+      projectId={projectId}
+      scope={{ kind: "unit", id: unit.id }}
+    >
+      <section {...stylex.props(styles.inspectorContent)}>
+        <header>
+          <p {...stylex.props(styles.eyebrow)}>
+            Contexte du scope · {levelLabel}
+          </p>
+          <h2 {...stylex.props(styles.inspectorTitle)}>Révision assistée</h2>
+          <p {...stylex.props(styles.scopeMeta)}>
+            {unit.status} · v{unit.version}
+          </p>
+        </header>
+        {!manuscript.trim() && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={busy || actionBusy}
+            onClick={() => {
+              setBusy(true);
+              void onGenerate()
+                .catch(() => setCommandMessage("La génération a échoué."))
+                .finally(() => setBusy(false));
+            }}
+            fullWidth
+          >
+            Générer une version
+          </Button>
+        )}
+        <form {...stylex.props(styles.reviewForm)} onSubmit={handleSubmit}>
+          <Textarea
+            aria-label="Instruction de révision"
+            value={instruction}
+            onChange={(event) => setInstruction(event.target.value)}
+            placeholder="Que voulez-vous travailler ici ?"
+            rows={4}
+          />
+          <Button
+            type="submit"
+            size="sm"
+            disabled={busy || actionBusy || !instruction.trim()}
+            fullWidth
+          >
+            {busy ? "Révision…" : "Réviser"}
+          </Button>
+        </form>
 
-      {suggestion && (
-        <section {...stylex.props(styles.reviewResult)} aria-label="Proposition de révision">
-          <p {...stylex.props(styles.resultTitle)}>{isStale ? "Proposition périmée" : "Proposition de révision"}</p>
-          <p {...stylex.props(styles.resultText)}>{presentationMessage}</p>
-          <Textarea aria-label="Texte proposé" value={proposedContent} onChange={(event) => setProposedContent(event.target.value)} rows={8} disabled={interactionBlocked} />
-          <details>
-            <summary>Comparer avec le texte de départ</summary>
-            <p {...stylex.props(styles.resultText)}>{sourceContent}</p>
-          </details>
-          <div {...stylex.props(styles.resultActions)}>
-            <Button size="sm" variant="outline" onClick={() => void applySuggestion()} disabled={interactionBlocked}>Appliquer la proposition</Button>
-            <Button size="sm" variant="ghost" onClick={() => void rejectSuggestion()} disabled={actionBusy}>Refuser la proposition</Button>
-          </div>
-        </section>
-      )}
+        {commandMessage && !suggestion && (
+          <p role="alert" {...stylex.props(styles.errorMessage)}>
+            {commandMessage}
+          </p>
+        )}
+        {suggestion && (
+          <section
+            {...stylex.props(styles.reviewResult)}
+            aria-label="Proposition de révision"
+          >
+            <p {...stylex.props(styles.resultTitle)}>
+              {isStale ? "Proposition périmée" : "Proposition de révision"}
+            </p>
+            <p {...stylex.props(styles.resultText)}>{presentationMessage}</p>
+            <Textarea
+              aria-label="Texte proposé"
+              value={proposedContent}
+              onChange={(event) => setProposedContent(event.target.value)}
+              rows={8}
+              disabled={interactionBlocked}
+            />
+            <details open>
+              <summary>Comparer avec le texte de départ</summary>
+              <p {...stylex.props(styles.before)}>
+                <del>{sourceContent}</del>
+              </p>
+              <p {...stylex.props(styles.after)}>
+                <ins>{proposedContent}</ins>
+              </p>
+            </details>
+            <div {...stylex.props(styles.resultActions)}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => void applySuggestion()}
+                disabled={interactionBlocked}
+              >
+                Appliquer la proposition
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => void rejectSuggestion()}
+                disabled={actionBusy}
+              >
+                Refuser la proposition
+              </Button>
+            </div>
+          </section>
+        )}
 
-      <Link {...stylex.props(styles.evaluationLink)} to={`/projects/${projectId}/evaluate/${unit.id}`}>
-        Évaluer ce {levelLabel.toLocaleLowerCase("fr-FR")}
-      </Link>
-    </section>
+        <Link
+          {...stylex.props(styles.evaluationLink)}
+          to={`/projects/${projectId}/evaluate/${unit.id}`}
+        >
+          Évaluer ce {levelLabel.toLocaleLowerCase("fr-FR")}
+        </Link>
+      </section>
+    </ContextInspector>
   );
 }
 
 const styles = stylex.create({
-  workspace: { display: "flex", flexDirection: "column", minHeight: "calc(100vh - 3rem)" },
+  workspace: {
+    display: "flex",
+    flexDirection: "column",
+    minHeight: "calc(100vh - 3.5rem)",
+  },
   toolbar: {
-    alignItems: "center", borderBottomColor: themeVars.border, borderBottomStyle: "solid", borderBottomWidth: "1px",
-    display: "flex", flexWrap: "wrap", gap: "0.5rem", justifyContent: "space-between", minHeight: "3.5rem",
-    padding: { default: "0 0.5rem", "@media (max-width: 48rem)": "0.5rem 0.75rem" },
+    alignItems: "center",
+    borderBottomColor: themeVars.border,
+    borderBottomStyle: "solid",
+    borderBottomWidth: "1px",
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "0.5rem",
+    justifyContent: "space-between",
+    minHeight: "3.5rem",
+    padding: {
+      default: "0 0.5rem",
+      "@media (max-width: 68rem)": "0.5rem 0.75rem",
+    },
   },
-  toolbarCluster: { alignItems: "center", display: "flex", flexWrap: "wrap", gap: "0.625rem" },
+  toolbarCluster: {
+    alignItems: "center",
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "0.625rem",
+  },
   toolbarLink: {
-    color: themeVars.textSecondary, fontSize: "0.875rem", textDecoration: "none",
-    outline: { ':focus-visible': `2px solid ${themeVars.focus}` }, outlineOffset: { ':focus-visible': "2px" },
+    color: themeVars.textSecondary,
+    fontSize: "0.875rem",
+    textDecoration: "none",
+    outline: { ":focus-visible": `2px solid ${themeVars.focus}` },
+    outlineOffset: { ":focus-visible": "2px" },
   },
-  scopeName: { color: themeVars.textSecondary, fontFamily: themeVars.fontManuscript, fontSize: "0.875rem" },
-  eyebrow: { color: themeVars.textSubtle, fontFamily: themeVars.fontInterface, fontSize: "0.72rem", fontWeight: 650, letterSpacing: "0.08em", margin: 0, textTransform: "uppercase" },
+  scopeName: {
+    color: themeVars.textSecondary,
+    fontFamily: themeVars.fontManuscript,
+    fontSize: "0.875rem",
+  },
+  eyebrow: {
+    color: themeVars.textSubtle,
+    fontFamily: themeVars.fontInterface,
+    fontSize: "0.72rem",
+    fontWeight: 650,
+    letterSpacing: "0.08em",
+    margin: 0,
+    textTransform: "uppercase",
+  },
   body: { display: "flex", flex: "1", minHeight: 0 },
   navigationPanel: {
-    borderRightColor: themeVars.border, borderRightStyle: "solid", borderRightWidth: "1px", flexShrink: 0,
-    backgroundColor: { default: "transparent", "@media (max-width: 48rem)": themeVars.surface },
-    bottom: { default: "auto", "@media (max-width: 48rem)": 0 },
-    boxShadow: { default: "none", "@media (max-width: 48rem)": themeVars.shadow },
-    left: { default: "auto", "@media (max-width: 48rem)": 0 },
-    overflowY: "auto", padding: "1.25rem 1rem",
-    position: { default: "static", "@media (max-width: 48rem)": "fixed" },
-    top: { default: "auto", "@media (max-width: 48rem)": "4.5rem" },
-    width: { default: "16rem", "@media (max-width: 48rem)": "min(18rem, 88vw)" }, zIndex: 10,
+    borderRightColor: themeVars.border,
+    borderRightStyle: "solid",
+    borderRightWidth: "1px",
+    flexShrink: 0,
+    backgroundColor: {
+      default: "transparent",
+      "@media (max-width: 68rem)": themeVars.surface,
+    },
+    bottom: { default: "auto", "@media (max-width: 68rem)": 0 },
+    boxShadow: {
+      default: "none",
+      "@media (max-width: 68rem)": themeVars.shadow,
+    },
+    left: { default: "auto", "@media (max-width: 68rem)": 0 },
+    overflowY: "auto",
+    padding: "1.25rem 1rem",
+    position: { default: "static", "@media (max-width: 68rem)": "fixed" },
+    top: { default: "auto", "@media (max-width: 68rem)": "4.5rem" },
+    width: {
+      default: "17rem",
+      "@media (max-width: 68rem)": "min(18rem, 88vw)",
+    },
+    zIndex: 10,
   },
-  panelHeader: { alignItems: "baseline", display: "flex", justifyContent: "space-between", marginBottom: "1rem" },
-  panelTitle: { color: themeVars.textPrimary, fontFamily: themeVars.fontManuscript, fontSize: "1.25rem", fontWeight: 500, margin: "0.2rem 0 0" },
-  createForm: { display: "flex", flexWrap: "wrap", gap: "0.5rem", marginBottom: "1rem" },
+  panelHeader: {
+    alignItems: "baseline",
+    display: "flex",
+    justifyContent: "space-between",
+    marginBottom: "1rem",
+  },
+  panelTitle: {
+    color: themeVars.textPrimary,
+    fontFamily: themeVars.fontManuscript,
+    fontSize: "1.25rem",
+    fontWeight: 500,
+    margin: "0.2rem 0 0",
+  },
+  createForm: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "0.5rem",
+    marginBottom: "1rem",
+  },
   panelMessage: { color: themeVars.textSecondary, fontSize: "0.875rem" },
   errorMessage: { color: themeVars.danger, fontSize: "0.875rem" },
-  tree: { display: "flex", flexDirection: "column", gap: "0.2rem", listStyle: "none", margin: 0, paddingLeft: "0.7rem" },
+  tree: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.2rem",
+    listStyle: "none",
+    margin: 0,
+    paddingLeft: "0.7rem",
+  },
   treeNode: { display: "flex", flexDirection: "column", gap: "0.2rem" },
   nodeButton: {
-    backgroundColor: { default: "transparent", ':hover': themeVars.accentMuted }, borderColor: "transparent", borderRadius: themeVars.radiusSmall,
-    borderStyle: "solid", borderWidth: 0, color: themeVars.textPrimary, cursor: "pointer", fontFamily: themeVars.fontManuscript,
-    fontSize: "0.9rem", fontWeight: 600, padding: "0.45rem 0.5rem", textAlign: "left", width: "100%",
-    outline: { ':focus-visible': `2px solid ${themeVars.focus}` }, outlineOffset: { ':focus-visible': "2px" },
+    backgroundColor: {
+      default: "transparent",
+      ":hover": themeVars.accentMuted,
+    },
+    borderColor: "transparent",
+    borderRadius: themeVars.radiusSmall,
+    borderStyle: "solid",
+    borderWidth: 0,
+    color: themeVars.textPrimary,
+    cursor: "pointer",
+    fontFamily: themeVars.fontManuscript,
+    fontSize: "0.85rem",
+    fontWeight: 600,
+    padding: "0.45rem 0.5rem",
+    textAlign: "left",
+    width: "100%",
+    outline: { ":focus-visible": `2px solid ${themeVars.focus}` },
+    outlineOffset: { ":focus-visible": "2px" },
   },
   unitButton: {
-    backgroundColor: { default: "transparent", ':hover': themeVars.accentMuted }, borderColor: "transparent", borderRadius: themeVars.radiusSmall,
-    borderStyle: "solid", borderWidth: 0, color: themeVars.textPrimary, cursor: "pointer", display: "flex", flexDirection: "column",
-    gap: "0.1875rem", padding: "0.55rem 0.6rem", textAlign: "left", width: "100%",
-    outline: { ':focus-visible': `2px solid ${themeVars.focus}` }, outlineOffset: { ':focus-visible': "2px" },
+    backgroundColor: {
+      default: "transparent",
+      ":hover": themeVars.accentMuted,
+    },
+    borderColor: "transparent",
+    borderRadius: themeVars.radiusSmall,
+    borderStyle: "solid",
+    borderWidth: 0,
+    color: themeVars.textPrimary,
+    cursor: "pointer",
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.1875rem",
+    padding: "0.55rem 0.6rem",
+    textAlign: "left",
+    width: "100%",
+    outline: { ":focus-visible": `2px solid ${themeVars.focus}` },
+    outlineOffset: { ":focus-visible": "2px" },
   },
   unitButtonActive: { backgroundColor: themeVars.accentMuted },
   unitTitle: { fontSize: "0.84rem", fontWeight: 600 },
   unitMeta: { color: themeVars.textSubtle, fontSize: "0.72rem" },
   editorColumn: {
-    alignItems: "stretch", display: "flex", flex: "1", justifyContent: "center", minWidth: 0,
-    padding: { default: "2.5rem clamp(1.5rem, 5vw, 5rem)", "@media (max-width: 48rem)": "1.5rem 1rem 2.5rem" },
+    alignItems: "center",
+    display: "flex",
+    flexDirection: "column",
+    flex: "1",
+    justifyContent: "flex-start",
+    minWidth: 0,
+    padding: {
+      default: "2rem clamp(1rem, 2vw, 2.5rem)",
+      "@media (max-width: 68rem)": "1.5rem 1rem 2.5rem",
+    },
+  },
+  recovery: {
+    backgroundColor: themeVars.accentMuted,
+    padding: "1rem",
+    fontSize: "0.85rem",
+    lineHeight: 1.5,
+    maxWidth: "48rem",
+    width: "100%",
+    marginBottom: "1rem",
   },
   emptyState: { alignSelf: "center", maxWidth: "34rem", paddingBottom: "12vh" },
-  emptyTitle: { color: themeVars.textPrimary, fontFamily: themeVars.fontManuscript, fontSize: "clamp(2rem, 5vw, 3.5rem)", fontWeight: 500, letterSpacing: "-0.035em", lineHeight: 1.04, margin: "0.75rem 0 1rem" },
-  emptyDescription: { color: themeVars.textSecondary, fontFamily: themeVars.fontManuscript, fontSize: "1.125rem", lineHeight: 1.65, margin: 0, maxWidth: "28rem" },
-  emptyActions: { display: "flex", flexWrap: "wrap", gap: "0.75rem", marginTop: "1.75rem" },
+  emptyTitle: {
+    color: themeVars.textPrimary,
+    fontFamily: themeVars.fontManuscript,
+    fontSize: "clamp(2rem, 5vw, 3.5rem)",
+    fontWeight: 500,
+    letterSpacing: "-0.035em",
+    lineHeight: 1.04,
+    margin: "0.75rem 0 1rem",
+  },
+  emptyDescription: {
+    color: themeVars.textSecondary,
+    fontFamily: themeVars.fontManuscript,
+    fontSize: "1.125rem",
+    lineHeight: 1.65,
+    margin: 0,
+    maxWidth: "28rem",
+  },
+  emptyActions: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "0.75rem",
+    marginTop: "1.75rem",
+  },
   scopeOverview: { alignSelf: "flex-start", maxWidth: "48rem", width: "100%" },
-  scopeDescription: { color: themeVars.textSecondary, fontFamily: themeVars.fontManuscript, fontSize: "1.05rem", lineHeight: 1.7, maxWidth: "38rem" },
+  scopeDescription: {
+    color: themeVars.textSecondary,
+    fontFamily: themeVars.fontManuscript,
+    fontSize: "1.05rem",
+    lineHeight: 1.7,
+    maxWidth: "38rem",
+  },
   scopePlanning: { marginTop: "2rem" },
   primaryLink: {
-    color: themeVars.accent, display: "inline-block", fontSize: "0.9rem", fontWeight: 600, marginTop: "1rem", textDecoration: "none",
-    outline: { ':focus-visible': `2px solid ${themeVars.focus}` }, outlineOffset: { ':focus-visible': "2px" },
+    color: themeVars.accent,
+    display: "inline-block",
+    fontSize: "0.85rem",
+    fontWeight: 600,
+    marginTop: "1rem",
+    textDecoration: "none",
+    outline: { ":focus-visible": `2px solid ${themeVars.focus}` },
+    outlineOffset: { ":focus-visible": "2px" },
   },
   manuscript: {
-    display: "flex", flexDirection: "column", maxWidth: "48rem",
-    minHeight: { default: "min(44rem, calc(100vh - 12rem))", "@media (max-width: 48rem)": "calc(100vh - 11rem)" }, width: "100%",
+    display: "flex",
+    flexDirection: "column",
+    maxWidth: "48rem",
+    minHeight: {
+      default: "min(44rem, calc(100vh - 12rem))",
+      "@media (max-width: 68rem)": "calc(100vh - 11rem)",
+    },
+    width: "100%",
   },
   manuscriptHeader: {
-    alignItems: "flex-start", borderBottomColor: themeVars.border, borderBottomStyle: "solid", borderBottomWidth: "1px", display: "flex", gap: "1rem",
-    flexDirection: { default: "row", "@media (max-width: 48rem)": "column" }, justifyContent: "space-between", marginBottom: "1.5rem", paddingBottom: "1rem",
+    alignItems: "flex-start",
+    borderBottomColor: themeVars.border,
+    borderBottomStyle: "solid",
+    borderBottomWidth: "1px",
+    display: "flex",
+    gap: "1rem",
+    flexDirection: { default: "row", "@media (max-width: 68rem)": "column" },
+    justifyContent: "space-between",
+    marginBottom: "1.5rem",
+    paddingBottom: "1rem",
   },
-  manuscriptTitle: { color: themeVars.textPrimary, fontFamily: themeVars.fontManuscript, fontSize: "clamp(1.75rem, 3vw, 2.5rem)", fontWeight: 500, letterSpacing: "-0.03em", lineHeight: 1.15, margin: "0.5rem 0 0" },
-  granularityActions: { display: "flex", flexWrap: "wrap", gap: "0.25rem", marginTop: "0.5rem" },
-  saveIndicator: { color: themeVars.textSubtle, fontSize: "0.75rem", margin: 0 },
+  manuscriptTitle: {
+    color: themeVars.textPrimary,
+    fontFamily: themeVars.fontManuscript,
+    fontSize: "clamp(1.75rem, 3vw, 2.5rem)",
+    fontWeight: 500,
+    letterSpacing: "-0.03em",
+    lineHeight: 1.15,
+    margin: "0.5rem 0 0",
+  },
+  formatToolbar: {
+    display: "flex",
+    alignItems: "center",
+    gap: "0.35rem",
+    marginBottom: "1.2rem",
+    borderBottomWidth: "1px",
+    borderBottomStyle: "solid",
+    borderBottomColor: themeVars.border,
+    paddingBottom: "0.5rem",
+  },
+  granularityActions: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "0.25rem",
+    marginTop: "0.5rem",
+  },
+  saveIndicator: {
+    color: themeVars.textSubtle,
+    fontSize: "0.75rem",
+    margin: 0,
+  },
   saveError: { color: themeVars.danger },
   manuscriptField: {
-    backgroundColor: "transparent", borderColor: "transparent", borderStyle: "solid", borderWidth: 0, color: themeVars.textPrimary,
-    flex: "1", fontFamily: themeVars.fontManuscript, fontSize: "1.1875rem", lineHeight: 1.78, minHeight: "28rem",
-    outline: { ':focus-visible': `2px solid ${themeVars.focus}` }, outlineOffset: "0.5rem", padding: 0, resize: "none", width: "100%",
-    '::placeholder': { color: themeVars.textSubtle },
+    backgroundColor: "transparent",
+    borderColor: "transparent",
+    borderStyle: "solid",
+    borderWidth: 0,
+    color: themeVars.textPrimary,
+    flex: "1",
+    fontFamily: themeVars.fontManuscript,
+    fontSize: "1.1875rem",
+    lineHeight: 1.78,
+    minHeight: "28rem",
+    outline: { ":focus-visible": `2px solid ${themeVars.focus}` },
+    outlineOffset: "0.5rem",
+    padding: 0,
+    resize: "none",
+    width: "100%",
+    "::placeholder": { color: themeVars.textSubtle },
   },
   inspectorPanel: {
-    borderLeftColor: themeVars.border, borderLeftStyle: "solid", borderLeftWidth: "1px", flexShrink: 0,
-    backgroundColor: { default: "transparent", "@media (max-width: 48rem)": themeVars.surface },
-    bottom: { default: "auto", "@media (max-width: 48rem)": 0 },
-    boxShadow: { default: "none", "@media (max-width: 48rem)": themeVars.shadow },
-    overflowY: "auto", padding: "1.5rem 1.25rem",
-    position: { default: "static", "@media (max-width: 48rem)": "fixed" },
-    right: { default: "auto", "@media (max-width: 48rem)": 0 },
-    top: { default: "auto", "@media (max-width: 48rem)": "4.5rem" },
-    width: { default: "21rem", "@media (max-width: 48rem)": "min(22rem, 88vw)" }, zIndex: 10,
+    borderLeftColor: themeVars.border,
+    borderLeftStyle: "solid",
+    borderLeftWidth: "1px",
+    flexShrink: 0,
+    backgroundColor: {
+      default: "transparent",
+      "@media (max-width: 68rem)": themeVars.surface,
+    },
+    bottom: { default: "auto", "@media (max-width: 68rem)": 0 },
+    boxShadow: {
+      default: "none",
+      "@media (max-width: 68rem)": themeVars.shadow,
+    },
+    overflowY: "auto",
+    padding: "1.5rem 1.25rem",
+    position: { default: "static", "@media (max-width: 68rem)": "fixed" },
+    right: { default: "auto", "@media (max-width: 68rem)": 0 },
+    top: { default: "auto", "@media (max-width: 68rem)": "4.5rem" },
+    width: {
+      default: "23rem",
+      "@media (max-width: 68rem)": "min(22rem, 88vw)",
+    },
+    zIndex: 10,
   },
-  inspectorContent: { display: "flex", flexDirection: "column", gap: "1.25rem" },
-  inspectorTitle: { color: themeVars.textPrimary, fontFamily: themeVars.fontManuscript, fontSize: "1.25rem", fontWeight: 500, margin: "0.35rem 0 0" },
-  scopeMeta: { color: themeVars.textSubtle, fontSize: "0.75rem", margin: "0.3rem 0 0" },
+  inspectorContent: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "1.25rem",
+  },
+  inspectorTitle: {
+    color: themeVars.textPrimary,
+    fontFamily: themeVars.fontManuscript,
+    fontSize: "1.25rem",
+    fontWeight: 500,
+    margin: "0.35rem 0 0",
+  },
+  scopeMeta: {
+    color: themeVars.textSubtle,
+    fontSize: "0.75rem",
+    margin: "0.3rem 0 0",
+  },
   reviewForm: { display: "flex", flexDirection: "column", gap: "0.625rem" },
-  reviewResult: { borderTopColor: themeVars.border, borderTopStyle: "solid", borderTopWidth: "1px", paddingTop: "1rem" },
-  resultTitle: { color: themeVars.textPrimary, fontSize: "0.875rem", fontWeight: 650, margin: 0 },
-  resultText: { color: themeVars.textSecondary, fontSize: "0.875rem", lineHeight: 1.5, margin: "0.5rem 0 0", whiteSpace: "pre-wrap" },
-  resultActions: { display: "flex", flexWrap: "wrap", gap: "0.5rem", marginTop: "0.75rem" },
+  before: {
+    color: themeVars.danger,
+    backgroundColor: themeVars.dangerMuted,
+    padding: "0.75rem",
+    fontSize: "0.85rem",
+    lineHeight: 1.65,
+    whiteSpace: "pre-wrap",
+  },
+  after: {
+    color: themeVars.success,
+    backgroundColor: themeVars.successMuted,
+    padding: "0.75rem",
+    fontSize: "0.85rem",
+    lineHeight: 1.65,
+    whiteSpace: "pre-wrap",
+  },
+  reviewResult: {
+    borderTopColor: themeVars.border,
+    borderTopStyle: "solid",
+    borderTopWidth: "1px",
+    paddingTop: "1rem",
+  },
+  resultTitle: {
+    color: themeVars.textPrimary,
+    fontSize: "0.875rem",
+    fontWeight: 650,
+    margin: 0,
+  },
+  resultText: {
+    color: themeVars.textSecondary,
+    fontSize: "0.875rem",
+    lineHeight: 1.5,
+    margin: "0.5rem 0 0",
+    whiteSpace: "pre-wrap",
+  },
+  resultActions: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "0.5rem",
+    marginTop: "0.75rem",
+  },
   evaluationLink: {
-    color: themeVars.accent, fontSize: "0.875rem", fontWeight: 600, textDecoration: "none",
-    outline: { ':focus-visible': `2px solid ${themeVars.focus}` }, outlineOffset: { ':focus-visible': "2px" },
+    color: themeVars.accent,
+    fontSize: "0.875rem",
+    fontWeight: 600,
+    textDecoration: "none",
+    outline: { ":focus-visible": `2px solid ${themeVars.focus}` },
+    outlineOffset: { ":focus-visible": "2px" },
   },
 });

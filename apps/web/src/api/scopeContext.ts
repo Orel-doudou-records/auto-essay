@@ -1,7 +1,7 @@
 const API = "/api";
 
 export type ScopeContextRef = {
-  kind: "node" | "unit";
+  kind: "node" | "unit" | "source";
   id: string;
 };
 
@@ -10,6 +10,8 @@ export type ScopeContextSource = {
   title: string;
   authors: string[];
   included: boolean;
+  usedInDescendants?: boolean;
+  nodeLinks?: Array<{ id: string; title: string }>;
   state: "explored" | "partial" | "registered_unexplored" | "unusable";
   subjects: string[];
   concepts: string[];
@@ -27,6 +29,12 @@ export type ScopeContext = {
     intention?: string;
     angleOrFunction?: string;
     constraints: string[];
+    hypotheses?: Array<{
+      statement: string;
+      status: string;
+      sourceRefs: string[];
+      note?: string;
+    }>;
   } | null;
   decisions: Array<{
     id: string;
@@ -42,13 +50,25 @@ export type ScopeContext = {
     text: string;
     pageRange?: string;
     context?: string;
+    unitId?: string;
   }>;
   exploration: {
     complete: boolean;
     status: "has_context" | "empty_library" | "no_result" | "incomplete";
-    gaps: Array<{ description: string; consequence: string; neededEvidence?: string }>;
+    gaps: Array<{
+      description: string;
+      consequence: string;
+      neededEvidence?: string;
+    }>;
     underDocumentedHypotheses: string[];
   };
+  readings?: Array<{
+    freshness: "unverified";
+    id: string;
+    createdAt: string;
+    verdict: string;
+    impacts: Array<{ partId: string; partTitle: string; impact: string }>;
+  }>;
   sourceSelection: {
     editable: boolean;
     authority: "planning_brief" | "legacy_or_none" | "evidence_pack";
@@ -57,7 +77,7 @@ export type ScopeContext = {
 
 export async function fetchScopeContext(
   projectId: string,
-  scope: ScopeContextRef
+  scope: ScopeContextRef,
 ): Promise<ScopeContext> {
   const response = await fetch(scopeContextUrl(projectId, scope));
   if (!response.ok) throw new Error(await responseMessage(response));
@@ -68,7 +88,7 @@ export async function setScopeContextSourceIncluded(
   projectId: string,
   scope: ScopeContextRef,
   sourceId: string,
-  included: boolean
+  included: boolean,
 ): Promise<ScopeContext> {
   const response = await fetch(
     `${scopeContextUrl(projectId, scope)}/sources/${encodeURIComponent(sourceId)}`,
@@ -76,7 +96,7 @@ export async function setScopeContextSourceIncluded(
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ included }),
-    }
+    },
   );
   if (!response.ok) throw new Error(await responseMessage(response));
   return response.json() as Promise<ScopeContext>;
@@ -88,7 +108,7 @@ function scopeContextUrl(projectId: string, scope: ScopeContextRef): string {
 
 async function responseMessage(response: Response): Promise<string> {
   try {
-    const body = await response.json() as { message?: string };
+    const body = (await response.json()) as { message?: string };
     return body.message ?? `HTTP ${response.status}`;
   } catch {
     return `HTTP ${response.status}`;

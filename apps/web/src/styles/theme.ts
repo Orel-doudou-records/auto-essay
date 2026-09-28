@@ -17,6 +17,8 @@ export const darkTheme = stylex.createTheme(themeVars, {
   dangerHover: "#f5b3b0",
   dangerMuted: "#422b2d",
   focus: "#aac8dc",
+  success: "#87d6a9",
+  successMuted: "#1c3a2a",
   shadow: "0 16px 42px rgba(0, 0, 0, 0.28)",
   radiusSmall: "6px",
   radiusMedium: "10px",
