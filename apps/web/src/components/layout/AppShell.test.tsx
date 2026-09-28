@@ -41,7 +41,7 @@ describe("AppShell", () => {
     renderShell();
 
     expect(screen.getByRole("link", { name: "Auto Essay — projets" })).toHaveAttribute("href", "/");
-    expect(screen.getByRole("link", { name: "Manuscrit" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Écrire" })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: "Cadrage" })).toHaveAttribute(
       "href",
       "/projects/project-1/cadrage"
@@ -59,4 +59,12 @@ describe("AppShell", () => {
       "/projects/project-1/sources"
     );
   });
+  it("preserves the selected passage and plan scope across primary views", () => {
+    render(<MemoryRouter initialEntries={["/projects/project-1/editor?unitId=u1&chapterId=n1"]}>
+      <AppShell projectId="project-1"><p>Texte</p></AppShell>
+    </MemoryRouter>);
+    expect(screen.getByRole("link", { name: "Sources" })).toHaveAttribute("href", "/projects/project-1/sources?unitId=u1&chapterId=n1");
+    expect(screen.getByRole("link", { name: "Analyse" })).toHaveAttribute("href", "/projects/project-1/analyse?unitId=u1&chapterId=n1");
+  });
+
 });

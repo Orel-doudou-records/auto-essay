@@ -4,6 +4,36 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fetchChapterEditorialWorkspace, generateUnit } from "@/api";
 import { ChapterWorkshopPage } from "./ChapterWorkshopPage";
 
+vi.mock("@/hooks/useManuscriptNavigation", () => ({
+  useManuscriptNavigation: () => ({
+    entries: [
+      {
+        kind: "node",
+        id: "chapter-1",
+        title: "Chapitre premier",
+        children: [],
+      },
+      { kind: "node", id: "empty", title: "Chapitre vide", children: [] },
+      { kind: "node", id: "missing", title: "Chapitre disparu", children: [] },
+    ],
+    loading: false,
+    error: null,
+    reload: vi.fn(),
+  }),
+}));
+vi.mock("@/components/workspace/ProjectWorkspace", () => ({
+  ProjectWorkspace: ({
+    children,
+    scope,
+  }: {
+    children: React.ReactNode;
+    scope?: { id: string };
+  }) => (
+    <div data-testid="workspace" data-scope={scope?.id}>
+      {children}
+    </div>
+  ),
+}));
 vi.mock("@/api", () => ({
   fetchChapterEditorialWorkspace: vi.fn(),
   generateUnit: vi.fn(),
@@ -13,14 +43,20 @@ const fetchChapter = vi.mocked(fetchChapterEditorialWorkspace);
 const generateDraftUnit = vi.mocked(generateUnit);
 
 const workspace = {
-  chapter: { id: "chapter-1", title: "Chapitre premier", writingStatus: "drafting" },
+  chapter: {
+    id: "chapter-1",
+    title: "Chapitre premier",
+    writingStatus: "drafting",
+  },
   sections: [
     {
       id: "section-1",
       title: "Première section",
       order: 1,
       writingStatus: "verified",
-      decisions: [{ id: "decision-1", contentCommitments: ["Conserver la tension"] }],
+      decisions: [
+        { id: "decision-1", contentCommitments: ["Conserver la tension"] },
+      ],
       units: [
         {
           id: "unit-prepared",
@@ -85,9 +121,12 @@ function renderPage(entry = "/projects/project-1/chapitre") {
   return render(
     <MemoryRouter initialEntries={[entry]}>
       <Routes>
-        <Route path="/projects/:projectId/chapitre" element={<ChapterWorkshopPage />} />
+        <Route
+          path="/projects/:projectId/chapitre"
+          element={<ChapterWorkshopPage />}
+        />
       </Routes>
-    </MemoryRouter>
+    </MemoryRouter>,
   );
 }
 
@@ -100,27 +139,43 @@ describe("ChapterWorkshopPage", () => {
     fetchChapter.mockResolvedValue(workspace);
     renderPage();
 
-    fireEvent.change(screen.getByLabelText("Chapitre"), { target: { value: "chapter-1" } });
-    fireEvent.click(screen.getByRole("button", { name: "Charger le chapitre" }));
+    fireEvent.change(screen.getByLabelText("Chapitre"), {
+      target: { value: "chapter-1" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Charger le chapitre" }),
+    );
 
-    expect(await screen.findByRole("heading", { name: "Chapitre premier" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Chapitre premier" }),
+    ).toBeInTheDocument();
     expect(
       screen
         .getAllByRole("heading", { level: 3 })
         .map((heading) => heading.textContent)
-        .filter((title): title is string => Boolean(title?.match(/^\d+\./)))
+        .filter((title): title is string => Boolean(title?.match(/^\d+\./))),
     ).toEqual(["1. Première section", "2. Seconde section"]);
     expect(screen.getByText("1 décision active")).toBeInTheDocument();
-    expect(screen.getByText("Archive qualifiée").closest("li")).toHaveTextContent("Preuve qualifiée");
-    expect(screen.getByText("Piste visible").closest("li")).toHaveTextContent("Visible, non retenue");
-    expect(screen.getByText("Aucune décision active : préparation non disponible.")).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: "Ouvrir l’atelier de section" })[0]).toHaveAttribute(
-      "href",
-      "/projects/project-1/atelier?sectionId=section-1"
+    expect(
+      screen.getByText("Archive qualifiée").closest("li"),
+    ).toHaveTextContent("Preuve qualifiée");
+    expect(screen.getByText("Piste visible").closest("li")).toHaveTextContent(
+      "Visible, non retenue",
     );
-    expect(screen.getByRole("link", { name: "Ouvrir l’unité préparée" })).toHaveAttribute(
+    expect(
+      screen.getByText("Aucune décision active : préparation non disponible."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("link", { name: "Ouvrir l’atelier de section" })[0],
+    ).toHaveAttribute(
       "href",
-      "/projects/project-1/editor?unitId=unit-prepared"
+      "/projects/project-1/atelier?sectionId=section-1",
+    );
+    expect(
+      screen.getByRole("link", { name: "Ouvrir l’unité préparée" }),
+    ).toHaveAttribute(
+      "href",
+      "/projects/project-1/editor?unitId=unit-prepared",
     );
     expect(fetchChapter).toHaveBeenCalledWith("project-1", "chapter-1");
     expect(generateDraftUnit).not.toHaveBeenCalled();
@@ -128,23 +183,55 @@ describe("ChapterWorkshopPage", () => {
 
   it("renders the empty chapter state and scope errors", async () => {
     fetchChapter
-      .mockResolvedValueOnce({ chapter: { id: "empty", title: "Chapitre vide", writingStatus: "drafting" }, sections: [] })
+      .mockResolvedValueOnce({
+        chapter: {
+          id: "empty",
+          title: "Chapitre vide",
+          writingStatus: "drafting",
+        },
+        sections: [],
+      })
       .mockRejectedValueOnce(new Error("HTTP 404"));
     renderPage();
 
-    fireEvent.change(screen.getByLabelText("Chapitre"), { target: { value: "empty" } });
-    fireEvent.click(screen.getByRole("button", { name: "Charger le chapitre" }));
-    expect(await screen.findByText("Ce chapitre ne contient encore aucune section.")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Chapitre"), {
+      target: { value: "empty" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Charger le chapitre" }),
+    );
+    expect(
+      await screen.findByText("Ce chapitre ne contient encore aucune section."),
+    ).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("Chapitre"), { target: { value: "missing" } });
-    fireEvent.click(screen.getByRole("button", { name: "Charger le chapitre" }));
+    fireEvent.change(screen.getByLabelText("Chapitre"), {
+      target: { value: "missing" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Charger le chapitre" }),
+    );
     expect(await screen.findByText("Erreur : HTTP 404")).toBeInTheDocument();
   });
 
   it("opens a chapter selected from the manuscript navigation", async () => {
     fetchChapter.mockResolvedValue(workspace);
     renderPage("/projects/project-1/chapitre?chapterId=chapter-1");
-    expect(await screen.findByRole("heading", { name: "Chapitre premier" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Chapitre premier" }),
+    ).toBeInTheDocument();
     expect(fetchChapter).toHaveBeenCalledWith("project-1", "chapter-1");
+  });
+  it("keeps inspector context on the loaded chapter while another chapter is only selected", async () => {
+    fetchChapter.mockResolvedValue(workspace);
+    renderPage("/projects/project-1/chapitre?chapterId=chapter-1");
+    await screen.findByRole("heading", { name: "Chapitre premier" });
+    fireEvent.change(screen.getByLabelText("Chapitre"), {
+      target: { value: "empty" },
+    });
+    expect(screen.getByTestId("workspace")).toHaveAttribute(
+      "data-scope",
+      "chapter-1",
+    );
+    expect(fetchChapter).toHaveBeenCalledOnce();
   });
 });

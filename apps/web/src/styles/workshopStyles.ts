@@ -26,6 +26,7 @@ export const workshopStyles = stylex.create({
     textTransform: "uppercase",
   },
   title: {
+    fontFamily: themeVars.fontManuscript,
     color: themeVars.textPrimary,
     fontSize: "clamp(1.875rem, 4vw, 2.75rem)",
     fontWeight: 600,
@@ -52,7 +53,7 @@ export const workshopStyles = stylex.create({
     flexDirection: "column",
     flexGrow: 1,
     gap: "0.5rem",
-    minWidth: "15rem",
+    minWidth: "min(15rem, 100%)",
   },
   sectionHeader: {
     alignItems: "flex-start",
@@ -91,7 +92,7 @@ export const workshopStyles = stylex.create({
   grid: {
     display: "grid",
     gap: "1rem",
-    gridTemplateColumns: "repeat(auto-fit, minmax(18rem, 1fr))",
+    gridTemplateColumns: "repeat(auto-fit, minmax(min(18rem, 100%), 1fr))",
   },
   stack: {
     display: "flex",

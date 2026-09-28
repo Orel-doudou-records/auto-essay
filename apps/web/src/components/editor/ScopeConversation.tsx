@@ -14,9 +14,11 @@ import { themeVars } from "../../styles/tokens.stylex";
 export function ScopeConversation({
   projectId,
   scope,
+  showContext = true,
 }: {
   projectId: string;
   scope: ScopeConversationRef;
+  showContext?: boolean;
 }) {
   const [messages, setMessages] = useState<ScopeConversationMessage[]>([]);
   const [message, setMessage] = useState("");
@@ -63,12 +65,12 @@ export function ScopeConversation({
 
   return (
     <>
-      <ScopeContext projectId={projectId} scope={scope} />
+      {showContext && <ScopeContext projectId={projectId} scope={scope} />}
       <section aria-label="Conversation du scope" {...stylex.props(styles.root)}>
         <header>
-          <p {...stylex.props(styles.eyebrow)}>Conversation située</p>
+          <p {...stylex.props(styles.eyebrow)}>Échanger avec AutoEssay</p>
           <p {...stylex.props(styles.help)}>
-            Ce fil aide à réfléchir ici. Les décisions et modifications restent dans leurs outils dédiés.
+            Posez une question sur le contenu sélectionné et les sources disponibles.
           </p>
         </header>
         {loading ? (
@@ -76,14 +78,14 @@ export function ScopeConversation({
         ) : messages.length > 0 ? (
           <ol {...stylex.props(styles.messages)} aria-label="Échanges du scope">
             {messages.map((entry) => (
-              <li key={entry.id} {...stylex.props(styles.message)}>
+              <li key={entry.id} {...stylex.props(styles.message, entry.role === "author" && styles.authorMessage)}>
                 <strong {...stylex.props(styles.role)}>{entry.role === "author" ? "Vous" : "AutoEssay"}</strong>
                 <p {...stylex.props(styles.content)}>{entry.content}</p>
               </li>
             ))}
           </ol>
         ) : (
-          <p {...stylex.props(styles.status)}>Aucun échange dans ce scope.</p>
+          <p {...stylex.props(styles.status)}>Commencez une conversation sur cette sélection.</p>
         )}
         <form onSubmit={(event) => void submit(event)} {...stylex.props(styles.form)}>
           <Textarea
@@ -124,7 +126,8 @@ const styles = stylex.create({
   help: { color: themeVars.textSecondary, fontSize: "0.82rem", lineHeight: 1.5, margin: "0.35rem 0 0" },
   status: { color: themeVars.textSubtle, fontSize: "0.82rem", margin: 0 },
   messages: { display: "flex", flexDirection: "column", gap: "0.75rem", listStyle: "none", margin: 0, padding: 0 },
-  message: { margin: 0 },
+  message: { margin: 0, padding: "0.8rem", borderRadius: themeVars.radiusMedium },
+  authorMessage: { backgroundColor: themeVars.accentMuted },
   role: { color: themeVars.textPrimary, fontSize: "0.75rem" },
   content: { color: themeVars.textSecondary, fontSize: "0.875rem", lineHeight: 1.55, margin: "0.2rem 0 0", whiteSpace: "pre-wrap" },
   form: { display: "flex", flexDirection: "column", gap: "0.5rem" },

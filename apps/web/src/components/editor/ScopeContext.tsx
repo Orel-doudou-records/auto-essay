@@ -20,9 +20,11 @@ const SOURCE_STATE_LABELS: Record<ScopeContextSource["state"], string> = {
 export function ScopeContext({
   projectId,
   scope,
+  view = "all",
 }: {
   projectId: string;
   scope: ScopeContextRef;
+  view?: "all" | "sources" | "context" | "decisions";
 }) {
   const [context, setContext] = useState<ScopeContextData>();
   const [loading, setLoading] = useState(true);
@@ -86,14 +88,14 @@ export function ScopeContext({
             {explorationLabel(context)}
           </p>
 
-          <details {...stylex.props(styles.details)}>
+          {(view === "all" || view === "context") && <details {...stylex.props(styles.details)}>
             <summary>Texte existant</summary>
             <p {...stylex.props(styles.detailText)}>
               {context.text.trim() || "Aucun texte rédigé dans ce scope."}
             </p>
-          </details>
+          </details>}
 
-          {context.planning && (
+          {(view === "all" || view === "context") && context.planning && (
             <section aria-label="Cadrage du scope" {...stylex.props(styles.section)}>
               <h3 {...stylex.props(styles.sectionTitle)}>Cadrage</h3>
               <p {...stylex.props(styles.detailText)}>{context.planning.question}</p>
@@ -106,7 +108,7 @@ export function ScopeContext({
             </section>
           )}
 
-          <section aria-label="Sources du scope" {...stylex.props(styles.section)}>
+          {(view === "all" || view === "sources") && <section aria-label="Sources du scope" {...stylex.props(styles.section)}>
             <div {...stylex.props(styles.sectionHeading)}>
               <h3 {...stylex.props(styles.sectionTitle)}>Sources</h3>
               <span {...stylex.props(styles.count)}>
@@ -159,9 +161,9 @@ export function ScopeContext({
                 La sélection de sources deviendra modifiable lorsque ce scope aura un cadrage actif.
               </p>
             )}
-          </section>
+          </section>}
 
-          {context.passages.length > 0 && (
+          {(view === "all" || view === "sources") && context.passages.length > 0 && (
             <section aria-label="Passages mobilisés" {...stylex.props(styles.section)}>
               <h3 {...stylex.props(styles.sectionTitle)}>Passages mobilisés</h3>
               <ol {...stylex.props(styles.passageList)}>
@@ -177,7 +179,7 @@ export function ScopeContext({
             </section>
           )}
 
-          {(context.exploration.gaps.length > 0 || context.exploration.underDocumentedHypotheses.length > 0) && (
+          {(view === "all" || view === "context") && (context.exploration.gaps.length > 0 || context.exploration.underDocumentedHypotheses.length > 0) && (
             <section aria-label="Zones documentaires ouvertes" {...stylex.props(styles.section)}>
               <h3 {...stylex.props(styles.sectionTitle)}>À documenter</h3>
               <ul {...stylex.props(styles.compactList)}>
@@ -191,7 +193,7 @@ export function ScopeContext({
             </section>
           )}
 
-          <section aria-label="Décisions éditoriales du scope" {...stylex.props(styles.section)}>
+          {(view === "all" || view === "decisions") && <section aria-label="Décisions éditoriales du scope" {...stylex.props(styles.section)}>
             <h3 {...stylex.props(styles.sectionTitle)}>Décisions éditoriales</h3>
             {context.decisions.length === 0 ? (
               <p {...stylex.props(styles.status)}>Aucune décision active pour ce scope.</p>
@@ -207,7 +209,7 @@ export function ScopeContext({
                 ))}
               </ul>
             )}
-          </section>
+          </section>}
         </>
       )}
     </section>

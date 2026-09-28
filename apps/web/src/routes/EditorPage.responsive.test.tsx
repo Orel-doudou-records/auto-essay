@@ -109,6 +109,7 @@ function renderEditor() {
 describe("EditorPage responsive workspace", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    localStorage.clear();
     installCompactViewport();
     updateUnit.mockResolvedValue(preparedUnit);
     mockUnits();

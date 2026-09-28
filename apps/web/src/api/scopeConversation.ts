@@ -1,7 +1,7 @@
 const API = "/api";
 
 export type ScopeConversationRef = {
-  kind: "node" | "unit";
+  kind: "node" | "unit" | "source";
   id: string;
 };
 

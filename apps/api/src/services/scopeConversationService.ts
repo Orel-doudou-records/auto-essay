@@ -1,6 +1,12 @@
-import type { DraftUnit, ManuscriptChild, ManuscriptNode } from "@auto-essay/core";
+import type {
+  DraftUnit,
+  ManuscriptChild,
+  ManuscriptNode,
+} from "@auto-essay/core";
 import { HTTPException } from "hono/http-exception";
 import type { ModelClientFactory } from "../llm/client.js";
+import { getSource } from "./sourceStore.js";
+import { getScopeContext } from "./scopeContextService.js";
 import { getWorkspace } from "./editorialWorkspaceStore.js";
 import {
   appendScopeConversationExchange,
@@ -12,7 +18,7 @@ import { getUnit, listUnits } from "./unitStore.js";
 
 export async function getScopeConversation(
   projectId: string,
-  scope: ScopeConversationScope
+  scope: ScopeConversationScope,
 ): Promise<ScopeConversationMessage[]> {
   await describeScope(projectId, scope);
   return readScopeConversation(projectId, scope);
@@ -22,9 +28,30 @@ export async function askScopeConversation(
   projectId: string,
   scope: ScopeConversationScope,
   message: string,
-  modelClientFactory: ModelClientFactory
+  modelClientFactory: ModelClientFactory,
 ): Promise<ScopeConversationMessage[]> {
   const scopeContext = await describeScope(projectId, scope);
+  const context = await getScopeContext(projectId, scope).catch(
+    (error: unknown) => {
+      if (
+        error instanceof HTTPException &&
+        error.status === 404 &&
+        error.message === "editorial workspace not found"
+      )
+        return undefined;
+      throw error;
+    },
+  );
+  const documentaryContext = JSON.stringify({
+    planning: context?.planning,
+    decisions: context?.decisions,
+    sources: context?.sources.filter(
+      (source) =>
+        source.included ||
+        ("usedInDescendants" in source && source.usedInDescendants),
+    ),
+    passages: context?.passages,
+  });
   const history = await readScopeConversation(projectId, scope);
   const client = await modelClientFactory();
   const system = `Tu es AutoEssay, assistant éditorial situé dans le scope courant d'un manuscrit.
@@ -32,30 +59,55 @@ La conversation sert à réfléchir, clarifier et discuter ce scope ; elle n'est
 Ne prétends jamais avoir modifié le manuscrit, le plan, les sources ou une décision.
 Si l'auteur demande une réécriture ou une modification du texte, explique brièvement qu'elle doit passer par l'outil de révision dédié.
 N'invente aucune source ni information absente du contexte fourni.`;
-  const previous = history.length === 0
-    ? "Aucun échange précédent."
-    : history.map((entry) => `${entry.role === "author" ? "Auteur" : "AutoEssay"}: ${entry.content}`).join("\n\n");
-  const prompt = `## Scope courant\n${scopeContext}\n\n## Conversation précédente\n${previous}\n\n## Nouveau message de l'auteur\n${message}`;
+  const previous =
+    history.length === 0
+      ? "Aucun échange précédent."
+      : history
+          .map(
+            (entry) =>
+              `${entry.role === "author" ? "Auteur" : "AutoEssay"}: ${entry.content}`,
+          )
+          .join("\n\n");
+  const prompt = `## Scope courant\n${scopeContext}\n\n## Sources et décisions disponibles\n${documentaryContext}\n\n## Conversation précédente\n${previous}\n\n## Nouveau message de l'auteur\n${message}`;
   const response = (await client.complete(system, prompt)).trim();
-  if (!response) throw new Error("AutoEssay returned an empty scope conversation response");
+  if (!response)
+    throw new Error("AutoEssay returned an empty scope conversation response");
   return appendScopeConversationExchange(projectId, scope, message, response);
 }
 
-async function describeScope(projectId: string, scope: ScopeConversationScope): Promise<string> {
+async function describeScope(
+  projectId: string,
+  scope: ScopeConversationScope,
+): Promise<string> {
+  if (scope.kind === "source") {
+    const source = await getSource(projectId, scope.id);
+    if (!source)
+      throw new HTTPException(404, {
+        message: "conversation source not found",
+      });
+    return `Source : ${source.title}\nAuteurs : ${source.authors.join(", ")}\n\n${source.content || "Aucun texte disponible : notice bibliographique seulement."}`;
+  }
   if (scope.kind === "unit") {
     const unit = await getUnit(projectId, scope.id);
-    if (!unit) throw new HTTPException(404, { message: "conversation scope not found" });
+    if (!unit)
+      throw new HTTPException(404, { message: "conversation scope not found" });
     return describeUnit(unit);
   }
 
   const workspace = await getWorkspace(projectId);
   const node = findNode(workspace.manuscript.tree, scope.id);
-  if (!node) throw new HTTPException(404, { message: "conversation scope not found" });
-  const units = new Map((await listUnits(projectId)).map((unit) => [unit.id, unit]));
+  if (!node)
+    throw new HTTPException(404, { message: "conversation scope not found" });
+  const units = new Map(
+    (await listUnits(projectId)).map((unit) => [unit.id, unit]),
+  );
   return describeNode(node, units);
 }
 
-function findNode(children: ManuscriptChild[], nodeId: string): ManuscriptNode | undefined {
+function findNode(
+  children: ManuscriptChild[],
+  nodeId: string,
+): ManuscriptNode | undefined {
   for (const child of children) {
     if (child.kind !== "node") continue;
     if (child.id === nodeId) return child;
@@ -70,12 +122,18 @@ function describeUnit(unit: DraftUnit): string {
   return `Scope rédigé : ${title}\nGranularité : ${unit.granularity}\n\n${unit.content || "(aucun texte rédigé)"}`;
 }
 
-function describeNode(node: ManuscriptNode, units: Map<string, DraftUnit>, depth = 0): string {
+function describeNode(
+  node: ManuscriptNode,
+  units: Map<string, DraftUnit>,
+  depth = 0,
+): string {
   const heading = `${"#".repeat(Math.min(depth + 2, 6))} ${node.title}`;
   const parts = [heading];
   if (node.text?.trim()) parts.push(node.text.trim());
   if (node.plan?.length) {
-    parts.push(`Plan :\n${node.plan.map((entry) => `- ${entry.subject}`).join("\n")}`);
+    parts.push(
+      `Plan :\n${node.plan.map((entry) => `- ${entry.subject}`).join("\n")}`,
+    );
   }
   for (const child of node.children) {
     if (child.kind === "node") {

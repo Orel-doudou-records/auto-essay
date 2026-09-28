@@ -89,6 +89,7 @@ async function requestRevision() {
 describe("EditorPage collaborative revision compatibility", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    localStorage.clear();
     updateUnit.mockResolvedValue(preparedUnit);
   });
 
@@ -144,7 +145,7 @@ describe("EditorPage collaborative revision compatibility", () => {
     fireEvent.click(screen.getByRole("button", { name: "Appliquer la proposition" }));
 
     await vi.waitFor(() => expect(acceptWork).toHaveBeenCalledTimes(1));
-    expect(updateUnit).not.toHaveBeenCalled();
+    expect(updateUnit).toHaveBeenCalledWith(preparedUnit.id, { content: "Modification locale concurrente." });
     expect(await screen.findByText("Le texte a évolué depuis cette proposition. Elle reste consultable mais ne peut pas être appliquée.")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Proposition de révision" })).toBeInTheDocument();
   });
